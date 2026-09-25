@@ -261,6 +261,15 @@ function renderDynamicContent() {
           </div>
           <div class="brand-title" style="color:var(--neon-kick);">${b.name}</div>
         `;
+      } else if (b.logoType === 'svg' && b.svgPath) {
+        logoContent = `
+          <div class="brand-logo-svg-wrap" style="display:flex; justify-content:center; align-items:center; margin-bottom:12px; height:55px; color:${b.accent || '#00b8fc'}; filter:drop-shadow(0 0 12px ${b.accent ? b.accent + '80' : 'rgba(0,184,252,0.6)'});">
+            <svg viewBox="${b.svgViewBox || '0 0 110 30'}" style="height:42px; width:auto; max-width:160px; display:block;" aria-label="${b.name}">
+              ${b.svgPath}
+            </svg>
+          </div>
+          <div class="brand-title" style="color:${b.accent || 'var(--neon-cyan)'};">${b.name}</div>
+        `;
       }
       return `
         <div class="brand-card" style="border-color:${b.accent ? b.accent + '40' : 'var(--border-subtle)'};">
