@@ -111,7 +111,8 @@ const CREATOR_CONFIG = {
     {
       name: "Red Bull",
       role: "Colaboración Oficial",
-      logoType: "text",
+      logoType: "image",
+      logoImg: "assets/redbull_logo.svg",
       accent: "#e00638"
     },
     {

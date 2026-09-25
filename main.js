@@ -256,10 +256,10 @@ function renderDynamicContent() {
       let logoContent = `<div class="brand-title">${b.name}</div>`;
       if (b.logoType === 'image' && b.logoImg) {
         logoContent = `
-          <div class="brand-logo-img-wrap" style="display:flex; justify-content:center; align-items:center; margin-bottom:12px;">
-            <img src="${b.logoImg}" alt="${b.name}" style="height:55px; width:auto; object-fit:contain; filter:drop-shadow(0 0 12px rgba(83,252,24,0.5));" />
+          <div class="brand-logo-img-wrap" style="display:flex; justify-content:center; align-items:center; margin-bottom:12px; height:55px;">
+            <img src="${b.logoImg}" alt="${b.name}" style="height:48px; max-width:180px; width:auto; object-fit:contain; filter:drop-shadow(0 0 12px ${b.accent ? b.accent + '80' : 'rgba(255,255,255,0.4)'});" />
           </div>
-          <div class="brand-title" style="color:var(--neon-kick);">${b.name}</div>
+          <div class="brand-title" style="color:${b.accent || '#fff'};">${b.name}</div>
         `;
       } else if (b.logoType === 'svg' && b.svgPath) {
         logoContent = `
