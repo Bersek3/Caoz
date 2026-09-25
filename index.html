@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- SEO & Metadatos Principales -->
+  <title>Caoz | Streamer Gaming · Creador de Contenido</title>
+  <meta name="description"
+    content="Sitio oficial de Caoz (CaozYT), streamer y creador de contenido gaming. Transmisiones en vivo en Kick y Twitch, métricas oficiales de canales y comunidad." />
+  <meta name="keywords"
+    content="Caoz, CaozYT, caozssj, streamer, gaming, stream kick caoz, stream twitch caoz, fortnite caoz, creador de contenido" />
+  <meta name="author" content="Caoz" />
+  <meta name="robots" content="index, follow" />
+
+  <!-- Open Graph / Redes Sociales -->
+  <meta property="og:type" content="profile" />
+  <meta property="og:title" content="Caoz — Streamer Gaming" />
+  <meta property="og:description"
+    content="Transmisiones en vivo, comunidad gaming y estadísticas consolidadas de Caoz (Código: CAOZ)." />
+  <meta property="og:image" content="assets/avatar.jpg" />
+  <meta property="og:site_name" content="Caoz Oficial" />
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Caoz — Streamer Gaming" />
+  <meta name="twitter:description" content="Transmisiones en vivo, comunidad gaming y contenido de videojuegos." />
+  <meta name="twitter:image" content="assets/avatar.jpg" />
+
+  <!-- Schema.org Datos Estructurados -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Person",
+    "name": "Caoz",
+    "alternateName": ["CaozYT", "caozssj"],
+    "description": "Streamer y creador de contenido gaming con comunidad de millones de seguidores en YouTube, TikTok, Twitch, Kick e Instagram.",
+    "jobTitle": ["Streamer", "Creador de Contenido"],
+    "sameAs": [
+      "https://www.youtube.com/@caozyt",
+      "https://kick.com/caoz",
+      "https://www.tiktok.com/@caozyt?lang=es",
+      "https://www.twitch.tv/caozssj?lang=es",
+      "https://www.instagram.com/caozyt/?hl=es-la"
+    ]
+  }
+  </script>
+
+  <!-- Google Fonts & Estilos -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Outfit:wght@300;400;500;600;700;800&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+
+  <!-- Barra de progreso de lectura / scroll -->
+  <div class="scroll-progress" id="scrollProgress"></div>
+
+  <!-- Canvas de partículas de fondo dinámico -->
+  <canvas id="particlesCanvas"></canvas>
+  <div class="cyber-grid-overlay"></div>
+
+  <!-- Botón volver arriba -->
+  <button class="back-to-top" id="backToTop" aria-label="Volver arriba">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="20" height="20">
+      <polyline points="18 15 12 9 6 15" />
+    </svg>
+  </button>
+
+  <!-- NAVBAR -->
+  <nav class="navbar" id="navbar">
+    <div class="container nav-inner">
+      <a href="#hero" class="nav-logo">
+        <!-- CAOZ<span>.GG</span> -->
+      </a>
+
+      <ul class="nav-links" id="navLinks">
+        <li><a href="#metrics">Métricas</a></li>
+        <li><a href="#stream">En Directo</a></li>
+        <!-- <li><a href="#about">Sobre Mí</a></li> — Sección oculta temporalmente -->
+        <li><a href="#content">Contenido</a></li>
+        <li><a href="#brands">Colaboraciones</a></li>
+        <li><a href="#links">Links</a></li>
+        <li><a href="#contact">Contacto</a></li>
+      </ul>
+
+      <button class="hamburger" id="hamburger" aria-label="Abrir Menú">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- SECCIÓN HERO -->
+  <header class="hero" id="hero">
+    <div class="container hero-grid">
+      <!-- Columna Izquierda: Información Principal -->
+      <div class="hero-info">
+        <div class="hero-badge-wrap">
+          <span class="badge-country">STREAMER & CREADOR OFICIAL</span>
+        </div>
+
+        <h1 class="hero-title">
+          HOLA, SOY<br />
+          <span class="hero-glitch">CAOZ</span>
+        </h1>
+
+        <p class="hero-desc">
+          <span id="typewriterText"></span><span class="typewriter-cursor">|</span>
+        </p>
+
+        <div class="hero-quickstats">
+          <div class="quickstat-item">
+            <span class="qs-number">1.07M<span>+</span></span>
+            <span class="qs-label">YouTube Subs</span>
+          </div>
+          <div class="quickstat-divider"></div>
+          <div class="quickstat-item">
+            <span class="qs-number">923K<span>+</span></span>
+            <span class="qs-label">TikTok Fans</span>
+          </div>
+          <div class="quickstat-divider"></div>
+          <div class="quickstat-item">
+            <span class="qs-number">2.17M<span>+</span></span>
+            <span class="qs-label">Audiencia Total</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Columna Derecha: Foto Real de Caoz -->
+      <div class="hero-visual">
+        <div class="avatar-halo-ring"></div>
+        <div class="avatar-halo-ring avatar-halo-ring--outer"></div>
+        <div class="avatar-card">
+          <img src="assets/avatar.jpg" alt="Caoz Streamer Gaming" class="avatar-img" />
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- SECCIÓN MÉTRICAS Y AUDIENCIA -->
+  <section class="metrics-section" id="metrics">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-label">// AUDIENCIA & COMUNIDAD</span>
+        <!-- <h2 class="section-title">Mis Números <span class="neon-text-red">en Cifras</span></h2> -->
+
+      </div>
+
+      <!-- Grid de tarjetas de métricas -->
+      <div class="metrics-grid" id="metricsGrid">
+        <!-- Renderizado dinámico desde config.js -->
+      </div>
+
+      <!-- Banner de Alcance Total Consolidado -->
+      <div class="total-reach-banner">
+        <div class="tr-label">// Audiencia Consolidada Total</div>
+        <div class="tr-number" id="totalReachNumber" data-target="2173000">0</div>
+        <div class="tr-sub">Seguidores combinados en YouTube, TikTok, Kick, Twitch e Instagram</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECCIÓN STREAMING EN VIVO & CHAT INTEGRADO -->
+  <section class="stream-section" id="stream">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-label">// TRANSMISIÓN EN DIRECTO</span>
+        <h2 class="section-title">Streaming <span class="neon-text-red">En Vivo</span></h2>
+        <p class="section-sub">Disfruta el directo y participa en el chat en vivo simultáneo sin salir de la página.</p>
+      </div>
+
+      <!-- Barra de herramientas del reproductor -->
+      <div class="stream-toolbar">
+        <div class="platform-switchers">
+          <button class="platform-btn active kick-btn" id="btnStreamKick" data-platform="kick">
+            <img src="assets/kick_logo.png" alt="Kick" style="width:16px; height:16px; object-fit:contain;" />
+            Kick Live
+          </button>
+          <!-- Botones Twitch y YouTube ocultos temporalmente -->
+        </div>
+
+        <div class="stream-actions">
+          <button class="action-pill-btn" id="btnToggleTheater" title="Alternar Modo Teatro">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+              <rect x="2" y="4" width="20" height="16" rx="2" />
+              <line x1="10" y1="4" x2="10" y2="20" />
+            </svg>
+            <span>Modo Teatro</span>
+          </button>
+          <a href="https://kick.com/caoz" target="_blank" rel="noopener noreferrer" class="action-pill-btn"
+            id="streamExternalLink">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+              <polyline points="15 3 21 3 21 9" />
+              <line x1="10" y1="14" x2="21" y2="3" />
+            </svg>
+            <span>Abrir Canal</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- Contenedor Stream Arena: Video a la Izquierda + Chat a la Derecha -->
+      <div class="stream-arena-container" id="streamArena">
+        <!-- Columna Reproductor -->
+        <div class="stream-player-column">
+          <div class="video-frame-wrapper">
+            <iframe id="liveVideoPlayer" src="https://player.kick.com/caoz?autoplay=false" allowfullscreen
+              allow="autoplay; fullscreen; picture-in-picture" title="Caoz Transmisión en Vivo"></iframe>
+          </div>
+
+          <div class="stream-info-bar">
+            <div class="streamer-profile-mini">
+              <div class="streamer-avatar-mini">
+                <img src="assets/avatar.jpg" alt="Caoz" />
+              </div>
+              <div>
+                <h3 class="stream-title-text" id="streamChannelTitle">Caoz // Directo Oficial</h3>
+                <span class="stream-category-text" id="streamPlatformLabel">Plataforma activa: Kick
+                  (kick.com/caoz)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Columna Chat en Vivo -->
+        <div class="stream-chat-column">
+          <div class="chat-header-bar">
+            <span id="chatPlatformTitle">Chat en Vivo — Kick</span>
+            <span style="font-size:0.75rem; color:var(--text-muted);">Comunidad</span>
+          </div>
+
+          <div class="chat-frame-wrapper">
+            <iframe id="liveChatFrame" src="https://kick.com/popout/caoz/chat" title="Chat en Vivo de Caoz"></iframe>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECCIÓN SOBRE MÍ — Oculta temporalmente -->
+  <section class="about-section" id="about" style="display:none;">
+    <div class="container">
+      <div class="about-grid">
+        <!-- Foto Real de Caoz -->
+        <div class="about-visual-card">
+          <img src="assets/avatar.jpg" alt="Caoz Streamer y Creador" />
+        </div>
+
+        <!-- Texto y Filosofía -->
+        <div class="about-content">
+          <span class="section-label">// BIOGRAFÍA & TRAYECTORIA</span>
+          <h2 class="section-title">Más que un <span class="neon-text-red">Streamer</span></h2>
+          <p>
+            Soy <strong>Caoz</strong>, streamer y creador de contenido. A lo largo de mi trayectoria he transformado mi
+            dedicación por los videojuegos, los shooters y el entretenimiento.
+          </p>
+          <p>
+            Con más de <strong>1 Millón de suscriptores en YouTube (@caozyt)</strong> y cerca de <strong>1 Millón de
+              seguidores en TikTok</strong>, me caracterizo por transmisiones en <strong>Kick y Tiktok</strong>,
+            partidas competitivas, humor e interacción constante con el chat.
+          </p>
+          <p>
+            Cuento con código de creador oficial (<strong>CAOZ</strong>), conectando a miles de espectadores diarios con
+            transmisiones de alta calidad y contenido original.
+          </p>
+
+          <!-- Tarjetas de Características -->
+          <div class="about-traits-grid">
+            <div class="trait-card">
+              <div class="trait-icon">🎮</div>
+              <div>
+                <h4>Gaming & Shooters</h4>
+                <p>Alto rendimiento, carisma y gameplays diarios en las principales plataformas.</p>
+              </div>
+            </div>
+            <div class="trait-card">
+              <div class="trait-icon">🏆</div>
+              <div>
+                <h4>Código Creador: CAOZ</h4>
+                <p>Apoyo activo de la comunidad en la tienda y dinámicas exclusivas.</p>
+              </div>
+            </div>
+            <div class="trait-card">
+              <div class="trait-icon">🤝</div>
+              <div>
+                <h4>Alianzas con Marcas</h4>
+                <p>Campañas de patrocinio, activaciones gaming y representación de marcas top.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECCIÓN ÁREAS DE CONTENIDO -->
+  <section class="content-pillars-section" id="content">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-label">// LO QUE HAGO</span>
+        <h2 class="section-title">Mis Áreas de <span class="neon-text-flame">Contenido</span></h2>
+        <p class="section-sub">Ecosistema multiplataforma con transmisiones diarias y contenido corto viral.</p>
+      </div>
+
+      <div class="pillars-grid">
+        <div class="pillar-card">
+          <span class="pillar-index">01 // EN DIRECTO</span>
+          <div class="pillar-icon">🎥</div>
+          <h3>Streaming en Vivo</h3>
+          <p>Directos en Kick y Tiktok jugando con la comunidad, desafíos </p>
+          <a href="#stream" class="pillar-link">Ver Transmisión →</a>
+        </div>
+
+        <div class="pillar-card">
+          <span class="pillar-index">02 // VIRALIDAD</span>
+          <div class="pillar-icon">📱</div>
+          <h3>TikTok & YouTube Shorts</h3>
+          <p>Videos cortos y clips de directos, mejores momentos.</p>
+          <a href="https://www.tiktok.com/@caozyt?lang=es" target="_blank" rel="noopener noreferrer"
+            class="pillar-link">Ver en TikTok →</a>
+        </div>
+
+        <div class="pillar-card">
+          <span class="pillar-index">03 // SPONSORS</span>
+          <div class="pillar-icon">🤝</div>
+          <h3>Marcas & Publicidad</h3>
+          <p>Campañas de patrocinio, unboxings de hardware, integración de productos y presencia en eventos.</p>
+          <a href="#contact" class="pillar-link">Contactar →</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECCIÓN MARCAS & COLABORACIONES (SOLO RED BULL, LOGITECH Y KICK) -->
+  <section class="brands-section" id="brands">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-label">// ALIANZAS ESTRATÉGICAS</span>
+        <h2 class="section-title">Paneles de <span class="neon-text-red">Colaboraciones</span></h2>
+      </div>
+
+      <div class="brands-grid" id="brandsGrid">
+        <!-- Renderizado dinámico: Red Bull, Logitech y Kick (con logo original) -->
+      </div>
+    </div>
+  </section>
+
+  <!-- SECCIÓN HUB DE LINKS RÁPIDOS -->
+  <section class="links-section" id="links">
+    <div class="container">
+      <div class="links-layout">
+        <div class="links-left">
+          <span class="section-label">// CONECTEMOS</span>
+          <h2>Todas mis <span class="neon-text-red">Plataformas</span></h2>
+          <p class="links-desc">
+            Encuéntrame en cada una de mis redes sociales oficiales.
+          </p>
+          <a href="#contact" class="btn btn-primary">
+            ¿Quieres colaborar conmigo?
+          </a>
+        </div>
+
+        <div class="links-right">
+          <div class="links-cards-grid" id="linksCardsGrid">
+            <!-- Renderizado dinámico desde config.js -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECCIÓN CONTACTO & PROPUESTAS -->
+  <section class="contact-section" id="contact">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-label">// CONTACTO DIRECTO</span>
+        <h2 class="section-title">Hablemos de <span class="neon-text-red">Negocios</span></h2>
+        <p class="section-sub">Para patrocinios, activaciones comerciales, eventos o colaboraciones con marcas.</p>
+      </div>
+
+      <div class="contact-layout">
+        <!-- Información de contacto directo -->
+        <div class="contact-info-panel">
+          <div class="contact-card-box">
+            <h3>Disponibilidad Comercial</h3>
+
+            <div class="contact-items-list">
+              <div class="ci-row">
+                <div class="ci-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                    <polyline points="22,6 12,13 2,6" />
+                  </svg>
+                </div>
+                <div>
+                  <span class="ci-label">Correo Oficial</span>
+                  <a href="mailto:contacto.caoz@gmail.com" class="ci-value"
+                    id="contactEmailDisplay">contacto.caoz@gmail.com</a>
+                </div>
+              </div>
+
+              <div class="ci-row">
+                <div class="ci-icon">
+                  <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+                    <path
+                      d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057c.001.022.015.04.034.05a19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z" />
+                  </svg>
+                </div>
+                <!-- <div>
+                  <span class="ci-label">Comunidad Oficial</span>
+                  <a href="https://discord.gg" target="_blank" rel="noopener noreferrer" class="ci-value">Servidor
+                    Discord</a>
+                </div> -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Formulario Glassmorphism -->
+        <div class="contact-form-card">
+          <form id="contactForm">
+            <div class="form-row">
+              <div class="form-group">
+                <label for="formName">Nombre o Empresa</label>
+                <input type="text" id="formName" name="name" placeholder="Ej:Tu Nombre" required />
+              </div>
+              <div class="form-group">
+                <label for="formEmail">Correo Electrónico</label>
+                <input type="email" id="formEmail" name="email" placeholder="contacto@empresa.com" required />
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="formSubject">Tipo de Propuesta</label>
+              <select id="formSubject" name="subject" required>
+                <option value="">Selecciona una opción</option>
+                <option value="patrocinio">Patrocinio de Stream / Marca</option>
+                <option value="colaboracion">Colaboración entre Creadores</option>
+                <option value="prensa">Entrevista o Prensa</option>
+                <option value="otro">Otro Asunto</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="formMessage">Detalles del Mensaje</label>
+              <textarea id="formMessage" name="message"
+                placeholder="Cuéntame sobre la propuesta, fechas tentativas o presupuesto..." rows="5"
+                required></textarea>
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="width: 100%;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                <line x1="22" y1="2" x2="11" y2="13" />
+                <polygon points="22 2 15 22 11 13 2 9 22 2" />
+              </svg>
+              Enviar Propuesta
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ALERTA TOAST DE ÉXITO -->
+  <div class="toast-alert" id="toastAlert">
+    <div class="toast-icon">🚀</div>
+    <div>
+      <div class="toast-msg-title">¡Mensaje Enviado con Éxito!</div>
+      <div class="toast-msg-desc">Gracias por comunicarte. Caoz revisará tu propuesta en breve.</div>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-top">
+        <div>
+          <div class="footer-logo">CAOZ<span></span></div>
+          <p style="color:var(--text-secondary); max-width:400px; margin-top:8px; font-size:0.95rem;">
+            Creador de contenido y streamer gaming. Transmisiones en vivo, comunidad y entretenimiento.
+          </p>
+        </div>
+
+        <div class="footer-social-pills">
+          <a href="https://www.youtube.com/@caozyt" target="_blank" rel="noopener noreferrer"
+            class="f-social-pill">YouTube</a>
+          <a href="https://www.tiktok.com/@caozyt?lang=es" target="_blank" rel="noopener noreferrer"
+            class="f-social-pill">TikTok</a>
+          <a href="https://kick.com/caoz" target="_blank" rel="noopener noreferrer" class="f-social-pill">Kick</a>
+          <a href="https://www.twitch.tv/caozssj?lang=es" target="_blank" rel="noopener noreferrer"
+            class="f-social-pill">Twitch</a>
+          <a href="https://www.instagram.com/caozyt/?hl=es-la" target="_blank" rel="noopener noreferrer"
+            class="f-social-pill">Instagram</a>
+          <a href="https://discord.gg" target="_blank" rel="noopener noreferrer" class="f-social-pill">Discord</a>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <div>
+          &copy; <span id="currentYear"></span> Caoz. Todos los derechos reservados.
+        </div>
+        <div>
+          Sitio Oficial <span style="color:var(--neon-red); font-weight:700;">CAOZ</span>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="config.js"></script>
+  <script src="main.js"></script>
+</body>
+
+</html>
