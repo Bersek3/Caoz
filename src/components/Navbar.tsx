@@ -131,7 +131,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCreateModal }) => {
         
         {/* Brand Logo */}
         <div className="flex items-center space-x-8">
-          <Link href="/torneos" className="flex items-center space-x-3 group">
+          <Link href="/arena" className="flex items-center space-x-3 group">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 via-blue-600 to-purple-600 p-[2px] shadow-lg shadow-cyan-500/20 group-hover:shadow-cyan-400/40 transition-all duration-300">
               <div className="w-full h-full bg-[#0a0e17] rounded-[10px] flex items-center justify-center">
                 <Swords className="w-5 h-5 text-cyan-400 group-hover:scale-110 transition-transform duration-300" />
@@ -155,9 +155,9 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCreateModal }) => {
           {/* Navigation items */}
           <nav className="hidden md:flex items-center space-x-1">
             <Link
-              href="/torneos"
+              href="/arena"
               className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                pathname.startsWith('/torneo')
+                pathname.startsWith('/arena') || pathname.startsWith('/torneo')
                   ? 'bg-white/10 text-cyan-300 shadow-sm'
                   : 'text-slate-300 hover:text-white hover:bg-white/5'
               }`}
@@ -377,5 +377,6 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCreateModal }) => {
     </header>
   );
 };
+
 
 

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -18,8 +18,8 @@ import {
 const TYPEWRITER_PHRASES = [
   "Streamer Oficial en Kick & Twitch",
   "Creador de Contenido (+2.17M Comunidad)",
-  "Shooters, Gaming & Dinámicas en Vivo",
-  "Usa el Código de Creador: CAOZ"
+  "Shooters, Gaming & DinÃ¡micas en Vivo",
+  "Usa el CÃ³digo de Creador: CAOZ"
 ];
 
 const STATS_DATA = [
@@ -103,7 +103,7 @@ export default function CaozPortalPage() {
               <span>Torneos Arena</span>
               <span className="text-[10px] uppercase px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">Nuevo</span>
             </a>
-            <a href="#metrics" className="hover:text-white transition-colors">Métricas</a>
+            <a href="#metrics" className="hover:text-white transition-colors">MÃ©tricas</a>
             <a href="#brands" className="hover:text-white transition-colors">Colaboraciones</a>
             <a href="#links" className="hover:text-white transition-colors">Redes</a>
             <a href="#contact" className="hover:text-white transition-colors">Contacto</a>
@@ -112,7 +112,7 @@ export default function CaozPortalPage() {
           {/* Quick CTA to Torneos Platform */}
           <div className="flex items-center space-x-3">
             <Link
-              href="/torneos"
+              href="/arena"
               className="inline-flex items-center space-x-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-white bg-gradient-to-r from-rose-600 via-[#ff1744] to-cyan-500 hover:from-rose-500 hover:to-cyan-400 shadow-lg shadow-rose-600/30 hover:shadow-cyan-500/40 transition-all duration-300 transform hover:-translate-y-0.5"
             >
               <Trophy className="w-4 h-4 text-amber-300" />
@@ -132,7 +132,7 @@ export default function CaozPortalPage() {
             <div className="lg:col-span-7 space-y-6">
               <div className="inline-flex items-center space-x-2 px-3 py-1.5 rounded-full bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-semibold uppercase tracking-wider">
                 <Sparkles className="w-3.5 h-3.5" />
-                <span>Streamer & Creador Oficial // Código: CAOZ</span>
+                <span>Streamer & Creador Oficial // CÃ³digo: CAOZ</span>
               </div>
 
               <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black uppercase tracking-tight text-white font-mono leading-none">
@@ -150,14 +150,14 @@ export default function CaozPortalPage() {
               </div>
 
               <p className="text-sm sm:text-base text-zinc-400 max-w-xl leading-relaxed">
-                Llevando el streaming, los videojuegos y la comunidad competitiva al nivel más alto. 
+                Llevando el streaming, los videojuegos y la comunidad competitiva al nivel mÃ¡s alto. 
                 Compite en torneos oficiales con brackets interactivos y premios en efectivo.
               </p>
 
               {/* CTAs */}
               <div className="flex flex-wrap items-center gap-4 pt-4">
                 <Link
-                  href="/torneos"
+                  href="/arena"
                   className="inline-flex items-center space-x-3 px-6 py-3.5 rounded-xl font-bold text-sm sm:text-base text-white bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 shadow-xl shadow-cyan-500/25 hover:shadow-cyan-400/40 transition-all duration-300 transform hover:-translate-y-0.5"
                 >
                   <Swords className="w-5 h-5" />
@@ -208,7 +208,7 @@ export default function CaozPortalPage() {
                       <div className="text-sm font-bold text-white">Caoz Oficial</div>
                       <div className="text-xs text-emerald-400 flex items-center space-x-1">
                         <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping inline-block" />
-                        <span>En línea para streams & torneos</span>
+                        <span>En lÃ­nea para streams & torneos</span>
                       </div>
                     </div>
                     <span className="text-xs font-mono font-bold text-[#ff1744] px-2 py-1 rounded bg-[#ff1744]/10 border border-[#ff1744]/30">
@@ -237,12 +237,12 @@ export default function CaozPortalPage() {
                 Plataforma de <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-500">Torneos Oficiales</span>
               </h2>
               <p className="text-zinc-400 text-sm sm:text-base mt-2 max-w-2xl">
-                Compite individualmente o con tu equipo en Valorant, League of Legends, CS2, Fortnite y EA FC. Brackets automáticos, check-in en vivo y salas de partida.
+                Compite individualmente o con tu equipo en Valorant, League of Legends, CS2, Fortnite y EA FC. Brackets automÃ¡ticos, check-in en vivo y salas de partida.
               </p>
             </div>
 
             <Link
-              href="/torneos"
+              href="/arena"
               className="inline-flex items-center space-x-2 px-5 py-3 rounded-xl font-bold text-sm text-cyan-300 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 transition-all self-start md:self-auto"
             >
               <span>Ver Todos los Torneos</span>
@@ -253,7 +253,7 @@ export default function CaozPortalPage() {
           {/* Cards Grid de Juegos & Torneos */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
-              { name: "Valorant", tag: "5v5 Táctico", prizepool: "$150.000 CLP", icon: "VAL" },
+              { name: "Valorant", tag: "5v5 TÃ¡ctico", prizepool: "$150.000 CLP", icon: "VAL" },
               { name: "League of Legends", tag: "5v5 Summoners", prizepool: "$120.000 CLP", icon: "LOL" },
               { name: "Counter-Strike 2", tag: "5v5 Competitivo", prizepool: "$100.000 CLP", icon: "CS2" },
               { name: "Fortnite & EA FC", tag: "Battle Royale / 1v1", prizepool: "Premios y Skins", icon: "FN" },
@@ -280,7 +280,7 @@ export default function CaozPortalPage() {
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
                     <span>Inscripciones Abiertas</span>
                   </span>
-                  <Link href="/torneos" className="text-xs font-bold text-cyan-400 group-hover:translate-x-1 transition-transform flex items-center space-x-1">
+                  <Link href="/arena" className="text-xs font-bold text-cyan-400 group-hover:translate-x-1 transition-transform flex items-center space-x-1">
                     <span>Participar</span>
                     <ChevronRight className="w-3.5 h-3.5" />
                   </Link>
@@ -296,12 +296,12 @@ export default function CaozPortalPage() {
                 <Trophy className="w-7 h-7 text-cyan-300" />
               </div>
               <div>
-                <h4 className="text-lg sm:text-xl font-bold text-white font-mono">¿Listo para demostrar tu nivel?</h4>
-                <p className="text-sm text-zinc-300">Regístrate en 30 segundos, vincula tus IDs de juego y compite por premios reales.</p>
+                <h4 className="text-lg sm:text-xl font-bold text-white font-mono">Â¿Listo para demostrar tu nivel?</h4>
+                <p className="text-sm text-zinc-300">RegÃ­strate en 30 segundos, vincula tus IDs de juego y compite por premios reales.</p>
               </div>
             </div>
             <Link
-              href="/torneos"
+              href="/arena"
               className="px-6 py-3 rounded-xl font-bold text-sm text-white bg-cyan-500 hover:bg-cyan-400 shadow-lg shadow-cyan-500/30 transition-all shrink-0"
             >
               Ir a la Plataforma de Torneos
@@ -319,13 +319,13 @@ export default function CaozPortalPage() {
             <div>
               <div className="inline-flex items-center space-x-2 text-rose-500 text-xs font-mono font-bold uppercase tracking-wider mb-2">
                 <Tv className="w-4 h-4" />
-                <span>// TRANSMISIÓN EN DIRECTO</span>
+                <span>// TRANSMISIÃ“N EN DIRECTO</span>
               </div>
               <h2 className="text-3xl sm:text-5xl font-black uppercase text-white font-mono">
                 Streaming <span className="text-[#ff1744]">En Vivo</span>
               </h2>
               <p className="text-zinc-400 text-sm mt-1">
-                Disfruta el directo y participa en el chat en vivo simultáneo sin salir de la página.
+                Disfruta el directo y participa en el chat en vivo simultÃ¡neo sin salir de la pÃ¡gina.
               </p>
             </div>
 
@@ -376,14 +376,14 @@ export default function CaozPortalPage() {
                     src="https://player.kick.com/caoz?autoplay=false"
                     className="w-full h-full border-0"
                     allowFullScreen
-                    title="Caoz Transmisión en Vivo Kick"
+                    title="Caoz TransmisiÃ³n en Vivo Kick"
                   />
                 ) : (
                   <iframe
                     src="https://player.twitch.tv/?channel=caozssj&parent=localhost&parent=vercel.app"
                     className="w-full h-full border-0"
                     allowFullScreen
-                    title="Caoz Transmisión en Vivo Twitch"
+                    title="Caoz TransmisiÃ³n en Vivo Twitch"
                   />
                 )}
               </div>
@@ -397,7 +397,7 @@ export default function CaozPortalPage() {
                 <div>
                   <h4 className="text-base font-bold text-white">Caoz // Directo Oficial Gaming</h4>
                   <p className="text-xs text-zinc-400">
-                    Plataforma activa: <strong className="text-white">{activeStream.toUpperCase()}</strong> (Código de creador: CAOZ)
+                    Plataforma activa: <strong className="text-white">{activeStream.toUpperCase()}</strong> (CÃ³digo de creador: CAOZ)
                   </p>
                 </div>
               </div>
@@ -435,14 +435,14 @@ export default function CaozPortalPage() {
         </div>
       </section>
 
-      {/* MÉTRICAS & COMUNIDAD */}
+      {/* MÃ‰TRICAS & COMUNIDAD */}
       <section id="metrics" className="relative z-10 py-16 sm:py-24 border-b border-white/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
           <div className="text-center max-w-2xl mx-auto mb-16">
             <span className="text-xs font-mono font-bold text-[#ff1744] uppercase tracking-widest">// COMUNIDAD VERIFICADA</span>
             <h2 className="text-3xl sm:text-5xl font-black uppercase text-white font-mono mt-2">
-              Mis Números en <span className="text-[#ff1744]">Cifras</span>
+              Mis NÃºmeros en <span className="text-[#ff1744]">Cifras</span>
             </h2>
             <p className="text-zinc-400 text-sm mt-2">
               Alcance consolidado en las principales plataformas de contenido gaming y streaming de habla hispana.
@@ -503,7 +503,7 @@ export default function CaozPortalPage() {
               Marcas & <span className="text-amber-400">Patrocinios</span>
             </h2>
             <p className="text-zinc-400 text-sm mt-2">
-              Alianzas estratégicas con líderes de la industria gaming y del entretenimiento.
+              Alianzas estratÃ©gicas con lÃ­deres de la industria gaming y del entretenimiento.
             </p>
           </div>
 
@@ -515,7 +515,7 @@ export default function CaozPortalPage() {
                 <img src="/assets/redbull_logo.svg" alt="Red Bull" className="h-12 w-auto object-contain" />
               </div>
               <h3 className="text-xl font-bold text-white">Red Bull</h3>
-              <p className="text-xs text-red-400 font-mono mt-1">Colaboración Oficial & Eventos</p>
+              <p className="text-xs text-red-400 font-mono mt-1">ColaboraciÃ³n Oficial & Eventos</p>
             </div>
 
             {/* Logitech */}
@@ -526,7 +526,7 @@ export default function CaozPortalPage() {
                 </svg>
               </div>
               <h3 className="text-xl font-bold text-white">Logitech G</h3>
-              <p className="text-xs text-cyan-400 font-mono mt-1">Periféricos & Hardware Gaming</p>
+              <p className="text-xs text-cyan-400 font-mono mt-1">PerifÃ©ricos & Hardware Gaming</p>
             </div>
 
             {/* Kick */}
@@ -577,7 +577,7 @@ export default function CaozPortalPage() {
                   </div>
                   <div>
                     <div className="text-xs text-zinc-400">Torneos & Esports</div>
-                    <Link href="/torneos" className="text-sm font-bold text-cyan-300 hover:underline">
+                    <Link href="/arena" className="text-sm font-bold text-cyan-300 hover:underline">
                       Caoz Arena Platform
                     </Link>
                   </div>
@@ -599,7 +599,7 @@ export default function CaozPortalPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-mono font-bold text-zinc-300 uppercase mb-2">Correo Electrónico</label>
+                    <label className="block text-xs font-mono font-bold text-zinc-300 uppercase mb-2">Correo ElectrÃ³nico</label>
                     <input
                       type="email"
                       required
@@ -616,8 +616,8 @@ export default function CaozPortalPage() {
                     className="w-full px-4 py-3 rounded-xl bg-zinc-950 border border-white/10 text-white focus:outline-none focus:border-rose-500 text-sm"
                   >
                     <option value="patrocinio">Patrocinio de Stream / Marca</option>
-                    <option value="torneo">Organización de Torneo en Caoz Arena</option>
-                    <option value="colaboracion">Colaboración entre Creadores</option>
+                    <option value="torneo">OrganizaciÃ³n de Torneo en Caoz Arena</option>
+                    <option value="colaboracion">ColaboraciÃ³n entre Creadores</option>
                     <option value="prensa">Entrevista o Prensa</option>
                   </select>
                 </div>
@@ -627,7 +627,7 @@ export default function CaozPortalPage() {
                   <textarea
                     rows={4}
                     required
-                    placeholder="Cuéntanos detalles de tu propuesta, fechas tentativas o presupuesto..."
+                    placeholder="CuÃ©ntanos detalles de tu propuesta, fechas tentativas o presupuesto..."
                     className="w-full px-4 py-3 rounded-xl bg-zinc-950 border border-white/10 text-white placeholder-zinc-500 focus:outline-none focus:border-rose-500 text-sm"
                   />
                 </div>
@@ -643,7 +643,7 @@ export default function CaozPortalPage() {
                 {formSent && (
                   <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-sm flex items-center space-x-2">
                     <CheckCircle2 className="w-5 h-5 shrink-0" />
-                    <span>¡Propuesta enviada con éxito! Caoz revisará tu mensaje en breve.</span>
+                    <span>Â¡Propuesta enviada con Ã©xito! Caoz revisarÃ¡ tu mensaje en breve.</span>
                   </div>
                 )}
               </form>
@@ -668,7 +668,7 @@ export default function CaozPortalPage() {
             </div>
 
             <div className="flex flex-wrap items-center gap-4 text-xs font-medium text-zinc-400">
-              <Link href="/torneos" className="text-cyan-400 hover:underline">Caoz Arena</Link>
+              <Link href="/arena" className="text-cyan-400 hover:underline">Caoz Arena</Link>
               <a href="https://kick.com/caoz" target="_blank" rel="noopener noreferrer" className="hover:text-white">Kick</a>
               <a href="https://www.twitch.tv/caozssj?lang=es" target="_blank" rel="noopener noreferrer" className="hover:text-white">Twitch</a>
               <a href="https://www.youtube.com/@caoz" target="_blank" rel="noopener noreferrer" className="hover:text-white">YouTube</a>
@@ -678,8 +678,8 @@ export default function CaozPortalPage() {
           </div>
 
           <div className="mt-8 pt-8 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between text-xs text-zinc-600">
-            <div>© 2026 Caoz. Todos los derechos reservados.</div>
-            <div className="mt-2 sm:mt-0">Código de Creador Oficial: CAOZ</div>
+            <div>Â© 2026 Caoz. Todos los derechos reservados.</div>
+            <div className="mt-2 sm:mt-0">CÃ³digo de Creador Oficial: CAOZ</div>
           </div>
         </div>
       </footer>
@@ -687,3 +687,4 @@ export default function CaozPortalPage() {
     </div>
   );
 }
+
