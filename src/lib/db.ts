@@ -34,7 +34,7 @@ export async function getDb() {
     };
   }
 
-  // PGlite (Real PostgreSQL embedded inside Node.js)
+  // PGlite (Real PostgreSQL embedded inside Node.js for local development)
   if (!global.__pgliteInstance) {
     const dataDir = path.join(process.cwd(), 'data', 'pgdata');
     if (!fs.existsSync(dataDir)) {
@@ -59,9 +59,9 @@ export async function initDb() {
 
   const db = await getDb();
 
-  // Create Users Table
+  // 1. Tabla: usuarios
   await db.query(`
-    CREATE TABLE IF NOT EXISTS users (
+    CREATE TABLE IF NOT EXISTS usuarios (
       id VARCHAR(64) PRIMARY KEY,
       email VARCHAR(255) UNIQUE NOT NULL,
       password_hash VARCHAR(255) NOT NULL,
@@ -74,40 +74,21 @@ export async function initDb() {
       ea_id VARCHAR(100),
       discord_tag VARCHAR(100),
       bio TEXT,
+      birth_date DATE,
+      rut VARCHAR(20),
+      account_status VARCHAR(32) DEFAULT 'activa',
+      epic_games_username VARCHAR(100),
+      psn_id VARCHAR(100),
+      xbox_gamertag VARCHAR(100),
       created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     );
   `);
 
-  // Ensure age and legal fields on users
+  // 2. Tabla: autorizaciones_parentales
   await db.query(`
-    DO $$ 
-    BEGIN 
-      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='birth_date') THEN
-        ALTER TABLE users ADD COLUMN birth_date DATE;
-      END IF;
-      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='rut') THEN
-        ALTER TABLE users ADD COLUMN rut VARCHAR(20);
-      END IF;
-      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='account_status') THEN
-        ALTER TABLE users ADD COLUMN account_status VARCHAR(32) DEFAULT 'activa';
-      END IF;
-      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='epic_games_username') THEN
-        ALTER TABLE users ADD COLUMN epic_games_username VARCHAR(100);
-      END IF;
-      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='psn_id') THEN
-        ALTER TABLE users ADD COLUMN psn_id VARCHAR(100);
-      END IF;
-      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='xbox_gamertag') THEN
-        ALTER TABLE users ADD COLUMN xbox_gamertag VARCHAR(100);
-      END IF;
-    END $$;
-  `);
-
-  // Create Parental Authorizations Table
-  await db.query(`
-    CREATE TABLE IF NOT EXISTS parental_authorizations (
+    CREATE TABLE IF NOT EXISTS autorizaciones_parentales (
       id VARCHAR(64) PRIMARY KEY,
-      user_id VARCHAR(64) REFERENCES users(id) ON DELETE CASCADE,
+      user_id VARCHAR(64) REFERENCES usuarios(id) ON DELETE CASCADE,
       guardian_name VARCHAR(150) NOT NULL,
       guardian_rut VARCHAR(20) NOT NULL,
       relationship VARCHAR(50) NOT NULL,
@@ -118,38 +99,39 @@ export async function initDb() {
       rejection_reason TEXT,
       created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
       reviewed_at TIMESTAMP WITH TIME ZONE,
-      reviewed_by VARCHAR(64)
+      reviewed_by VARCHAR(64) REFERENCES usuarios(id)
     );
   `);
 
-  // Create Teams Table
+  // 3. Tabla: equipos
   await db.query(`
-    CREATE TABLE IF NOT EXISTS teams (
+    CREATE TABLE IF NOT EXISTS equipos (
       id VARCHAR(64) PRIMARY KEY,
       name VARCHAR(150) NOT NULL,
       tag VARCHAR(16) NOT NULL,
       logo_url TEXT,
-      captain_id VARCHAR(64) REFERENCES users(id) ON DELETE SET NULL,
+      captain_id VARCHAR(64) REFERENCES usuarios(id) ON DELETE SET NULL,
       invite_code VARCHAR(64) UNIQUE,
       created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     );
   `);
 
-  // Create Team Members Table
+  // 4. Tabla: miembros_equipo
   await db.query(`
-    CREATE TABLE IF NOT EXISTS team_members (
+    CREATE TABLE IF NOT EXISTS miembros_equipo (
       id VARCHAR(64) PRIMARY KEY,
-      team_id VARCHAR(64) REFERENCES teams(id) ON DELETE CASCADE,
-      user_id VARCHAR(64) REFERENCES users(id) ON DELETE CASCADE,
+      team_id VARCHAR(64) REFERENCES equipos(id) ON DELETE CASCADE,
+      user_id VARCHAR(64) REFERENCES usuarios(id) ON DELETE CASCADE,
       role VARCHAR(32) DEFAULT 'starter',
       in_game_id VARCHAR(100),
-      joined_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      joined_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(team_id, user_id)
     );
   `);
 
-  // Create Tournaments Table
+  // 5. Tabla: torneos
   await db.query(`
-    CREATE TABLE IF NOT EXISTS tournaments (
+    CREATE TABLE IF NOT EXISTS torneos (
       id VARCHAR(64) PRIMARY KEY,
       title VARCHAR(255) NOT NULL,
       slug VARCHAR(255) UNIQUE NOT NULL,
@@ -183,20 +165,11 @@ export async function initDb() {
     );
   `);
 
+  // 6. Tabla: participantes_torneo
   await db.query(`
-    DO $$ 
-    BEGIN 
-      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='tournaments' AND column_name='is_hidden') THEN
-        ALTER TABLE tournaments ADD COLUMN is_hidden BOOLEAN DEFAULT false;
-      END IF;
-    END $$;
-  `);
-
-  // Create Tournament Participants Table
-  await db.query(`
-    CREATE TABLE IF NOT EXISTS tournament_participants (
+    CREATE TABLE IF NOT EXISTS participantes_torneo (
       id VARCHAR(64) PRIMARY KEY,
-      tournament_id VARCHAR(64) REFERENCES tournaments(id) ON DELETE CASCADE,
+      tournament_id VARCHAR(64) REFERENCES torneos(id) ON DELETE CASCADE,
       team_id VARCHAR(64),
       user_id VARCHAR(64),
       name VARCHAR(150) NOT NULL,
@@ -214,32 +187,23 @@ export async function initDb() {
     );
   `);
 
+  // 7. Tabla: rondas_torneo
   await db.query(`
-    DO $$ 
-    BEGIN 
-      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='tournament_participants' AND column_name='user_id') THEN
-        ALTER TABLE tournament_participants ADD COLUMN user_id VARCHAR(64);
-      END IF;
-    END $$;
-  `);
-
-  // Create Tournament Rounds Table
-  await db.query(`
-    CREATE TABLE IF NOT EXISTS tournament_rounds (
+    CREATE TABLE IF NOT EXISTS rondas_torneo (
       id VARCHAR(64) PRIMARY KEY,
-      tournament_id VARCHAR(64) REFERENCES tournaments(id) ON DELETE CASCADE,
+      tournament_id VARCHAR(64) REFERENCES torneos(id) ON DELETE CASCADE,
       round_index INTEGER NOT NULL,
       title VARCHAR(100) NOT NULL,
       bracket_type VARCHAR(32) NOT NULL DEFAULT 'winners'
     );
   `);
 
-  // Create Tournament Matches Table
+  // 8. Tabla: partidas_torneo
   await db.query(`
-    CREATE TABLE IF NOT EXISTS tournament_matches (
+    CREATE TABLE IF NOT EXISTS partidas_torneo (
       id VARCHAR(64) PRIMARY KEY,
-      round_id VARCHAR(64) REFERENCES tournament_rounds(id) ON DELETE CASCADE,
-      tournament_id VARCHAR(64) REFERENCES tournaments(id) ON DELETE CASCADE,
+      round_id VARCHAR(64) REFERENCES rondas_torneo(id) ON DELETE CASCADE,
+      tournament_id VARCHAR(64) REFERENCES torneos(id) ON DELETE CASCADE,
       round_index INTEGER NOT NULL,
       round_title VARCHAR(100) NOT NULL,
       match_index INTEGER NOT NULL,
@@ -266,11 +230,11 @@ export async function initDb() {
     );
   `);
 
-  // Create Match Chat Messages Table
+  // 9. Tabla: mensajes_partida
   await db.query(`
-    CREATE TABLE IF NOT EXISTS match_messages (
+    CREATE TABLE IF NOT EXISTS mensajes_partida (
       id VARCHAR(64) PRIMARY KEY,
-      match_id VARCHAR(64) REFERENCES tournament_matches(id) ON DELETE CASCADE,
+      match_id VARCHAR(64) REFERENCES partidas_torneo(id) ON DELETE CASCADE,
       sender_name VARCHAR(150) NOT NULL,
       sender_role VARCHAR(32) NOT NULL DEFAULT 'team1',
       message TEXT NOT NULL,
@@ -279,15 +243,26 @@ export async function initDb() {
     );
   `);
 
-  // Generic fixed default avatar for all users
-  const defaultGenericAvatar = 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?q=80&w=200&auto=format&fit=crop';
+  // Vistas de compatibilidad en PostgreSQL
+  await db.query(`
+    CREATE OR REPLACE VIEW users AS SELECT * FROM usuarios;
+    CREATE OR REPLACE VIEW parental_authorizations AS SELECT * FROM autorizaciones_parentales;
+    CREATE OR REPLACE VIEW teams AS SELECT * FROM equipos;
+    CREATE OR REPLACE VIEW team_members AS SELECT * FROM miembros_equipo;
+    CREATE OR REPLACE VIEW tournaments AS SELECT * FROM torneos;
+    CREATE OR REPLACE VIEW tournament_participants AS SELECT * FROM participantes_torneo;
+    CREATE OR REPLACE VIEW tournament_rounds AS SELECT * FROM rondas_torneo;
+    CREATE OR REPLACE VIEW tournament_matches AS SELECT * FROM partidas_torneo;
+    CREATE OR REPLACE VIEW match_messages AS SELECT * FROM mensajes_partida;
+  `);
 
-  // Seed ONLY the user requested (Francisco Bersek as Administrator)
-  const userCheck = await db.query('SELECT id FROM users WHERE email = $1', ['francisco.jm.aguilar1@gmail.com']);
+  // Usuario administrador por defecto
+  const defaultGenericAvatar = 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?q=80&w=200&auto=format&fit=crop';
+  const userCheck = await db.query('SELECT id FROM usuarios WHERE email = $1', ['francisco.jm.aguilar1@gmail.com']);
   if (userCheck.rows.length === 0) {
     const passwordHash = await bcrypt.hash('Bersek@1106@3200', 10);
     await db.query(`
-      INSERT INTO users (
+      INSERT INTO usuarios (
         id, email, password_hash, username, full_name, avatar_url, role, riot_id, discord_tag, bio
       ) VALUES (
         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
@@ -305,11 +280,9 @@ export async function initDb() {
       'Administrador Oficial de Torneos.'
     ]);
 
-    // Secure invite code for team
-    const secureCode = 'CZ-' + Math.random().toString(36).substring(2, 6).toUpperCase() + '-' + Math.random().toString(36).substring(2, 6).toUpperCase() + '-2026';
-
+    const secureCode = 'CZ-BERSEK-2026';
     await db.query(`
-      INSERT INTO teams (id, name, tag, logo_url, captain_id, invite_code)
+      INSERT INTO equipos (id, name, tag, logo_url, captain_id, invite_code)
       VALUES ($1, $2, $3, $4, $5, $6)
     `, [
       'team-caoz-wolves',
