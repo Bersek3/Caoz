@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { AuthProvider, useAuth } from '../context/AuthContext';
 import { TournamentProvider } from '../context/TournamentContext';
 import { Navbar } from './Navbar';
@@ -21,16 +22,25 @@ const GlobalAuthModal: React.FC = () => {
 
 export const Providers: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const pathname = usePathname();
+
+  // El Navbar y Footer de CaozArena solo se muestran dentro de la plataforma de torneos
+  const isArenaRoute = pathname.startsWith('/arena') || 
+                       pathname.startsWith('/tournament') || 
+                       pathname === '/profile' || 
+                       pathname === '/join-team';
 
   return (
     <AuthProvider>
       <TournamentProvider>
         <div className="flex flex-col min-h-screen">
-          <Navbar onOpenCreateModal={() => setIsCreateModalOpen(true)} />
+          {isArenaRoute && (
+            <Navbar onOpenCreateModal={() => setIsCreateModalOpen(true)} />
+          )}
           <main className="flex-1">
             {children}
           </main>
-          <Footer />
+          {isArenaRoute && <Footer />}
           <CreateTournamentModal
             isOpen={isCreateModalOpen}
             onClose={() => setIsCreateModalOpen(false)}
