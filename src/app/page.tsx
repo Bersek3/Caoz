@@ -158,13 +158,21 @@ export default function CaozPortalPage() {
             <div className="lg:col-span-5 flex justify-center">
               <div className="relative group">
                 <div className="absolute -inset-4 rounded-3xl bg-gradient-to-r from-[#ff1744] via-rose-600 to-cyan-500 opacity-30 group-hover:opacity-60 blur-2xl transition-all duration-500" />
+                <div className="relative w-72 sm:w-84 lg:w-96 aspect-square rounded-3xl overflow-hidden border-2 border-white/20 bg-zinc-950 shadow-2xl">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src="/assets/avatar.jpg"
+                    alt="Caoz Streamer Oficial"
+                    className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+                </div>
               </div>
             </div>
 
           </div>
         </div>
       </section>
-
       {/* MÉTRICAS & COMUNIDAD */}
       <section id="metrics" className="relative z-10 py-16 sm:py-24 border-b border-white/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
