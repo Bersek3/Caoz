@@ -114,12 +114,11 @@ export default function CaozPortalPage() {
       <section id="hero" className="relative z-10 pt-12 sm:pt-20 pb-16 sm:pb-24 border-b border-white/5">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-
             {/* Contenido izquierdo */}
             <div className="lg:col-span-7 space-y-6">
 
               <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black uppercase tracking-tight text-white font-mono leading-none">
-                HOLA, SOY <br />
+                HOLA,SOY <br />
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#ff1744] via-rose-500 to-amber-400 drop-shadow-[0_0_35px_rgba(255,23,68,0.4)]">
                   CAOZ
                 </span>
@@ -137,24 +136,6 @@ export default function CaozPortalPage() {
                 Creando contenido de alto impacto para una comunidad consolidada de más de 2 millones de seguidores.
               </p>
 
-              {/* Botones de acción principales */}
-              <div className="flex flex-wrap items-center gap-4 pt-4">
-                <a
-                  href="#metrics"
-                  className="inline-flex items-center space-x-2 px-6 py-3.5 rounded-xl font-bold text-sm sm:text-base text-white bg-gradient-to-r from-rose-600 via-[#ff1744] to-red-500 hover:from-rose-500 hover:to-red-400 shadow-xl shadow-rose-600/25 transition-all duration-300 transform hover:-translate-y-0.5"
-                >
-                  <span>Ver Métricas & Cifras</span>
-                  <ArrowRight className="w-4 h-4" />
-                </a>
-
-                <a
-                  href="#contact"
-                  className="inline-flex items-center space-x-2 px-6 py-3.5 rounded-xl font-bold text-sm sm:text-base text-zinc-200 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-rose-500/40 transition-all duration-300"
-                >
-                  <Mail className="w-5 h-5 text-rose-400" />
-                  <span>Contacto & Patrocinios</span>
-                </a>
-              </div>
 
               {/* Barra de estadísticas resumida */}
               <div className="grid grid-cols-3 gap-4 pt-6 max-w-lg border-t border-white/10">
@@ -177,27 +158,6 @@ export default function CaozPortalPage() {
             <div className="lg:col-span-5 flex justify-center">
               <div className="relative group">
                 <div className="absolute -inset-4 rounded-3xl bg-gradient-to-r from-[#ff1744] via-rose-600 to-cyan-500 opacity-30 group-hover:opacity-60 blur-2xl transition-all duration-500" />
-                <div className="relative w-72 sm:w-84 lg:w-96 aspect-square rounded-3xl overflow-hidden border-2 border-white/20 bg-zinc-950 shadow-2xl">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src="/assets/avatar.jpg"
-                    alt="Caoz Streamer Oficial"
-                    className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
-                  <div className="absolute bottom-4 left-4 right-4 p-3 rounded-xl bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-between">
-                    <div>
-                      <div className="text-sm font-bold text-white">Caoz Oficial</div>
-                      <div className="text-xs text-emerald-400 flex items-center space-x-1">
-                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping inline-block" />
-                        <span>Activo en Redes & Streams</span>
-                      </div>
-                    </div>
-                    <span className="text-xs font-mono font-bold text-[#ff1744] px-2 py-1 rounded bg-[#ff1744]/10 border border-[#ff1744]/30">
-                      CAOZ
-                    </span>
-                  </div>
-                </div>
               </div>
             </div>
 
