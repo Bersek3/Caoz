@@ -74,10 +74,10 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCreateModal }) => {
         const checked = myReg?.checkedIn;
         items.push({
           id: `checkin-${t.id}-${checked ? 'done' : 'pending'}`,
-          title: checked ? 'Check-In Confirmado âœ“' : 'Â¡Check-In Abierto!',
+          title: checked ? 'Check-In Confirmado ✓' : '¡Check-In Abierto!',
           message: checked
-            ? `Tu cupo en "${t.title}" estÃ¡ asegurado. Las llaves comenzarÃ¡n pronto.`
-            : `El Check-In para "${t.title}" estÃ¡ activo. Confirma tu asistencia para no perder tu cupo en el bracket.`,
+            ? `Tu cupo en "${t.title}" está asegurado. Las llaves comenzarán pronto.`
+            : `El Check-In para "${t.title}" está activo. Confirma tu asistencia para no perder tu cupo en el bracket.`,
           type: 'check_in',
           tournamentSlug: t.slug,
           tournamentTitle: t.title,
@@ -91,8 +91,8 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCreateModal }) => {
         const minsLeft = Math.floor(countdown.totalMilliseconds / (60 * 1000));
         items.push({
           id: `start-soon-${t.id}`,
-          title: 'Torneo PrÃ³ximo a Comenzar',
-          message: `"${t.title}" comenzarÃ¡ aproximadamente en ${minsLeft} minutos. Â¡Prepara a tu equipo!`,
+          title: 'Torneo Próximo a Comenzar',
+          message: `"${t.title}" comenzará aproximadamente en ${minsLeft} minutos. ¡Prepara a tu equipo!`,
           type: 'starting_soon',
           tournamentSlug: t.slug,
           tournamentTitle: t.title,
@@ -105,8 +105,8 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCreateModal }) => {
       if (t.status === 'in_progress') {
         items.push({
           id: `live-${t.id}`,
-          title: 'Â¡Torneo En Juego!',
-          message: `Las partidas de "${t.title}" estÃ¡n en desarrollo. Revisa tus llaves y accede a tu Sala de Partida.`,
+          title: '¡Torneo En Juego!',
+          message: `Las partidas de "${t.title}" están en desarrollo. Revisa tus llaves y accede a tu Sala de Partida.`,
           type: 'in_progress',
           tournamentSlug: t.slug,
           tournamentTitle: t.title,
@@ -248,7 +248,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCreateModal }) => {
                           className="text-[11px] text-cyan-400 hover:text-cyan-300 transition-colors font-medium flex items-center space-x-1 cursor-pointer"
                         >
                           <CheckCheck className="w-3.5 h-3.5" />
-                          <span>Marcar leÃ­das</span>
+                          <span>Marcar leídas</span>
                         </button>
                       )}
                     </div>
@@ -258,9 +258,9 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCreateModal }) => {
                       {userNotifications.length === 0 ? (
                         <div className="py-8 px-4 text-center space-y-2">
                           <CheckCircle2 className="w-8 h-8 text-slate-600 mx-auto" />
-                          <p className="text-xs text-white font-medium">EstÃ¡s al dÃ­a</p>
+                          <p className="text-xs text-white font-medium">Estás al día</p>
                           <p className="text-[11px] text-slate-400">
-                            AquÃ­ recibirÃ¡s avisos automÃ¡ticos cuando se abra el Check-In o comiencen tus torneos inscritos.
+                            Aquí recibirás avisos automáticos cuando se abra el Check-In o comiencen tus torneos inscritos.
                           </p>
                         </div>
                       ) : (
@@ -354,7 +354,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCreateModal }) => {
               <button
                 onClick={logout}
                 className="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-slate-800 transition-colors cursor-pointer"
-                title="Cerrar sesiÃ³n"
+                title="Cerrar sesión"
               >
                 <LogOut className="w-4 h-4" />
               </button>

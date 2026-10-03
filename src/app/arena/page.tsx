@@ -83,7 +83,7 @@ export default function HomePage() {
               </h1>
 
               <p className="text-base sm:text-lg text-slate-300 max-w-xl font-normal leading-relaxed">
-                Inscribe tu equipo o compite en solitario en torneos oficiales. Brackets interactivos, confirmaciÃ³n de asistencia por check-in y salas de partida en directo.
+                Inscribe tu equipo o compite en solitario en torneos oficiales. Brackets interactivos, confirmación de asistencia por check-in y salas de partida en directo.
               </p>
 
               {/* Action Buttons */}
@@ -189,9 +189,9 @@ export default function HomePage() {
                   <div className="w-16 h-16 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 mx-auto">
                     <Trophy className="w-8 h-8" />
                   </div>
-                  <h3 className="text-lg font-bold text-white">PrÃ³ximos Torneos Oficiales</h3>
+                  <h3 className="text-lg font-bold text-white">Próximos Torneos Oficiales</h3>
                   <p className="text-xs text-slate-400 max-w-sm mx-auto leading-relaxed">
-                    Los administradores publicarÃ¡n las prÃ³ximas competencias de la temporada en breve. Inicia sesiÃ³n o registra tu equipo para estar listo al abrirse las inscripciones.
+                    Los administradores publicarán las próximas competencias de la temporada en breve. Inicia sesión o registra tu equipo para estar listo al abrirse las inscripciones.
                   </p>
                   {isAdmin && (
                     <button
@@ -218,7 +218,7 @@ export default function HomePage() {
               <Gamepad2 className="w-4 h-4 text-cyan-400" />
               <span>Videojuegos Oficiales</span>
             </h3>
-            <span className="text-xs text-slate-500">Filtrar tÃ­tulos</span>
+            <span className="text-xs text-slate-500">Filtrar títulos</span>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
@@ -264,7 +264,7 @@ export default function HomePage() {
                 <span>Directorio de Torneos</span>
               </h2>
               <p className="text-xs text-slate-400 mt-1">
-                Explora las llaves y participa en los torneos habilitados por la administraciÃ³n.
+                Explora las llaves y participa en los torneos habilitados por la administración.
               </p>
             </div>
 
@@ -324,7 +324,7 @@ export default function HomePage() {
                 }`}
               >
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                <span>InscripciÃ³n Abierta</span>
+                <span>Inscripción Abierta</span>
               </button>
             </div>
 
@@ -336,8 +336,8 @@ export default function HomePage() {
                 className="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-white text-xs focus:outline-none focus:border-cyan-400"
               >
                 <option value="all">Todos los formatos</option>
-                <option value="single_elimination">EliminaciÃ³n Simple</option>
-                <option value="double_elimination">Doble EliminaciÃ³n</option>
+                <option value="single_elimination">Eliminación Simple</option>
+                <option value="double_elimination">Doble Eliminación</option>
               </select>
             </div>
           </div>
@@ -349,7 +349,7 @@ export default function HomePage() {
             <Trophy className="w-12 h-12 text-slate-600 mx-auto" />
             <h3 className="text-base font-bold text-white">No hay torneos disponibles en este momento</h3>
             <p className="text-xs text-slate-400 max-w-sm mx-auto">
-              Pronto se anunciarÃ¡n nuevas competencias oficiales. Los administradores publicarÃ¡n los calendarios y premios.
+              Pronto se anunciarán nuevas competencias oficiales. Los administradores publicarán los calendarios y premios.
             </p>
             {isAdmin && (
               <button
@@ -453,7 +453,7 @@ export default function HomePage() {
                         </span>
                       </div>
                       <div>
-                        <span className="text-slate-500 block">RegiÃ³n</span>
+                        <span className="text-slate-500 block">Región</span>
                         <span className="font-semibold text-cyan-300 font-mono">
                           {t.region}
                         </span>

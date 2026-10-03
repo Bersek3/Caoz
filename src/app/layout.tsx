@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'CAOZ ARENA | Plataforma de Torneos Esports (Estilo Battlefy)',
-  description: 'Organiza y compite en torneos de Valorant, League of Legends, CS2, EA FC 25 y más. Brackets interactivos, check-in y salas de partida.',
+  title: 'CAOZ | Streamer & Creador de Contenido Oficial',
+  description: 'Portal oficial de Caoz. Streamer oficial en Kick y Twitch, creador de contenido gaming, colaboraciones y comunidad.',
 };
 
 export default function RootLayout({
