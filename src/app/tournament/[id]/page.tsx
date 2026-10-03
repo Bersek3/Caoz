@@ -3,15 +3,15 @@
 import React, { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { 
-  Trophy, 
-  Users, 
-  Calendar, 
-  Clock, 
-  Shield, 
-  ShieldCheck, 
-  Gamepad2, 
-  CheckCircle2, 
+import {
+  Trophy,
+  Users,
+  Calendar,
+  Clock,
+  Shield,
+  ShieldCheck,
+  Gamepad2,
+  CheckCircle2,
   AlertTriangle,
   Layers,
   ChevronLeft,
@@ -43,10 +43,10 @@ export default function TournamentDetailPage() {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
 
-  const { 
-    getTournament, 
-    currentUser, 
-    checkInParticipant, 
+  const {
+    getTournament,
+    currentUser,
+    checkInParticipant,
     generateBracketFromParticipants,
     withdrawFromTournament,
     toggleHideTournament,
@@ -103,7 +103,7 @@ export default function TournamentDetailPage() {
 
   // Check if current user or team is registered
   const myRegistration = tournament.participants.find(
-    (p) => 
+    (p) =>
       (user && (p.name === user.username || p.userId === user.id)) ||
       (user?.teamName && p.name === user.teamName) ||
       (user?.team?.id && p.teamId === user.team.id) ||
@@ -126,7 +126,7 @@ export default function TournamentDetailPage() {
     const confirmMsg = isSolo
       ? '¿Estás seguro de que deseas salirte de este torneo individual? Tu puesto en las llaves volverá a quedar "Vacío".'
       : `¿Estás seguro de que deseas retirar a tu equipo "${myRegistration.name}" de este torneo? Como capitán, esta acción dará de baja la participación del equipo completo y liberará el cupo en las llaves.`;
-    
+
     if (!window.confirm(confirmMsg)) return;
 
     try {
@@ -187,7 +187,7 @@ export default function TournamentDetailPage() {
 
   return (
     <div className="min-h-screen pb-24">
-      
+
       {/* Top Banner Hero */}
       <div className="relative w-full h-72 sm:h-96 overflow-hidden">
         <img
@@ -196,7 +196,7 @@ export default function TournamentDetailPage() {
           className="w-full h-full object-cover object-center filter brightness-60"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-[#07090e] via-[#07090e]/60 to-transparent" />
-        
+
         {/* Back Button */}
         <div className="absolute top-6 left-4 sm:left-8 z-10">
           <Link
@@ -333,11 +333,10 @@ export default function TournamentDetailPage() {
                 {/* Hide / Unhide CTA */}
                 <button
                   onClick={handleToggleHide}
-                  className={`px-3 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all flex items-center space-x-1.5 font-mono ${
-                    tournament.isHidden
+                  className={`px-3 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all flex items-center space-x-1.5 font-mono ${tournament.isHidden
                       ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30'
                       : 'bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 border border-slate-700'
-                  }`}
+                    }`}
                   title={tournament.isHidden ? 'Hacer visible al público' : 'Ocultar a los usuarios y archivar en perfil'}
                 >
                   {tournament.isHidden ? <Eye className="w-3.5 h-3.5 text-amber-400" /> : <EyeOff className="w-3.5 h-3.5 text-slate-400" />}
@@ -359,16 +358,15 @@ export default function TournamentDetailPage() {
         </div>
       </div>
 
-      {/* Main Tabs Navigation (Battlefy structure) */}
+      {/* Main Tabs Navigation */}
       <div className="border-b border-slate-800 bg-[#0a0e17] sticky top-16 z-30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex space-x-8 text-xs sm:text-sm font-semibold">
           <button
             onClick={() => setActiveTab('brackets')}
-            className={`py-4 border-b-2 flex items-center space-x-2 transition-all ${
-              activeTab === 'brackets'
+            className={`py-4 border-b-2 flex items-center space-x-2 transition-all ${activeTab === 'brackets'
                 ? 'border-cyan-400 text-cyan-300'
                 : 'border-transparent text-slate-400 hover:text-white'
-            }`}
+              }`}
           >
             <Layers className="w-4 h-4" />
             <span>Llaves (Brackets)</span>
@@ -376,11 +374,10 @@ export default function TournamentDetailPage() {
 
           <button
             onClick={() => setActiveTab('overview')}
-            className={`py-4 border-b-2 flex items-center space-x-2 transition-all ${
-              activeTab === 'overview'
+            className={`py-4 border-b-2 flex items-center space-x-2 transition-all ${activeTab === 'overview'
                 ? 'border-cyan-400 text-cyan-300'
                 : 'border-transparent text-slate-400 hover:text-white'
-            }`}
+              }`}
           >
             <Trophy className="w-4 h-4" />
             <span>Información General</span>
@@ -388,11 +385,10 @@ export default function TournamentDetailPage() {
 
           <button
             onClick={() => setActiveTab('participants')}
-            className={`py-4 border-b-2 flex items-center space-x-2 transition-all ${
-              activeTab === 'participants'
+            className={`py-4 border-b-2 flex items-center space-x-2 transition-all ${activeTab === 'participants'
                 ? 'border-cyan-400 text-cyan-300'
                 : 'border-transparent text-slate-400 hover:text-white'
-            }`}
+              }`}
           >
             <Users className="w-4 h-4" />
             <span>Participantes ({tournament.participants.length}/{tournament.maxParticipants})</span>
@@ -400,11 +396,10 @@ export default function TournamentDetailPage() {
 
           <button
             onClick={() => setActiveTab('rules')}
-            className={`py-4 border-b-2 flex items-center space-x-2 transition-all ${
-              activeTab === 'rules'
+            className={`py-4 border-b-2 flex items-center space-x-2 transition-all ${activeTab === 'rules'
                 ? 'border-cyan-400 text-cyan-300'
                 : 'border-transparent text-slate-400 hover:text-white'
-            }`}
+              }`}
           >
             <Shield className="w-4 h-4" />
             <span>Reglas y Soporte</span>
@@ -447,7 +442,7 @@ export default function TournamentDetailPage() {
             isCheckedIn={Boolean(myRegistration?.checkedIn)}
           />
         </div>
-        
+
         {/* TAB 1: BRACKETS */}
         {activeTab === 'brackets' && (
           <div className="space-y-6 animate-fade-in">
@@ -473,10 +468,10 @@ export default function TournamentDetailPage() {
         {/* TAB 2: OVERVIEW */}
         {activeTab === 'overview' && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-fade-in">
-            
+
             {/* Left 2 Cols: Details & Prizes */}
             <div className="lg:col-span-2 space-y-8">
-              
+
               {/* Description */}
               <div className="p-6 rounded-2xl bg-[#0c121d] border border-slate-800 space-y-3">
                 <h3 className="text-base font-bold text-white uppercase tracking-wider">
@@ -505,13 +500,12 @@ export default function TournamentDetailPage() {
                       key={idx}
                       className="p-4 rounded-xl bg-slate-900/80 border border-slate-800 flex items-center space-x-3.5"
                     >
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm ${
-                        idx === 0
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm ${idx === 0
                           ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
                           : idx === 1
-                          ? 'bg-slate-300/20 text-slate-200 border border-slate-300/40'
-                          : 'bg-amber-900/30 text-amber-600 border border-amber-800/40'
-                      }`}>
+                            ? 'bg-slate-300/20 text-slate-200 border border-slate-300/40'
+                            : 'bg-amber-900/30 text-amber-600 border border-amber-800/40'
+                        }`}>
                         #{idx + 1}
                       </div>
                       <div>
@@ -546,7 +540,7 @@ export default function TournamentDetailPage() {
 
             {/* Right 1 Col: Quick Info Sidebar */}
             <div className="space-y-6">
-              
+
               <div className="p-6 rounded-2xl bg-[#0c121d] border border-slate-800 space-y-4">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
                   Ficha del Torneo
@@ -621,7 +615,7 @@ export default function TournamentDetailPage() {
         {/* TAB 3: PARTICIPANTS */}
         {activeTab === 'participants' && (
           <div className="space-y-6 animate-fade-in">
-            
+
             {/* Search and stats bar */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#0c121d] p-4 rounded-xl border border-slate-800">
               <div className="flex items-center space-x-3 text-xs text-slate-400">

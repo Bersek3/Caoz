@@ -2,16 +2,16 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { 
-  Trophy, 
-  Swords, 
-  Search, 
-  Filter, 
-  Calendar, 
-  Users, 
-  ShieldCheck, 
-  Clock, 
-  CheckCircle2, 
+import {
+  Trophy,
+  Swords,
+  Search,
+  Filter,
+  Calendar,
+  Users,
+  ShieldCheck,
+  Clock,
+  CheckCircle2,
   ArrowRight,
   Gamepad2,
   Sparkles,
@@ -57,23 +57,19 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen">
-      
+
       {/* HERO SECTION */}
       <section className="relative overflow-hidden pt-12 pb-20 border-b border-slate-800/80">
-        
+
         {/* Glow ambient background lights */}
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[350px] bg-gradient-to-r from-cyan-500/10 via-purple-500/10 to-blue-500/10 blur-[130px] -z-10 pointer-events-none" />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
-            
+
             {/* Left Column: Heading & CTAs (7 cols) */}
             <div className="lg:col-span-7 space-y-6">
-              
-              <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-xs font-semibold">
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>Plataforma Oficial de Competiciones Esports</span>
-              </div>
+
 
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-white tracking-tight uppercase leading-none">
                 CREA. COMPITE. <br />
@@ -116,22 +112,6 @@ export default function HomePage() {
                 </a>
               </div>
 
-              {/* Live Metric Stats */}
-              <div className="grid grid-cols-3 gap-6 pt-6 border-t border-slate-800/80 max-w-lg">
-                <div>
-                  <span className="block text-2xl font-black text-white font-mono">100%</span>
-                  <span className="text-xs text-slate-400">Llaves Automatizadas</span>
-                </div>
-                <div>
-                  <span className="block text-2xl font-black text-cyan-400 font-mono">Oficial</span>
-                  <span className="text-xs text-slate-400">Reglamento Competitivo</span>
-                </div>
-                <div>
-                  <span className="block text-2xl font-black text-purple-400 font-mono">6+</span>
-                  <span className="text-xs text-slate-400">Juegos Disponibles</span>
-                </div>
-              </div>
-
             </div>
 
             {/* Right Column: Featured Tournament Card or Ready State (5 cols) */}
@@ -139,7 +119,7 @@ export default function HomePage() {
               {featuredTournament ? (
                 <div className="relative group rounded-3xl p-[1px] bg-gradient-to-b from-cyan-500/40 via-purple-500/20 to-transparent shadow-2xl">
                   <div className="relative rounded-[23px] bg-[#0d131f] overflow-hidden p-6 space-y-5">
-                    
+
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
                         <span className="w-2.5 h-2.5 rounded-full bg-rose-500 beacon-dot" />
@@ -230,11 +210,10 @@ export default function HomePage() {
                 <button
                   key={game.id}
                   onClick={() => setSelectedGame(isSelected ? 'all' : game.id)}
-                  className={`p-3 rounded-2xl border text-left transition-all relative overflow-hidden group ${
-                    isSelected
-                      ? 'bg-cyan-500/15 border-cyan-400 shadow-lg shadow-cyan-500/20'
-                      : 'bg-slate-900/80 border-slate-800 hover:border-slate-700'
-                  }`}
+                  className={`p-3 rounded-2xl border text-left transition-all relative overflow-hidden group ${isSelected
+                    ? 'bg-cyan-500/15 border-cyan-400 shadow-lg shadow-cyan-500/20'
+                    : 'bg-slate-900/80 border-slate-800 hover:border-slate-700'
+                    }`}
                 >
                   <img
                     src={game.coverImage}
@@ -255,7 +234,7 @@ export default function HomePage() {
 
       {/* TOURNAMENTS DIRECTORY */}
       <section id="torneos" className="py-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        
+
         <div className="space-y-6 mb-8">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
@@ -285,43 +264,39 @@ export default function HomePage() {
             <div className="flex flex-wrap items-center gap-1.5 text-xs font-medium">
               <button
                 onClick={() => setSelectedStatus('all')}
-                className={`px-3 py-1.5 rounded-lg transition-all ${
-                  selectedStatus === 'all'
-                    ? 'bg-white/10 text-cyan-300 font-bold shadow-sm'
-                    : 'text-slate-400 hover:text-white'
-                }`}
+                className={`px-3 py-1.5 rounded-lg transition-all ${selectedStatus === 'all'
+                  ? 'bg-white/10 text-cyan-300 font-bold shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+                  }`}
               >
                 Todos ({tournaments.length})
               </button>
               <button
                 onClick={() => setSelectedStatus('in_progress')}
-                className={`px-3 py-1.5 rounded-lg flex items-center space-x-1.5 transition-all ${
-                  selectedStatus === 'in_progress'
-                    ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 font-bold'
-                    : 'text-slate-400 hover:text-white'
-                }`}
+                className={`px-3 py-1.5 rounded-lg flex items-center space-x-1.5 transition-all ${selectedStatus === 'in_progress'
+                  ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 font-bold'
+                  : 'text-slate-400 hover:text-white'
+                  }`}
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-rose-500 beacon-dot" />
                 <span>En Juego</span>
               </button>
               <button
                 onClick={() => setSelectedStatus('check_in')}
-                className={`px-3 py-1.5 rounded-lg flex items-center space-x-1.5 transition-all ${
-                  selectedStatus === 'check_in'
-                    ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold'
-                    : 'text-slate-400 hover:text-white'
-                }`}
+                className={`px-3 py-1.5 rounded-lg flex items-center space-x-1.5 transition-all ${selectedStatus === 'check_in'
+                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold'
+                  : 'text-slate-400 hover:text-white'
+                  }`}
               >
                 <Clock className="w-3.5 h-3.5 text-amber-400" />
                 <span>Fase Check-In</span>
               </button>
               <button
                 onClick={() => setSelectedStatus('registration_open')}
-                className={`px-3 py-1.5 rounded-lg flex items-center space-x-1.5 transition-all ${
-                  selectedStatus === 'registration_open'
-                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold'
-                    : 'text-slate-400 hover:text-white'
-                }`}
+                className={`px-3 py-1.5 rounded-lg flex items-center space-x-1.5 transition-all ${selectedStatus === 'registration_open'
+                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold'
+                  : 'text-slate-400 hover:text-white'
+                  }`}
               >
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
                 <span>Inscripción Abierta</span>
@@ -380,7 +355,7 @@ export default function HomePage() {
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-[#0e131d] via-black/30 to-transparent" />
-                    
+
                     <div className="absolute top-3 left-3">
                       {isLive && (
                         <span className="badge-live px-2.5 py-1 rounded-md text-[11px] font-bold flex items-center space-x-1.5 shadow-lg">

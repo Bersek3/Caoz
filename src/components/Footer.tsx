@@ -6,7 +6,7 @@ export const Footer: React.FC = () => {
     <footer className="w-full border-t border-slate-800/80 bg-[#090d14] mt-24">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-          
+
           <div className="md:col-span-2 space-y-4">
             <div className="flex items-center space-x-3">
               <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-cyan-500 to-purple-600 p-[2px]">
@@ -19,7 +19,7 @@ export const Footer: React.FC = () => {
               </span>
             </div>
             <p className="text-sm text-slate-400 max-w-sm">
-              Plataforma de gestión y competencia de esports de nueva generación. Organiza torneos, automatiza brackets de eliminación directa y doble eliminación, y gestiona equipos al estilo de Battlefy.
+              Plataforma de gestión y competencia de esports de nueva generación. Organiza torneos, automatiza brackets de eliminación directa y doble eliminación.
             </p>
           </div>
 
@@ -51,9 +51,7 @@ export const Footer: React.FC = () => {
 
         <div className="border-t border-slate-800/80 mt-10 pt-6 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500">
           <p>© 2026 CAOZ ARENA Esports. Todos los derechos reservados.</p>
-          <p className="flex items-center space-x-1 mt-2 sm:mt-0">
-            <span>Inspirado en Battlefy. Hecho para competir al máximo nivel.</span>
-          </p>
+
         </div>
       </div>
     </footer>

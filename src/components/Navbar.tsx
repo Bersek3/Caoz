@@ -3,11 +3,11 @@
 import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { 
-  Trophy, 
-  Swords, 
-  PlusCircle, 
-  Shield, 
+import {
+  Trophy,
+  Swords,
+  PlusCircle,
+  Shield,
   LogIn,
   User,
   LogOut,
@@ -128,7 +128,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCreateModal }) => {
   return (
     <header className="sticky top-0 z-50 w-full glass-panel border-b border-white/10 backdrop-blur-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-        
+
         {/* Brand Logo */}
         <div className="flex items-center space-x-8">
           <Link href="/arena" className="flex items-center space-x-3 group">
@@ -156,32 +156,21 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCreateModal }) => {
           <nav className="hidden md:flex items-center space-x-1">
             <Link
               href="/arena"
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                pathname.startsWith('/arena') || pathname.startsWith('/torneo')
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${pathname.startsWith('/arena') || pathname.startsWith('/torneo')
                   ? 'bg-white/10 text-cyan-300 shadow-sm'
                   : 'text-slate-300 hover:text-white hover:bg-white/5'
-              }`}
+                }`}
             >
               🏆 Torneos
             </Link>
-            <Link
-              href="/"
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                pathname === '/'
-                  ? 'bg-white/10 text-rose-400 shadow-sm'
-                  : 'text-slate-300 hover:text-rose-400 hover:bg-white/5'
-              }`}
-            >
-              🔴 Stream & Redes
-            </Link>
+
             {user && (
               <Link
                 href="/profile"
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                  pathname === '/profile'
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${pathname === '/profile'
                     ? 'bg-white/10 text-cyan-300 shadow-sm'
                     : 'text-slate-300 hover:text-white hover:bg-white/5'
-                }`}
+                  }`}
               >
                 Mi Perfil
               </Link>
@@ -191,7 +180,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCreateModal }) => {
 
         {/* Right side actions */}
         <div className="flex items-center space-x-2 sm:space-x-3">
-          
+
           {/* Create Tournament CTA - ONLY visible for Administrators! */}
           {isAdmin && onOpenCreateModal && (
             <button
@@ -274,18 +263,16 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCreateModal }) => {
                                 setReadIds((prev) => [...prev, notif.id]);
                                 setShowNotifications(false);
                               }}
-                              className={`p-3.5 flex items-start space-x-3 hover:bg-slate-800/60 transition-colors block ${
-                                isUnread ? 'bg-cyan-950/25' : ''
-                              }`}
+                              className={`p-3.5 flex items-start space-x-3 hover:bg-slate-800/60 transition-colors block ${isUnread ? 'bg-cyan-950/25' : ''
+                                }`}
                             >
                               <div
-                                className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
-                                  notif.type === 'check_in'
+                                className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${notif.type === 'check_in'
                                     ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
                                     : notif.type === 'in_progress'
-                                    ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
-                                    : 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30'
-                                }`}
+                                      ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+                                      : 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30'
+                                  }`}
                               >
                                 {notif.type === 'check_in' && <Clock className="w-4 h-4" />}
                                 {notif.type === 'in_progress' && <Flame className="w-4 h-4" />}
