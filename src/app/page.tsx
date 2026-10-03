@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   Sparkles,
+  ArrowRight,
   ExternalLink,
   Mail,
   CheckCircle2,
@@ -80,7 +81,7 @@ export default function CaozPortalPage() {
             </div>
             <div className="flex flex-col">
               <span className="font-black text-2xl tracking-wider uppercase text-white font-mono">
-                CAOZ<span className="text-[#ff1744]">.GG</span>
+                CAOZ<span className="text-[#ff1744]"></span>
               </span>
               <span className="text-[10px] text-zinc-400 font-mono tracking-widest uppercase -mt-1">
                 Streamer & Creator
@@ -116,6 +117,11 @@ export default function CaozPortalPage() {
 
             {/* Contenido izquierdo */}
             <div className="lg:col-span-7 space-y-6">
+              <div className="inline-flex items-center space-x-2 px-3 py-1.5 rounded-full bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-semibold uppercase tracking-wider">
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Streamer & Creador Oficial // Código: CAOZ</span>
+              </div>
+
               <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black uppercase tracking-tight text-white font-mono leading-none">
                 HOLA, SOY <br />
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#ff1744] via-rose-500 to-amber-400 drop-shadow-[0_0_35px_rgba(255,23,68,0.4)]">
@@ -134,6 +140,25 @@ export default function CaozPortalPage() {
                 Llevando el streaming, el gaming y el entretenimiento al nivel más alto.
                 Creando contenido de alto impacto para una comunidad consolidada de más de 2 millones de seguidores.
               </p>
+
+              {/* Botones de acción principales */}
+              <div className="flex flex-wrap items-center gap-4 pt-4">
+                <a
+                  href="#metrics"
+                  className="inline-flex items-center space-x-2 px-6 py-3.5 rounded-xl font-bold text-sm sm:text-base text-white bg-gradient-to-r from-rose-600 via-[#ff1744] to-red-500 hover:from-rose-500 hover:to-red-400 shadow-xl shadow-rose-600/25 transition-all duration-300 transform hover:-translate-y-0.5"
+                >
+                  <span>Ver Métricas & Cifras</span>
+                  <ArrowRight className="w-4 h-4" />
+                </a>
+
+                <a
+                  href="#contact"
+                  className="inline-flex items-center space-x-2 px-6 py-3.5 rounded-xl font-bold text-sm sm:text-base text-zinc-200 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-rose-500/40 transition-all duration-300"
+                >
+                  <Mail className="w-5 h-5 text-rose-400" />
+                  <span>Contacto & Patrocinios</span>
+                </a>
+              </div>
 
               {/* Barra de estadísticas resumida */}
               <div className="grid grid-cols-3 gap-4 pt-6 max-w-lg border-t border-white/10">
@@ -194,7 +219,7 @@ export default function CaozPortalPage() {
               Audiencia <span className="text-[#ff1744]">Total</span>
             </h2>
             <p className="text-zinc-400 text-sm mt-2">
-              Alcance consolidado en las principales plataformas de contenido gaming y streaming de habla hispana.
+              Alcance consolidado en las principales plataformas de contenido gaming y streaming.
             </p>
           </div>
 
@@ -409,7 +434,7 @@ export default function CaozPortalPage() {
           <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
             <div>
               <div className="font-mono font-black text-xl text-white tracking-wider">
-                CAOZ<span className="text-[#ff1744]">.GG</span>
+                CAOZ<span className="text-[#ff1744]"></span>
               </div>
               <p className="text-xs text-zinc-500 mt-1">
                 Portal oficial de streamer gaming & creador de contenido.
