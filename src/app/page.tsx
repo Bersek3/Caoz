@@ -117,10 +117,6 @@ export default function CaozPortalPage() {
 
             {/* Contenido izquierdo */}
             <div className="lg:col-span-7 space-y-6">
-              <div className="inline-flex items-center space-x-2 px-3 py-1.5 rounded-full bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-semibold uppercase tracking-wider">
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>Streamer & Creador Oficial // Código: CAOZ</span>
-              </div>
 
               <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black uppercase tracking-tight text-white font-mono leading-none">
                 HOLA, SOY <br />
