@@ -309,17 +309,7 @@ export default function CaozPortalPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center space-x-3 pt-4 border-t border-white/10">
-                  <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
-                    <Sparkles className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <div className="text-xs text-zinc-400">Código de Creador Oficial</div>
-                    <div className="text-sm font-bold text-amber-300 font-mono">
-                      CAOZ
-                    </div>
-                  </div>
-                </div>
+
               </div>
             </div>
 
@@ -332,7 +322,7 @@ export default function CaozPortalPage() {
                     <input
                       type="text"
                       required
-                      placeholder="Ej: Red Bull / Tu Nombre"
+                      placeholder="Ej: Tu Nombre"
                       className="w-full px-4 py-3 rounded-xl bg-zinc-950 border border-white/10 text-white placeholder-zinc-500 focus:outline-none focus:border-rose-500 text-sm"
                     />
                   </div>
@@ -416,7 +406,7 @@ export default function CaozPortalPage() {
 
           <div className="mt-8 pt-8 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between text-xs text-zinc-600">
             <div>© 2026 Caoz. Todos los derechos reservados.</div>
-            <div className="mt-2 sm:mt-0">Código de Creador Oficial: CAOZ</div>
+
           </div>
         </div>
       </footer>
