@@ -67,7 +67,7 @@ export default function TournamentDetailPage() {
         <h2 className="text-2xl font-bold text-white">Torneo no encontrado</h2>
         <p className="text-slate-400 text-sm">El torneo que buscas no existe o ha sido movido.</p>
         <Link
-          href="/"
+          href="/arena"
           className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-cyan-500 text-black font-bold text-sm"
         >
           <ChevronLeft className="w-4 h-4" />
@@ -89,7 +89,7 @@ export default function TournamentDetailPage() {
           Esta competencia se encuentra actualmente archivada o en mantenimiento y no está visible para el público.
         </p>
         <Link
-          href="/"
+          href="/arena"
           className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-cyan-500 text-black font-bold text-sm"
         >
           <ChevronLeft className="w-4 h-4" />
@@ -200,7 +200,7 @@ export default function TournamentDetailPage() {
         {/* Back Button */}
         <div className="absolute top-6 left-4 sm:left-8 z-10">
           <Link
-            href="/"
+            href="/arena"
             className="flex items-center space-x-2 px-3 py-1.5 rounded-xl bg-black/60 hover:bg-black/80 border border-white/10 text-white text-xs font-semibold backdrop-blur-md transition-all"
           >
             <ChevronLeft className="w-4 h-4" />

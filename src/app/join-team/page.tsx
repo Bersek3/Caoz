@@ -226,11 +226,11 @@ function JoinTeamContent() {
 
         <div className="pt-2 text-center">
           <Link
-            href="/"
+            href="/arena"
             className="inline-flex items-center space-x-1 text-xs text-slate-500 hover:text-slate-300 transition-colors"
           >
             <ChevronLeft className="w-3.5 h-3.5" />
-            <span>Volver a la página principal</span>
+            <span>Volver a Torneos</span>
           </Link>
         </div>
       </div>

@@ -191,7 +191,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (typeof window !== 'undefined') {
       localStorage.removeItem('caoz_auth_token');
       sessionStorage.clear();
-      window.location.replace('/');
+      window.location.replace('/arena');
     }
   };
 

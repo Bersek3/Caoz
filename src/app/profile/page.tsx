@@ -163,10 +163,10 @@ export default function ProfilePage() {
   // Default generic avatar that is fixed and cannot be changed
   const defaultGenericAvatar = 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?q=80&w=200&auto=format&fit=crop';
 
-  // Auth protection guard: If not logged in, redirect to '/' with replace so back-navigation doesn't re-render profile!
+  // Auth protection guard: If not logged in, redirect to '/arena' with replace so back-navigation doesn't re-render profile!
   useEffect(() => {
     if (!isLoading && !user) {
-      router.replace('/');
+      router.replace('/arena');
     }
   }, [user, isLoading, router]);
 
@@ -559,11 +559,11 @@ export default function ProfilePage() {
       {/* Top Breadcrumb */}
       <div>
         <Link
-          href="/"
+          href="/arena"
           className="inline-flex items-center space-x-1.5 text-xs text-slate-400 hover:text-white transition-colors"
         >
           <ChevronLeft className="w-4 h-4" />
-          <span>Volver al Inicio</span>
+          <span>Volver a Torneos</span>
         </Link>
       </div>
 
