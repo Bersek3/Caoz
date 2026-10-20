@@ -49,6 +49,8 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
   };
 
   const [step, setStep] = useState<number>(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
   const [startDateTime, setStartDateTime] = useState<string>(getDefaultDateTime());
   const [formData, setFormData] = useState({
     title: '',
@@ -135,6 +137,8 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
 
   const handleFinish = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
+    setSubmitError('');
     if (!formData.title.trim()) {
       alert('Por favor, ingresa un nombre para el torneo');
       return;
@@ -142,26 +146,33 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
 
     const rules = [formData.rule1, formData.rule2, formData.rule3].filter(Boolean);
 
-    const slug = await createTournament({
-      title: formData.title,
-      gameId: formData.gameId,
-      bannerUrl: customBanner || selectedGame.bannerImage,
-      thumbnailUrl: customBanner || selectedGame.coverImage,
-      format: formData.format,
-      teamType: formData.teamType,
-      teamSize: formData.teamSize,
-      maxParticipants: formData.maxParticipants,
-      region: formData.region,
-      entryFee: formData.entryFee,
-      prizePool: formData.prizePool,
-      startDate: startDateTime || formData.startDate,
-      description: formData.description || `Torneo oficial de ${games.find(g => g.id === formData.gameId)?.name}. Compite por el título y premios.`,
-      rules: rules
-    });
+    setIsSubmitting(true);
+    try {
+      const slug = await createTournament({
+        title: formData.title,
+        gameId: formData.gameId,
+        bannerUrl: customBanner || selectedGame.bannerImage,
+        thumbnailUrl: customBanner || selectedGame.coverImage,
+        format: formData.format,
+        teamType: formData.teamType,
+        teamSize: formData.teamSize,
+        maxParticipants: formData.maxParticipants,
+        region: formData.region,
+        entryFee: formData.entryFee,
+        prizePool: formData.prizePool,
+        startDate: startDateTime || formData.startDate,
+        description: formData.description || `Torneo oficial de ${games.find(g => g.id === formData.gameId)?.name}. Compite por el título y premios.`,
+        rules: rules
+      });
 
-    onClose();
-    setStep(1);
-    router.push(`/tournament/${slug}`);
+      onClose();
+      setStep(1);
+      router.push(`/tournament/${slug}`);
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : 'No se pudo conectar con el servidor. Inténtalo nuevamente.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -187,6 +198,7 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
           </div>
           <button
             onClick={onClose}
+            disabled={isSubmitting}
             className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
           >
             <X className="w-5 h-5" />
@@ -604,11 +616,17 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
         </div>
 
         {/* Footer Navigation */}
+        {submitError && (
+          <p role="alert" className="mx-6 mb-4 rounded-xl border border-rose-500/40 bg-rose-500/10 p-3 text-sm text-rose-300">
+            {submitError}
+          </p>
+        )}
         <div className="px-6 py-4 border-t border-slate-800 bg-[#0c121d] flex items-center justify-between">
           {step > 1 ? (
             <button
               type="button"
               onClick={() => setStep(step - 1)}
+              disabled={isSubmitting}
               className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 flex items-center space-x-1.5 transition-colors"
             >
               <ChevronLeft className="w-4 h-4" />
@@ -637,10 +655,11 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
             <button
               type="button"
               onClick={handleFinish}
+              disabled={isSubmitting}
               className="px-6 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-black bg-cyan-400 hover:bg-cyan-300 flex items-center space-x-2 shadow-lg shadow-cyan-400/30 transition-all font-mono tracking-wider"
             >
               <ShieldCheck className="w-4 h-4 text-black" />
-              <span>PUBLICAR TORNEO</span>
+              <span>{isSubmitting ? 'PUBLICANDO...' : 'PUBLICAR TORNEO'}</span>
             </button>
           )}
         </div>

@@ -6,6 +6,7 @@ export type GameId =
   | 'ea-fc-25' 
   | 'street-fighter-6' 
   | 'fortnite' 
+  | 'pubg'
   | 'apex-legends';
 
 export type TournamentFormat = 

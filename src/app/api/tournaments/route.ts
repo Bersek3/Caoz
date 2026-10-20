@@ -176,7 +176,7 @@ export async function POST(request: Request) {
       }
     }
 
-    if (!isAdmin && body.organizerId !== 'user-bersek') {
+    if (!isAdmin) {
       return NextResponse.json({ error: 'Solo los administradores tienen permiso para crear y publicar torneos.' }, { status: 403 });
     }
 
@@ -193,8 +193,14 @@ export async function POST(request: Request) {
       slug = `${baseSlug}-${Date.now().toString().slice(-4)}`;
     }
 
-    const game = POPULAR_GAMES.find((g) => g.id === body.gameId) || POPULAR_GAMES[0];
+    const game = POPULAR_GAMES.find((g) => g.id === body.gameId);
+    if (!game || typeof body.title !== 'string' || !body.title.trim() || body.title.length > 255) {
+      return NextResponse.json({ error: 'Selecciona un juego válido e ingresa un título de hasta 255 caracteres.' }, { status: 400 });
+    }
     const maxP = body.maxParticipants || 8;
+    if (![8, 16, 32].includes(maxP)) {
+      return NextResponse.json({ error: 'El cupo debe ser de 8, 16 o 32 participantes.' }, { status: 400 });
+    }
 
     await db.query(`
       INSERT INTO tournaments (
@@ -245,7 +251,7 @@ export async function POST(request: Request) {
     const numRounds = Math.log2(maxP);
     const roundNames = ['Cuartos de Final', 'Semifinales', 'Gran Final'];
     if (numRounds === 4) roundNames.unshift('Octavos de Final');
-    if (numRounds === 5) roundNames.unshift('Dieciseisavos de Final');
+    if (numRounds === 5) roundNames.unshift('Dieciseisavos de Final', 'Octavos de Final');
 
     for (let r = 0; r < numRounds; r++) {
       const matchCount = maxP / Math.pow(2, r + 1);

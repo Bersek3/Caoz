@@ -147,9 +147,13 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const createTournament = async (data: Partial<Tournament>): Promise<string> => {
     try {
+      const token = localStorage.getItem('caoz_auth_token');
       const res = await fetch('/api/tournaments', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
         body: JSON.stringify({
           ...data,
           organizerId: currentUser.id,
@@ -158,12 +162,15 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         })
       });
 
-      const resData = await res.json();
+      const resData = await res.json().catch(() => null);
+      if (!res.ok || !resData?.success || typeof resData.slug !== 'string' || !resData.slug) {
+        throw new Error(resData?.error || 'No se pudo publicar el torneo. Inténtalo nuevamente.');
+      }
       await refreshTournaments();
-      return resData.slug || 'torneo';
+      return resData.slug;
     } catch (e) {
       console.error('Create tournament error:', e);
-      return 'torneo';
+      throw e;
     }
   };
 

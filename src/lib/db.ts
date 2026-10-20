@@ -244,7 +244,7 @@ export async function initDb() {
   `);
 
   // Vistas de compatibilidad en PostgreSQL
-  await db.query(`
+  const compatibilityViews = `
     CREATE OR REPLACE VIEW users AS SELECT * FROM usuarios;
     CREATE OR REPLACE VIEW parental_authorizations AS SELECT * FROM autorizaciones_parentales;
     CREATE OR REPLACE VIEW teams AS SELECT * FROM equipos;
@@ -254,7 +254,11 @@ export async function initDb() {
     CREATE OR REPLACE VIEW tournament_rounds AS SELECT * FROM rondas_torneo;
     CREATE OR REPLACE VIEW tournament_matches AS SELECT * FROM partidas_torneo;
     CREATE OR REPLACE VIEW match_messages AS SELECT * FROM mensajes_partida;
-  `);
+  `;
+  // Prepared queries accept one SQL statement at a time (including in PGlite).
+  for (const statement of compatibilityViews.split(';').map((sql) => sql.trim()).filter(Boolean)) {
+    await db.query(statement);
+  }
 
   // Usuario administrador por defecto
   const defaultGenericAvatar = 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?q=80&w=200&auto=format&fit=crop';

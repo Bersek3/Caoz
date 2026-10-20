@@ -2,6 +2,28 @@ import { GameInfo, Tournament } from '../types/tournament';
 
 export const POPULAR_GAMES: GameInfo[] = [
   {
+    id: 'fortnite',
+    name: 'Fortnite',
+    genre: 'Battle Royale',
+    publisher: 'Epic Games',
+    defaultTeamSize: 1,
+    coverImage: '/assets/fortnite.svg',
+    bannerImage: '/assets/fortnite.svg',
+    tagFieldLabel: 'Epic Games ID',
+    tagPlaceholder: 'TuUsuarioEpic'
+  },
+  {
+    id: 'pubg',
+    name: 'PUBG: BATTLEGROUNDS',
+    genre: 'Battle Royale',
+    publisher: 'KRAFTON',
+    defaultTeamSize: 4,
+    coverImage: '/assets/pubg.svg',
+    bannerImage: '/assets/pubg.svg',
+    tagFieldLabel: 'Nombre de jugador en PUBG',
+    tagPlaceholder: 'TuUsuarioPUBG'
+  },
+  {
     id: 'valorant',
     name: 'Valorant',
     genre: 'Tactical FPS',
