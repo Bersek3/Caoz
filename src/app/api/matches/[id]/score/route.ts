@@ -12,6 +12,9 @@ export async function POST(
     const { id: matchId } = await params;
     const access = await getMatchAccess(request, matchId);
     if (!access.allowed) return NextResponse.json({ error: access.error }, { status: access.status });
+    if (access.viewer.role !== 'admin') {
+      return NextResponse.json({ error: 'Solo los administradores pueden modificar el marcador. Envía tus imágenes de prueba en el chat privado.' }, { status: 403 });
+    }
     const body = await request.json();
     const { score1, score2, proofUrl } = body;
 
@@ -25,6 +28,10 @@ export async function POST(
     }
 
     const currentMatch = matchRes.rows[0];
+    if (!Number.isInteger(score1) || !Number.isInteger(score2) || score1 < 0 || score2 < 0 ||
+        score1 > currentMatch.best_of || score2 > currentMatch.best_of || score1 === score2) {
+      return NextResponse.json({ error: 'Ingresa puntajes enteros válidos y sin empate.' }, { status: 400 });
+    }
     const isTeam1Winner = score1 > score2;
     const winnerName = isTeam1Winner ? currentMatch.team1_name : currentMatch.team2_name;
     const winnerParticipantId = isTeam1Winner ? currentMatch.team1_participant_id : currentMatch.team2_participant_id;

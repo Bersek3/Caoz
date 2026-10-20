@@ -61,6 +61,22 @@ async function main() {
         assert.equal(sent.senderRole, user === 'admin' ? 'admin' : user === 'solo' ? 'team1' : 'team2');
         assert.notEqual(sent.senderName, 'Fake Admin');
       }
+      const image = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=';
+      const proof = await chat.POST(request(user, 'POST', {message:image, isProofImage:true}), params);
+      assert.equal(proof.status, expected, `${user}: proof upload access`);
+      if (allowed) {
+        assert.equal((await proof.json()).message.isProofImage, true);
+        const history = await (await chat.GET(request('admin'), params)).json();
+        assert(history.messages.some(message => message.isProofImage && message.message === image));
+      }
+      const beforeScore = (await memory.query("SELECT team1_score, team2_score, status FROM partidas_torneo WHERE id = 'match'")).rows[0];
+      assert.deepEqual(beforeScore, {team1_score:0, team2_score:0, status:'pending'}, 'Evidence does not change scores or match status');
+      if (user !== 'admin') {
+        const deniedScore = await score.POST(request(user, 'POST', {score1:2,score2:0}), params);
+        assert.equal(deniedScore.status, user ? 403 : 401, `${user}: only admins can change scores`);
+        const afterScore = (await memory.query("SELECT team1_score, team2_score, status FROM partidas_torneo WHERE id = 'match'")).rows[0];
+        assert.deepEqual(afterScore, beforeScore);
+      }
       const list = await tournaments.GET(request(user));
       assert.equal(list.headers.get('Cache-Control'), 'private, no-store');
       const data = await list.json();
@@ -72,12 +88,17 @@ async function main() {
       if (!allowed) {
         assert(!JSON.stringify(data).includes('private-proof'));
         assert(!JSON.stringify(data).includes('private-dispute'));
-        const deniedScore = await score.POST(request(user, 'POST', {score1:2,score2:0}), params);
-        assert.equal(deniedScore.status, expected);
       }
       console.log(`${user || 'guest'}: read/write ${expected}; public response has no chat`);
     }
     assert.equal((await chat.GET(request('other', 'GET', null, 'admin'), params)).status, 403, 'Role is read from the database');
+    assert.equal((await score.POST(request('solo', 'POST', {score1:2,score2:0}, 'admin'), params)).status, 403);
+    assert.equal((await chat.POST(request('solo', 'POST', {message:'javascript:alert(1)',isProofImage:true}), params)).status, 400);
+    assert.equal((await chat.POST(request('solo', 'POST', {message:'data:image/png;base64,'+'A'.repeat(2_800_000),isProofImage:true}), params)).status, 400);
+    assert.equal((await score.POST(request('admin', 'POST', {score1:-1,score2:0}), params)).status, 400);
+    assert.equal((await score.POST(request('admin', 'POST', {score1:2,score2:0}), params)).status, 200);
+    const official = (await memory.query("SELECT team1_score, team2_score, winner_id, status FROM partidas_torneo WHERE id = 'match'")).rows[0];
+    assert.deepEqual(official, {team1_score:2,team2_score:0,winner_id:'p1',status:'completed'});
     const invalid = new Request('http://localhost/api/test', {headers:{Authorization:'Bearer invalid'}});
     assert.equal((await chat.GET(invalid, params)).status, 401);
     assert.equal((await chat.GET(request('admin'), {params:Promise.resolve({id:'missing'})})).status, 404);

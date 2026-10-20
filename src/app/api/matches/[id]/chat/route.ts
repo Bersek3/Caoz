@@ -51,6 +51,9 @@ export async function POST(
     if (typeof message !== 'string' || !message.trim()) {
       return NextResponse.json({ error: 'Escribe un mensaje.' }, { status: 400 });
     }
+    if (isProofImage && (!/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(message) || message.length > 2_800_000)) {
+      return NextResponse.json({ error: 'Adjunta una imagen JPG, PNG o WEBP de hasta 2 MB.' }, { status: 400 });
+    }
 
     const messageId = `msg-${randomUUID()}`;
     const cleanSenderName = access.viewer.role === 'admin' ? `Staff CAOZ (@${access.viewer.username})` : `@${access.viewer.username}`;

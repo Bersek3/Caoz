@@ -795,7 +795,7 @@ export default function TournamentDetailPage() {
       <MatchRoomModal
         key={`${user?.id || 'guest'}:${selectedMatch?.id || 'closed'}`}
         tournament={tournament}
-        match={selectedMatch}
+        match={[...tournament.rounds, ...(tournament.losersRounds || [])].flatMap(round => round.matches).find(match => match.id === selectedMatch?.id) || null}
         isOpen={!!selectedMatch}
         onClose={() => setSelectedMatch(null)}
       />

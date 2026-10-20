@@ -190,7 +190,7 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     proofUrl?: string
   ) => {
     try {
-      await fetch(`/api/matches/${matchId}/score`, {
+      const res = await fetch(`/api/matches/${matchId}/score`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -198,9 +198,14 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         },
         body: JSON.stringify({ score1, score2, proofUrl })
       });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'No se pudo guardar el marcador.');
+      }
       await refreshTournaments();
     } catch (e) {
       console.error('Update score error:', e);
+      throw e;
     }
   };
 

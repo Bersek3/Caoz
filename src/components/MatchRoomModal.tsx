@@ -41,6 +41,7 @@ export const MatchRoomModal: React.FC<MatchRoomModalProps> = ({
   const [chatInput, setChatInput] = useState('');
   const [messages, setMessages] = useState(match?.chatMessages || []);
   const [sendingMsg, setSendingMsg] = useState(false);
+  const [savingScore, setSavingScore] = useState(false);
   const [chatError, setChatError] = useState('');
   const [showDisputeInput, setShowDisputeInput] = useState(false);
   const [disputeReason, setDisputeReason] = useState('');
@@ -96,14 +97,24 @@ export const MatchRoomModal: React.FC<MatchRoomModalProps> = ({
 
   if (!isOpen || !match || !match.canAccessRoom) return null;
 
-  const handleScoreSubmit = (e: React.FormEvent) => {
+  const handleScoreSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isAdmin || savingScore) return;
     if (score1 === score2) {
       alert('En torneos eliminatorios no puede haber empate. Uno de los dos debe resultar ganador de la serie.');
       return;
     }
 
-    updateMatchScore(tournament.id, match.id, score1, score2, proofUrl || undefined);
+    try {
+      setSavingScore(true);
+      setChatError('');
+      await updateMatchScore(tournament.id, match.id, score1, score2, proofUrl || undefined);
+    } catch (error) {
+      setChatError(error instanceof Error ? error.message : 'No se pudo guardar el marcador.');
+      return;
+    } finally {
+      setSavingScore(false);
+    }
     
     // Trigger celebration confetti
     try {
@@ -117,10 +128,10 @@ export const MatchRoomModal: React.FC<MatchRoomModalProps> = ({
     }
   };
 
-  const handleSendMessage = async (e?: React.FormEvent, customText?: string) => {
+  const handleSendMessage = async (e?: React.FormEvent, customText?: string, isProofImage = false) => {
     if (e) e.preventDefault();
     const textToSend = (customText || chatInput).trim();
-    if (!textToSend || !match) return;
+    if (!textToSend || !match || sendingMsg) return;
 
     try {
       setSendingMsg(true);
@@ -137,7 +148,8 @@ export const MatchRoomModal: React.FC<MatchRoomModalProps> = ({
         body: JSON.stringify({
           senderName: isAdmin ? `Staff CAOZ (@${user?.username || 'Admin'})` : senderName,
           senderRole,
-          message: textToSend
+          message: textToSend,
+          isProofImage
         })
       });
 
@@ -158,6 +170,27 @@ export const MatchRoomModal: React.FC<MatchRoomModalProps> = ({
       setChatError('No se pudo conectar con el chat. Inténtalo nuevamente.');
     } finally {
       setSendingMsg(false);
+    }
+  };
+
+  const handleProofUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 2 * 1024 * 1024) {
+      setChatError('Selecciona una imagen JPG, PNG o WEBP de hasta 2 MB.');
+      return;
+    }
+    try {
+      const image = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => reject(new Error('No se pudo leer la imagen.'));
+        reader.readAsDataURL(file);
+      });
+      await handleSendMessage(undefined, image, true);
+    } catch {
+      setChatError('No se pudo leer la imagen. Inténtalo nuevamente.');
     }
   };
 
@@ -293,6 +326,7 @@ export const MatchRoomModal: React.FC<MatchRoomModalProps> = ({
             </div>
 
             {/* Score Reporting Form */}
+            {isAdmin ? (
             <div className="p-5 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-4">
               <div className="flex items-center justify-between">
                 <h4 className="text-xs font-bold uppercase tracking-wider text-slate-300">
@@ -365,12 +399,19 @@ export const MatchRoomModal: React.FC<MatchRoomModalProps> = ({
 
                 <button
                   type="submit"
+                  disabled={savingScore}
                   className="w-full py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider text-black bg-cyan-400 hover:bg-cyan-300 shadow-lg shadow-cyan-400/20 transition-all font-mono"
                 >
-                  {isCompleted ? 'CONFIRMAR NUEVO MARCADOR' : 'ENVIAR RESULTADO OFICIAL'}
+                  {savingScore ? 'GUARDANDO...' : isCompleted ? 'CONFIRMAR NUEVO MARCADOR' : 'ENVIAR RESULTADO OFICIAL'}
                 </button>
               </form>
             </div>
+            ) : (
+              <div className="p-5 rounded-2xl bg-slate-900/60 border border-slate-800 text-sm text-slate-300 space-y-2">
+                <h4 className="font-bold text-white">Envía tus pruebas de la partida</h4>
+                <p>Adjunta las capturas en el chat privado. El administrador revisará las imágenes y actualizará el marcador manualmente.</p>
+              </div>
+            )}
 
             {/* Dispute & Admin Resolution Bar */}
             <div className="pt-2 border-t border-slate-800 flex items-center justify-between">
@@ -417,13 +458,13 @@ export const MatchRoomModal: React.FC<MatchRoomModalProps> = ({
                   </span>
                   <div className="flex space-x-2 mt-1">
                     <button
-                      onClick={() => resolveDispute(tournament.id, match.id, match.team1.participantId || match.team1.name)}
+                      onClick={() => resolveDispute(tournament.id, match.id, match.team1.participantId || match.team1.name).catch(error => setChatError(error.message))}
                       className="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-[10px] text-cyan-300 border border-slate-700"
                     >
                       Avanzar T1
                     </button>
                     <button
-                      onClick={() => resolveDispute(tournament.id, match.id, match.team2.participantId || match.team2.name)}
+                      onClick={() => resolveDispute(tournament.id, match.id, match.team2.participantId || match.team2.name).catch(error => setChatError(error.message))}
                       className="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-[10px] text-purple-300 border border-slate-700"
                     >
                       Avanzar T2
@@ -539,7 +580,10 @@ export const MatchRoomModal: React.FC<MatchRoomModalProps> = ({
               ) : (
                 messages.map((msg: any) => {
                   const isSystem = msg.senderRole === 'system';
-                  const isStaff = msg.senderRole === 'admin' || (msg.senderName && msg.senderName.includes('Staff'));
+                  const isStaff = msg.senderRole === 'admin';
+                  const content = msg.isProofImage && /^data:image\/(png|jpeg|webp);base64,/.test(msg.message)
+                    ? <img src={msg.message} alt={`Prueba de la partida enviada por ${msg.senderName}`} className="max-h-80 max-w-full rounded-lg object-contain" />
+                    : msg.message;
 
                   if (isSystem) {
                     return (
@@ -551,7 +595,7 @@ export const MatchRoomModal: React.FC<MatchRoomModalProps> = ({
                           <span className="text-cyan-400 font-mono">SISTEMA</span>
                           <span>{msg.timestamp || 'Ahora'}</span>
                         </div>
-                        <p>{msg.message}</p>
+                        <div>{content}</div>
                       </div>
                     );
                   }
@@ -571,7 +615,7 @@ export const MatchRoomModal: React.FC<MatchRoomModalProps> = ({
                           </span>
                           <span className="text-slate-400 font-mono">{msg.timestamp || 'Ahora'}</span>
                         </div>
-                        <p className="text-purple-100 font-medium">{msg.message}</p>
+                        <div className="text-purple-100 font-medium">{content}</div>
                       </div>
                     );
                   }
@@ -597,7 +641,7 @@ export const MatchRoomModal: React.FC<MatchRoomModalProps> = ({
                             : 'bg-slate-800 text-slate-200 border border-slate-700 rounded-tl-none'
                         }`}
                       >
-                        {msg.message}
+                        {content}
                       </div>
                     </div>
                   );
@@ -608,6 +652,11 @@ export const MatchRoomModal: React.FC<MatchRoomModalProps> = ({
 
             {/* Chat Input */}
             <form onSubmit={(e) => handleSendMessage(e)} className="p-3 border-t border-slate-800 bg-[#0c121d]">
+              <label className={`mb-2 flex items-center gap-2 text-xs text-cyan-300 ${sendingMsg ? 'opacity-50' : 'cursor-pointer'}`}>
+                <ImageIcon className="w-4 h-4" />
+                {sendingMsg ? 'Enviando...' : 'Adjuntar imagen de prueba (JPG, PNG, WEBP · hasta 2 MB)'}
+                <input type="file" accept="image/jpeg,image/png,image/webp" disabled={sendingMsg} onChange={handleProofUpload} className="sr-only" />
+              </label>
               <div className="flex items-center space-x-2">
                 <input
                   type="text"
