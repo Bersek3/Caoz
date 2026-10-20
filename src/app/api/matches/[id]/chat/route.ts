@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getDb, initDb } from '@/lib/db';
+import { getMatchAccess } from '@/lib/matchAccess';
+import { randomUUID } from 'crypto';
 
 export async function GET(
   request: Request,
@@ -9,6 +11,8 @@ export async function GET(
     await initDb();
     const db = await getDb();
     const { id: matchId } = await params;
+    const access = await getMatchAccess(request, matchId);
+    if (!access.allowed) return NextResponse.json({ error: access.error }, { status: access.status });
 
     const res = await db.query(`
       SELECT 
@@ -25,7 +29,7 @@ export async function GET(
       ORDER BY created_at ASC
     `, [matchId]);
 
-    return NextResponse.json({ success: true, messages: res.rows });
+    return NextResponse.json({ success: true, messages: res.rows }, { headers: { 'Cache-Control': 'private, no-store' } });
   } catch (error: any) {
     console.error('Fetch match messages error:', error);
     return NextResponse.json({ error: error.message || 'Error en el servidor' }, { status: 500 });
@@ -40,12 +44,17 @@ export async function POST(
     await initDb();
     const db = await getDb();
     const { id: matchId } = await params;
+    const access = await getMatchAccess(request, matchId);
+    if (!access.allowed) return NextResponse.json({ error: access.error }, { status: access.status });
     const body = await request.json();
-    const { senderName, senderRole, message, isProofImage, isDispute, disputeReason } = body;
+    const { message, isProofImage, isDispute, disputeReason } = body;
+    if (typeof message !== 'string' || !message.trim()) {
+      return NextResponse.json({ error: 'Escribe un mensaje.' }, { status: 400 });
+    }
 
-    const messageId = `msg-${Date.now()}`;
-    const cleanSenderName = (senderName || 'Participante').trim();
-    const cleanSenderRole = senderRole || 'player';
+    const messageId = `msg-${randomUUID()}`;
+    const cleanSenderName = access.viewer.role === 'admin' ? `Staff CAOZ (@${access.viewer.username})` : `@${access.viewer.username}`;
+    const cleanSenderRole = access.senderRole;
 
     await db.query(`
       INSERT INTO match_messages (id, match_id, sender_name, sender_role, message, is_proof_image)

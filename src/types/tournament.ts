@@ -79,6 +79,7 @@ export interface MatchParticipant {
 }
 
 export interface TournamentMatch {
+  canAccessRoom?: boolean;
   id: string;
   roundIndex: number;
   roundTitle: string;

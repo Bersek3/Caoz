@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getDb, initDb } from '@/lib/db';
+import { getMatchAccess } from '@/lib/matchAccess';
 
 export async function POST(
   request: Request,
@@ -9,6 +10,8 @@ export async function POST(
     await initDb();
     const db = await getDb();
     const { id: matchId } = await params;
+    const access = await getMatchAccess(request, matchId);
+    if (!access.allowed) return NextResponse.json({ error: access.error }, { status: access.status });
     const body = await request.json();
     const { score1, score2, proofUrl } = body;
 

@@ -41,32 +41,43 @@ export const MatchRoomModal: React.FC<MatchRoomModalProps> = ({
   const [chatInput, setChatInput] = useState('');
   const [messages, setMessages] = useState(match?.chatMessages || []);
   const [sendingMsg, setSendingMsg] = useState(false);
+  const [chatError, setChatError] = useState('');
   const [showDisputeInput, setShowDisputeInput] = useState(false);
   const [disputeReason, setDisputeReason] = useState('');
   const [proofUrl, setProofUrl] = useState('');
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
 
   const fetchLatestMessages = React.useCallback(async () => {
-    if (!match?.id) return;
+    if (!isOpen || !match?.id || !match.canAccessRoom) return;
     try {
-      const res = await fetch(`/api/matches/${match.id}/chat`);
+      const token = localStorage.getItem('caoz_auth_token');
+      const res = await fetch(`/api/matches/${match.id}/chat`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        cache: 'no-store'
+      });
       if (res.ok) {
         const data = await res.json();
         if (data.messages && Array.isArray(data.messages)) {
           setMessages(data.messages);
+          setChatError('');
         }
+      } else {
+        setMessages([]);
+        const data = await res.json();
+        setChatError(data.error || 'No se pudo acceder al chat privado.');
       }
     } catch (e) {
       // ignore
     }
-  }, [match?.id]);
+  }, [isOpen, match?.id, match?.canAccessRoom, user?.id]);
 
   // Keep scores and messages in sync when match changes
   React.useEffect(() => {
     if (match) {
       setScore1(match.team1.score ?? 0);
       setScore2(match.team2.score ?? 0);
-      setMessages(match.chatMessages || []);
+      setMessages([]);
+      setChatError('');
       fetchLatestMessages();
     }
   }, [match, fetchLatestMessages]);
@@ -83,7 +94,7 @@ export const MatchRoomModal: React.FC<MatchRoomModalProps> = ({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  if (!isOpen || !match) return null;
+  if (!isOpen || !match || !match.canAccessRoom) return null;
 
   const handleScoreSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -113,12 +124,16 @@ export const MatchRoomModal: React.FC<MatchRoomModalProps> = ({
 
     try {
       setSendingMsg(true);
+      setChatError('');
       const senderName = user?.username ? `@${user.username}` : (currentUser.name || 'Participante');
       const senderRole = isAdmin ? 'admin' : 'player';
 
       const res = await fetch(`/api/matches/${match.id}/chat`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('caoz_auth_token') || ''}`
+        },
         body: JSON.stringify({
           senderName: isAdmin ? `Staff CAOZ (@${user?.username || 'Admin'})` : senderName,
           senderRole,
@@ -133,10 +148,14 @@ export const MatchRoomModal: React.FC<MatchRoomModalProps> = ({
         } else {
           await fetchLatestMessages();
         }
+        if (!customText) setChatInput('');
+      } else {
+        const data = await res.json();
+        setChatError(data.error || 'No se pudo enviar el mensaje.');
       }
-      if (!customText) setChatInput('');
     } catch (err) {
       console.error('Error sending match message:', err);
+      setChatError('No se pudo conectar con el chat. Inténtalo nuevamente.');
     } finally {
       setSendingMsg(false);
     }
@@ -158,6 +177,7 @@ export const MatchRoomModal: React.FC<MatchRoomModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-fade-in">
       <div className="relative w-full max-w-4xl bg-[#0c121d] border border-slate-700/80 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[94vh]">
+        {chatError && <p role="alert" className="p-3 text-sm text-rose-300">{chatError}</p>}
         
         {/* Match Header */}
         <div className="px-6 py-4 bg-[#0f1728] border-b border-slate-800 flex items-center justify-between">

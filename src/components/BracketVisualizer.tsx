@@ -11,7 +11,8 @@ import {
   Sparkles,
   Layers,
   ZoomIn,
-  ZoomOut
+  ZoomOut,
+  Lock
 } from 'lucide-react';
 import { Tournament, TournamentRound, TournamentMatch } from '../types/tournament';
 
@@ -158,8 +159,17 @@ export const BracketVisualizer: React.FC<BracketVisualizerProps> = ({
                         
                         {/* Interactive Match Card */}
                         <div
-                          onClick={() => onSelectMatch(match)}
-                          className={`match-card cursor-pointer ${
+                          onClick={() => { if (match.canAccessRoom) onSelectMatch(match); }}
+                          role={match.canAccessRoom ? 'button' : undefined}
+                          tabIndex={match.canAccessRoom ? 0 : undefined}
+                          onKeyDown={(event) => {
+                            if (match.canAccessRoom && (event.key === 'Enter' || event.key === ' ')) {
+                              event.preventDefault();
+                              onSelectMatch(match);
+                            }
+                          }}
+                          title={match.canAccessRoom ? 'Abrir sala privada de la partida' : 'Sala privada: solo participantes de esta partida y administradores'}
+                          className={`match-card ${match.canAccessRoom ? 'cursor-pointer' : 'cursor-default'} ${
                             isInProgress ? 'is-active ring-1 ring-cyan-500/50' : ''
                           } ${isDisputed ? 'ring-1 ring-red-500/60' : ''}`}
                         >
@@ -289,8 +299,8 @@ export const BracketVisualizer: React.FC<BracketVisualizerProps> = ({
 
                           {/* Hover Action Banner */}
                           <div className="px-3 py-1 bg-cyan-950/40 text-[10px] text-cyan-300 flex items-center justify-between border-t border-cyan-500/20 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <span>Abrir Sala de Match</span>
-                            <ChevronRight className="w-3 h-3" />
+                            <span>{match.canAccessRoom ? 'Abrir sala privada' : 'Chat privado de la partida'}</span>
+                            {match.canAccessRoom ? <ChevronRight className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
                           </div>
 
                         </div>

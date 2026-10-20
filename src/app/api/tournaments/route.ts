@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getDb, initDb } from '@/lib/db';
 import { verifyToken } from '@/lib/auth';
 import { POPULAR_GAMES } from '../../../data/mockData';
+import { getMatchViewer, ownsMatchParticipant } from '@/lib/matchAccess';
 
 function safeParse(val: any, fallback: any = []) {
   if (!val) return fallback;
@@ -13,7 +14,7 @@ function safeParse(val: any, fallback: any = []) {
   }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     await initDb();
     const db = await getDb();
@@ -30,8 +31,14 @@ export async function GET() {
     // 4. Fetch all matches
     const matchRes = await db.query('SELECT * FROM tournament_matches ORDER BY match_index ASC');
 
-    // 5. Fetch all match chat messages
-    const msgRes = await db.query('SELECT * FROM match_messages ORDER BY created_at ASC');
+    const viewer = await getMatchViewer(request);
+    const canAccessMatch = (match: typeof matchRes.rows[number]) => Boolean(viewer && (
+      viewer.role === 'admin' || partRes.rows.some((participant) =>
+        participant.tournament_id === match.tournament_id &&
+        (participant.id === match.team1_participant_id || participant.id === match.team2_participant_id) &&
+        ownsMatchParticipant(viewer, participant)
+      )
+    ));
 
     // Assemble tournaments
     const tournaments = trnRes.rows.map((t) => {
@@ -90,18 +97,11 @@ export async function GET() {
                 winnerId: m.winner_id,
                 bestOf: m.best_of,
                 scheduledTime: m.scheduled_time,
-                proofImageUrl: m.proof_image_url,
-                disputeReason: m.dispute_reason,
-                chatMessages: msgRes.rows
-                  .filter((msg) => msg.match_id === m.id)
-                  .map((msg) => ({
-                    id: msg.id,
-                    senderName: msg.sender_name,
-                    senderRole: msg.sender_role,
-                    message: msg.message,
-                    timestamp: new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                    isProofImage: msg.is_proof_image
-                  }))
+                canAccessRoom: canAccessMatch(m),
+                proofImageUrl: canAccessMatch(m) ? m.proof_image_url : undefined,
+                disputeReason: canAccessMatch(m) ? m.dispute_reason : undefined,
+                // Private messages are fetched exclusively through the authorized chat endpoint.
+                chatMessages: []
               }));
 
             return {
@@ -153,7 +153,7 @@ export async function GET() {
       };
     });
 
-    return NextResponse.json({ tournaments });
+    return NextResponse.json({ tournaments }, { headers: { 'Cache-Control': 'private, no-store' } });
   } catch (error: any) {
     console.error('Fetch tournaments API error:', error);
     return NextResponse.json({ error: error.message || 'Error en la base de datos' }, { status: 500 });

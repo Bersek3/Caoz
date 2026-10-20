@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { Tournament, GameInfo, Participant, TournamentMatch, TournamentRound, UserRole } from '../types/tournament';
 import { POPULAR_GAMES, INITIAL_TOURNAMENTS } from '../data/mockData';
 import { useAuth } from './AuthContext';
@@ -50,6 +50,7 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [userRole, setUserRole] = useState<UserRole>('player');
   const [isLoading, setIsLoading] = useState(false);
+  const refreshVersion = useRef(0);
 
   // Sync role with authUser role
   useEffect(() => {
@@ -72,23 +73,30 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const refreshTournaments = async () => {
+    const version = ++refreshVersion.current;
     try {
       setIsLoading(true);
-      const res = await fetch('/api/tournaments');
+      const token = localStorage.getItem('caoz_auth_token');
+      const res = await fetch('/api/tournaments', {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        cache: 'no-store'
+      });
       if (res.ok) {
         const data = await res.json();
-        setTournaments(data.tournaments || []);
+        if (version === refreshVersion.current) setTournaments(data.tournaments || []);
       }
     } catch (e) {
       console.error('Failed to load tournaments from API:', e);
     } finally {
-      setIsLoading(false);
+      if (version === refreshVersion.current) setIsLoading(false);
     }
   };
 
   useEffect(() => {
+    setTournaments([]);
     refreshTournaments();
-  }, []);
+    return () => { refreshVersion.current++; };
+  }, [authUser?.id, authUser?.role]);
 
   const getTournament = (id: string) => {
     return tournaments.find((t) => t.id === id || t.slug === id);
@@ -184,7 +192,10 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     try {
       await fetch(`/api/matches/${matchId}/score`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('caoz_auth_token') || ''}`
+        },
         body: JSON.stringify({ score1, score2, proofUrl })
       });
       await refreshTournaments();
@@ -202,7 +213,10 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     try {
       await fetch(`/api/matches/${matchId}/chat`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('caoz_auth_token') || ''}`
+        },
         body: JSON.stringify({
           senderName: currentUser.name,
           senderRole: userRole === 'organizer' ? 'admin' : 'team1',
@@ -220,7 +234,10 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     try {
       await fetch(`/api/matches/${matchId}/chat`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('caoz_auth_token') || ''}`
+        },
         body: JSON.stringify({
           senderName: 'Árbitro / Soporte',
           senderRole: 'admin',

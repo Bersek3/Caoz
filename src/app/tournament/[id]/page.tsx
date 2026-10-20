@@ -793,6 +793,7 @@ export default function TournamentDetailPage() {
 
       {/* Match Room Modal */}
       <MatchRoomModal
+        key={`${user?.id || 'guest'}:${selectedMatch?.id || 'closed'}`}
         tournament={tournament}
         match={selectedMatch}
         isOpen={!!selectedMatch}
