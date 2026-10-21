@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useEffect, useRef } from 'r
 import { Tournament, GameInfo, Participant, TournamentMatch, TournamentRound, UserRole } from '../types/tournament';
 import { POPULAR_GAMES, INITIAL_TOURNAMENTS } from '../data/mockData';
 import { useAuth } from './AuthContext';
+import { MAX_TOURNAMENT_REQUEST_BYTES } from '../lib/tournamentBanner';
 
 interface TournamentContextType {
   tournaments: Tournament[];
@@ -158,20 +159,23 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const createTournament = async (data: Partial<Tournament>): Promise<string> => {
     try {
       const token = localStorage.getItem('caoz_auth_token');
+      const payload = { ...data, organizerId: currentUser.id, organizerName: currentUser.name, organizerAvatar: currentUser.avatar };
+      // The API already uses the banner as the thumbnail when no thumbnail is supplied.
+      if (payload.thumbnailUrl === payload.bannerUrl) delete payload.thumbnailUrl;
+      const body = JSON.stringify(payload);
+      if (new Blob([body]).size > MAX_TOURNAMENT_REQUEST_BYTES) {
+        throw new Error('El torneo supera el tamaño permitido. Selecciona un banner más pequeño o reduce el texto.');
+      }
       const res = await fetch('/api/tournaments', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {})
         },
-        body: JSON.stringify({
-          ...data,
-          organizerId: currentUser.id,
-          organizerName: currentUser.name,
-          organizerAvatar: currentUser.avatar
-        })
+        body
       });
 
+      if (res.status === 413) throw new Error('El servidor rechazó el tamaño del torneo. Vuelve a seleccionar el banner para optimizarlo o utiliza una imagen más pequeña.');
       const resData = await res.json().catch(() => null);
       if (!res.ok || !resData?.success || typeof resData.slug !== 'string' || !resData.slug) {
         throw new Error(resData?.error || 'No se pudo publicar el torneo. Inténtalo nuevamente.');

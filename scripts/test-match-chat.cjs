@@ -48,6 +48,13 @@ async function main() {
       ...(body ? {body:JSON.stringify(body)} : {})
     });
     const params = {params:Promise.resolve({id:'match'})};
+    const oversized = await tournaments.POST(request('admin', 'POST', {title:'Oversized',bannerUrl:'A'.repeat(1_500_001)}));
+    assert.equal(oversized.status, 413, 'Oversized tournament requests return an explicit 413');
+    const created = await tournaments.POST(request('admin', 'POST', {title:'Compressed Banner',gameId:'fortnite',bannerUrl:'data:image/jpeg;base64,'+'A'.repeat(400_000)}));
+    assert.equal(created.status, 200);
+    const createdId = (await created.json()).tournamentId;
+    const stored = (await memory.query('SELECT banner_url,thumbnail_url FROM torneos WHERE id=$1', [createdId])).rows[0];
+    assert.equal(stored.banner_url,stored.thumbnail_url,'The server reuses the banner as thumbnail without duplicating the request payload');
     for (const user of ['admin', 'solo', 'captain', 'member', 'other', 'late-member', null]) {
       const allowed = ['admin', 'solo', 'captain', 'member'].includes(user);
       const expected = allowed ? 200 : user ? 403 : 401;

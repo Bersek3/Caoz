@@ -25,6 +25,7 @@ import {
 import { useTournament } from '../context/TournamentContext';
 import { GameId, TournamentFormat } from '../types/tournament';
 import { formatTournamentDate } from '../lib/dateUtils';
+import { prepareTournamentBanner } from '../lib/tournamentBanner';
 
 interface CreateTournamentModalProps {
   isOpen: boolean;
@@ -70,6 +71,8 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
     rule3: 'Tolerancia de 10 minutos por partida antes de considerar abandono.'
   });
 
+  const [isPreparingBanner, setIsPreparingBanner] = useState(false);
+  const bannerVersion = React.useRef(0);
   const [customBanner, setCustomBanner] = useState<string>('');
   const [bannerFileName, setBannerFileName] = useState<string>('');
   const [bannerDimensions, setBannerDimensions] = useState<{
@@ -91,46 +94,29 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
 
   const selectedGame = games.find((g) => g.id === formData.gameId) || games[0];
 
-  const handleBannerUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    e.target.value = '';
     if (!file) return;
-
-    if (!file.type.startsWith('image/')) {
-      alert('Por favor selecciona un archivo de imagen válido (JPG, PNG, WEBP).');
-      return;
+    const version = ++bannerVersion.current;
+    setIsPreparingBanner(true);
+    setSubmitError('');
+    try {
+      const { dataUrl, width, height } = await prepareTournamentBanner(file);
+      if (version !== bannerVersion.current) return;
+      setBannerDimensions({ width, height, ratio: (width / height).toFixed(1) + ':1', status: width >= 800 && height >= 280 ? 'good' : 'warning' });
+      setBannerFileName(file.name);
+      setCustomBanner(dataUrl);
+    } catch (error) {
+      if (version === bannerVersion.current) setSubmitError(error instanceof Error ? error.message : 'No se pudo preparar el banner.');
+    } finally {
+      if (version === bannerVersion.current) setIsPreparingBanner(false);
     }
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = reader.result as string;
-      const img = new Image();
-      img.onload = () => {
-        const w = img.naturalWidth;
-        const h = img.naturalHeight;
-        
-        let ratioLabel = '16:9';
-        if (Math.abs(w / h - 21 / 9) < 0.25) ratioLabel = '21:9 Ultra-Panorámico';
-        else if (Math.abs(w / h - 16 / 9) < 0.25) ratioLabel = '16:9 Panorámico';
-        else if (Math.abs(w / h - 4 / 3) < 0.2) ratioLabel = '4:3 Estándar';
-        else if (w === h) ratioLabel = '1:1 Cuadrado';
-        else ratioLabel = `${(w / h).toFixed(1)}:1`;
-
-        const isGood = w >= 800 && h >= 280;
-        setBannerDimensions({
-          width: w,
-          height: h,
-          ratio: ratioLabel,
-          status: isGood ? 'good' : 'warning'
-        });
-        setBannerFileName(file.name);
-        setCustomBanner(dataUrl);
-      };
-      img.src = dataUrl;
-    };
-    reader.readAsDataURL(file);
   };
 
   const handleRemoveBanner = () => {
+    bannerVersion.current++;
+    setIsPreparingBanner(false);
     setCustomBanner('');
     setBannerFileName('');
     setBannerDimensions(null);
@@ -138,7 +124,7 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
 
   const handleFinish = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isSubmitting) return;
+    if (isSubmitting || isPreparingBanner) return;
     setSubmitError('');
     if (!formData.title.trim()) {
       alert('Por favor, ingresa un nombre para el torneo');
@@ -200,7 +186,7 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
           </div>
           <button
             onClick={onClose}
-            disabled={isSubmitting}
+            disabled={isSubmitting || isPreparingBanner}
             className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
           >
             <X className="w-5 h-5" />
@@ -621,6 +607,7 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
 
         </div>
 
+        {isPreparingBanner && <p role="status" className="mx-6 mb-4 text-sm text-cyan-300">Optimizando banner...</p>}
         {/* Footer Navigation */}
         {submitError && (
           <p role="alert" className="mx-6 mb-4 rounded-xl border border-rose-500/40 bg-rose-500/10 p-3 text-sm text-rose-300">
@@ -632,7 +619,7 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
             <button
               type="button"
               onClick={() => setStep(step - 1)}
-              disabled={isSubmitting}
+              disabled={isSubmitting || isPreparingBanner}
               className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 flex items-center space-x-1.5 transition-colors"
             >
               <ChevronLeft className="w-4 h-4" />
@@ -661,7 +648,7 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
             <button
               type="button"
               onClick={handleFinish}
-              disabled={isSubmitting}
+              disabled={isSubmitting || isPreparingBanner}
               className="px-6 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-black bg-cyan-400 hover:bg-cyan-300 flex items-center space-x-2 shadow-lg shadow-cyan-400/30 transition-all font-mono tracking-wider"
             >
               <ShieldCheck className="w-4 h-4 text-black" />

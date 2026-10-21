@@ -3,6 +3,7 @@ import { getDb, initDb } from '@/lib/db';
 import { verifyToken } from '@/lib/auth';
 import { POPULAR_GAMES } from '../../../data/mockData';
 import { getMatchViewer, ownsMatchParticipant } from '@/lib/matchAccess';
+import { MAX_TOURNAMENT_REQUEST_BYTES } from '@/lib/tournamentBanner';
 
 function safeParse(val: any, fallback: any = []) {
   if (!val) return fallback;
@@ -165,7 +166,11 @@ export async function POST(request: Request) {
   try {
     await initDb();
     const db = await getDb();
-    const body = await request.json();
+    const rawBody = await request.text();
+    if (new TextEncoder().encode(rawBody).length > MAX_TOURNAMENT_REQUEST_BYTES) {
+      return NextResponse.json({ error: 'El torneo supera el tamaño permitido. Reduce el banner o el texto.' }, { status: 413 });
+    }
+    const body = JSON.parse(rawBody);
 
     const authHeader = request.headers.get('authorization');
     let isAdmin = false;
