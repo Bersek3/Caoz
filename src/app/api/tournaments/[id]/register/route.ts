@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getDb, initDb } from '@/lib/db';
 import { verifyToken } from '@/lib/auth';
+import { reserveRegistration } from '@/lib/tournamentPayments';
 
 function getAuthUserId(request: Request): string | null {
   const authHeader = request.headers.get('authorization');
@@ -20,6 +21,12 @@ export async function POST(
     const { id } = await params;
     const body = await request.json();
     const userId = getAuthUserId(request);
+
+    if (!userId) return NextResponse.json({ error: 'Debes iniciar sesi\u00f3n para inscribirte.' }, { status: 401 });
+    const account = (await db.query('SELECT id, username FROM users WHERE id=$1', [userId])).rows[0];
+    if (!account) return NextResponse.json({ error: 'Cuenta no encontrada.' }, { status: 401 });
+    body.username = account.username;
+    body.captainName = account.username;
 
     // 1. Fetch tournament details
     const trnRes = await db.query(
@@ -228,75 +235,12 @@ export async function POST(
       }
     }
 
-    const participantId = `part-${Date.now()}`;
-    const seed = currentCount + 1;
-    const defaultAvatar = 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?q=80&w=200&auto=format&fit=crop';
-
-    // Insert participant in PostgreSQL
-    await db.query(`
-      INSERT INTO tournament_participants (
-        id, tournament_id, team_id, user_id, name, tag, avatar, seed, checked_in, registered_at,
-        captain_name, captain_discord, captain_in_game_id, captain_avatar, roster
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
-    `, [
-      participantId,
-      tournament.id,
-      teamObj?.id || null,
-      userId || null,
-      participantName,
-      participantTag,
-      body.avatar || defaultAvatar,
-      seed,
-      false,
-      'Recién registrado',
-      captainName,
-      captainDiscord,
-      captainInGameId,
-      defaultAvatar,
-      JSON.stringify(candidates)
-    ]);
-
-    // 3. AUTOMATICALLY SEED INTO FIRST ROUND MATCH IN THE BRACKET!
-    const targetMatchIndex = Math.floor(currentCount / 2);
-    const isTeam1 = currentCount % 2 === 0;
-
-    const matchCheck = await db.query(`
-      SELECT id, team1_participant_id, team2_participant_id
-      FROM tournament_matches
-      WHERE tournament_id = $1 AND round_index = 0 AND match_index = $2 AND bracket_type = 'winners'
-    `, [tournament.id, targetMatchIndex]);
-
-    if (matchCheck.rows.length > 0) {
-      const match = matchCheck.rows[0];
-      if (isTeam1) {
-        await db.query(`
-          UPDATE tournament_matches SET
-            team1_participant_id = $1,
-            team1_name = $2,
-            team1_avatar = $3,
-            team1_seed = $4
-          WHERE id = $5
-        `, [participantId, participantName, defaultAvatar, seed, match.id]);
-      } else {
-        await db.query(`
-          UPDATE tournament_matches SET
-            team2_participant_id = $1,
-            team2_name = $2,
-            team2_avatar = $3,
-            team2_seed = $4,
-            status = 'ready'
-          WHERE id = $5
-        `, [participantId, participantName, defaultAvatar, seed, match.id]);
-      }
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: isSolo
-        ? `¡Te has inscrito exitosamente como @${participantName}! Ya apareces en la llave del torneo.`
-        : `¡El equipo "${participantName}" ha sido inscrito exitosamente! Ya aparece en la llave del torneo.`,
-      participantId,
-      participantName
+    const result = await reserveRegistration(tournament.id, {
+      userId, teamId: teamObj?.id || null, name: participantName, tag: participantTag,
+      captainName, captainDiscord, captainInGameId, roster: candidates
+    }, body.payer || {});
+    return NextResponse.json({ success: true, ...result,
+      message: result.checkoutUrl ? 'Contin\u00faa al pago para confirmar tu inscripci\u00f3n.' : 'Inscripci\u00f3n confirmada.'
     });
   } catch (error: any) {
     console.error('Register participant API error:', error);
@@ -359,6 +303,8 @@ export async function DELETE(
     }
 
     const participant = partRes.rows[0];
+    const paid = await db.query("SELECT id FROM tournament_payments WHERE participant_id=$1 AND status='confirmed' LIMIT 1", [participant.id]);
+    if (paid.rows.length) return NextResponse.json({ error: 'Esta inscripción tiene un pago confirmado. Contacta al organizador para retirar la participación y gestionar la devolución según las reglas del torneo.' }, { status: 409 });
 
     // 2. Remove participant from tournament_participants
     await db.query('DELETE FROM tournament_participants WHERE id = $1', [participant.id]);

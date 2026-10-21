@@ -29,8 +29,9 @@ interface TournamentContextType {
     teamTag: string;
     captainDiscord: string;
     captainInGameId: string;
+    payer?: { first_name: string; last_name: string; social_id: string; phone: string };
     rosterMembers?: { name: string; inGameId: string; role: 'starter' | 'sub' }[];
-  }) => Promise<{ success: boolean; message: string; participantId?: string }>;
+  }) => Promise<{ success: boolean; message: string; participantId?: string; checkoutUrl?: string; paymentId?: string }>;
   checkInParticipant: (tournamentId: string, participantId: string) => Promise<void>;
   createTournament: (data: Partial<Tournament>) => Promise<string>;
   updateMatchScore: (tournamentId: string, matchId: string, score1: number, score2: number, proofUrl?: string) => Promise<void>;
@@ -110,6 +111,7 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       teamTag: string;
       captainDiscord: string;
       captainInGameId: string;
+      payer?: { first_name: string; last_name: string; social_id: string; phone: string };
       rosterMembers?: { name: string; inGameId: string; role: 'starter' | 'sub' }[];
     }
   ) => {
@@ -134,7 +136,7 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       }
 
       await refreshTournaments();
-      return { success: true, message: data.message || '¡Inscripción confirmada!', participantId: data.participantId };
+      return { success: true, message: data.message || '¡Inscripción confirmada!', participantId: data.participantId, checkoutUrl: data.checkoutUrl, paymentId: data.paymentId };
     } catch (e: any) {
       return { success: false, message: e.message || 'Error al conectar con el servidor' };
     }

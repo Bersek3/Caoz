@@ -61,6 +61,8 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [success, setSuccess] = useState(false);
+  const [payer, setPayer] = useState({ first_name: '', last_name: '', social_id: '', phone: '' });
+  const isPaid = (tournament.entryFeeAmount || 0) > 0;
 
   useEffect(() => {
     if (user) {
@@ -119,7 +121,8 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
         teamName: isSolo ? user.username : user.teamName!,
         teamTag: isSolo ? 'SOLO' : (user.teamTag || 'TEAM'),
         captainDiscord,
-        captainInGameId
+        captainInGameId,
+        payer: isPaid ? payer : undefined
       });
 
       if (!result.success) {
@@ -128,6 +131,10 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
         return;
       }
 
+      if (result.checkoutUrl) {
+        window.location.assign(result.checkoutUrl);
+        return;
+      }
       setSuccess(true);
       try {
         confetti({
@@ -419,6 +426,22 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
               )}
 
               {/* Submit CTA */}
+              {isPaid && (
+                <fieldset className="space-y-3 rounded-xl border border-cyan-500/30 p-4">
+                  <legend className="px-2 text-sm font-bold text-cyan-300">Pagar inscripción: {tournament.entryFee}</legend>
+                  <p className="text-xs text-slate-400">Pago único por {isSolo ? 'jugador' : 'equipo'} mediante VirtualPOS. Reservamos el cupo durante 15 minutos. La inscripción se confirma cuando se aprueba el pago.</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {([
+                      ['first_name', 'Nombre del pagador'], ['last_name', 'Apellido del pagador'],
+                      ['social_id', 'RUT del pagador'], ['phone', 'Teléfono con código de país (ej. 56912345678)']
+                    ] as const).map(([key, label]) => (
+                      <label key={key} className="block text-xs text-slate-300">{label}
+                        <input required value={payer[key]} onChange={e => setPayer({ ...payer, [key]: e.target.value })} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 p-2 text-white" />
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+              )}
               <div className="pt-2">
                 <button
                   type="submit"
@@ -431,6 +454,8 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
                     ? `YA INSCRITO EN ESTE TORNEO (${alreadyInParticipant?.name?.toUpperCase()})`
                     : !isSolo && !isTeamComplete
                     ? `EQUIPO INCOMPLETO (${currentTeamMembers}/${requiredTeamSize})`
+                    : isPaid
+                    ? `PAGAR ${tournament.entryFee} EN VIRTUALPOS`
                     : isSolo 
                     ? `CONFIRMAR INSCRIPCIÓN COMO @${user.username}` 
                     : `CONFIRMAR INSCRIPCIÓN DE ${(user.teamName || user.team?.name)?.toUpperCase()}`}

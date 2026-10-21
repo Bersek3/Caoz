@@ -153,6 +153,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCreateModal }) => {
           </Link>
 
           {/* Navigation items */}
+          {user && <Link href="/arena/pagos" className="px-3 py-1.5 text-sm text-cyan-300">Pagos</Link>}
           <nav className="hidden md:flex items-center space-x-1">
             <Link
               href="/arena"

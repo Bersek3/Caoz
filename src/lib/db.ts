@@ -16,6 +16,34 @@ export interface DbResult<T = any> {
 }
 
 let isInitialized = false;
+let initialization: Promise<void> | undefined;
+
+export type DbSession = Pick<Awaited<ReturnType<typeof getDb>>, 'query'>;
+
+export async function withDbTransaction<T>(work: (db: DbSession) => Promise<T>): Promise<T> {
+  const db = await getDb();
+  if (db.type === 'pglite') {
+    return global.__pgliteInstance!.transaction(async (tx) => work({
+      query: async <R = any>(sql: string, params: any[] = []) => {
+        const result = await tx.query<R>(sql, params);
+        return { rows: result.rows, rowCount: result.rows.length };
+      }
+    }));
+  }
+  const client = await global.__pgPoolInstance!.connect();
+  try {
+    await client.query('BEGIN');
+    const result = await work({ query: async (sql, params = []) => {
+      const result = await client.query(sql, params);
+      return { rows: result.rows, rowCount: result.rowCount || 0 };
+    }});
+    await client.query('COMMIT');
+    return result;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally { client.release(); }
+}
 
 export async function getDb() {
   if (process.env.DATABASE_URL) {
@@ -56,6 +84,11 @@ export async function getDb() {
 
 export async function initDb() {
   if (isInitialized) return;
+  if (!initialization) initialization = initializeDatabase().catch(error => { initialization = undefined; throw error; });
+  return initialization;
+}
+
+async function initializeDatabase() {
 
   const db = await getDb();
 
@@ -164,6 +197,24 @@ export async function initDb() {
       created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     );
   `);
+
+  await db.query('ALTER TABLE torneos ADD COLUMN IF NOT EXISTS entry_fee_amount INTEGER NOT NULL DEFAULT 0');
+  await db.query(`CREATE TABLE IF NOT EXISTS tournament_payments (
+    id VARCHAR(64) PRIMARY KEY,
+    tournament_id VARCHAR(64) NOT NULL REFERENCES torneos(id),
+    user_id VARCHAR(64) NOT NULL REFERENCES usuarios(id),
+    registration_key TEXT NOT NULL,
+    amount INTEGER NOT NULL CHECK (amount > 0),
+    currency VARCHAR(3) NOT NULL DEFAULT 'CLP',
+    status VARCHAR(32) NOT NULL DEFAULT 'creating',
+    provider_uuid TEXT UNIQUE,
+    checkout_url TEXT,
+    registration JSONB NOT NULL,
+    participant_id VARCHAR(64),
+    expires_at TIMESTAMPTZ NOT NULL DEFAULT (CURRENT_TIMESTAMP + INTERVAL '15 minutes'),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+  )`);
+  await db.query(`CREATE INDEX IF NOT EXISTS tournament_payments_reservations ON tournament_payments(tournament_id, status, expires_at)`);
 
   // 6. Tabla: participantes_torneo
   await db.query(`

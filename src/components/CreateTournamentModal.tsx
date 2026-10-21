@@ -61,6 +61,7 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
     maxParticipants: 8,
     region: 'LATAM' as 'LATAM' | 'NA' | 'EU' | 'GLOBAL',
     entryFee: 'Gratis',
+    entryFeeAmount: 0,
     prizePool: '$500 USD',
     startDate: '',
     description: '',
@@ -159,6 +160,7 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
         maxParticipants: formData.maxParticipants,
         region: formData.region,
         entryFee: formData.entryFee,
+        entryFeeAmount: formData.entryFeeAmount,
         prizePool: formData.prizePool,
         startDate: startDateTime || formData.startDate,
         description: formData.description || `Torneo oficial de ${games.find(g => g.id === formData.gameId)?.name}. Compite por el título y premios.`,
@@ -560,12 +562,16 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
                     Costo de Inscripción (Entry Fee)
                   </label>
                   <input
-                    type="text"
-                    placeholder="Ej: Gratis / Free to play"
-                    value={formData.entryFee}
-                    onChange={(e) => setFormData({ ...formData, entryFee: e.target.value })}
+                    type="number"
+                    min={0}
+                    max={10000000}
+                    step={1}
+                    placeholder="0 = Gratis"
+                    value={formData.entryFeeAmount}
+                    onChange={(e) => setFormData({ ...formData, entryFeeAmount: Number(e.target.value) })}
                     className="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white text-sm focus:outline-none focus:border-cyan-400"
                   />
+                  <p className="mt-1 text-xs text-slate-400">Pesos chilenos (CLP) por inscripción. 0 = gratis. En equipos, paga una persona por todo el equipo.</p>
                 </div>
               </div>
 

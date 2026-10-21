@@ -124,6 +124,7 @@ export interface Tournament {
   teamSize: number;
   region: 'LATAM' | 'NA' | 'EU' | 'GLOBAL';
   entryFee: string;
+  entryFeeAmount?: number;
   prizePool: string;
   prizeDistribution: { place: string; prize: string }[];
   maxParticipants: number;

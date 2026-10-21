@@ -136,6 +136,7 @@ export async function GET(request: Request) {
         teamSize: t.team_size,
         region: t.region,
         entryFee: t.entry_fee,
+        entryFeeAmount: t.entry_fee_amount,
         prizePool: t.prize_pool,
         prizeDistribution: safeParse(t.prize_distribution, [{ place: '1er Lugar', prize: 'Premio' }]),
         maxParticipants: t.max_participants,
@@ -198,6 +199,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Selecciona un juego válido e ingresa un título de hasta 255 caracteres.' }, { status: 400 });
     }
     const maxP = body.maxParticipants || 8;
+    const entryFeeAmount = body.entryFeeAmount ?? 0;
+    if (!Number.isInteger(entryFeeAmount) || entryFeeAmount < 0 || entryFeeAmount > 10_000_000) {
+      return NextResponse.json({ error: 'Ingresa un precio entero entre 0 y 10.000.000 CLP.' }, { status: 400 });
+    }
     if (![8, 16, 32].includes(maxP)) {
       return NextResponse.json({ error: 'El cupo debe ser de 8, 16 o 32 participantes.' }, { status: 400 });
     }
@@ -208,13 +213,13 @@ export async function POST(request: Request) {
         organizer_id, organizer_name, organizer_avatar, organizer_verified, organizer_followers,
         status, format, team_type, team_size, region, entry_fee, prize_pool, prize_distribution,
         max_participants, start_date, check_in_opens_at, check_in_closes_at, check_in_active,
-        description, rules, schedule
+        description, rules, schedule, entry_fee_amount
       ) VALUES (
         $1, $2, $3, $4, $5, $6, $7,
         $8, $9, $10, $11, $12,
         $13, $14, $15, $16, $17, $18, $19, $20,
         $21, $22, $23, $24, $25,
-        $26, $27, $28
+        $26, $27, $28, $29
       )
     `, [
       newId,
@@ -234,7 +239,7 @@ export async function POST(request: Request) {
       body.teamType || 'team',
       body.teamSize || game.defaultTeamSize,
       body.region || 'LATAM',
-      body.entryFee || 'Gratis',
+      entryFeeAmount > 0 ? `${new Intl.NumberFormat('es-CL').format(entryFeeAmount)} CLP` : 'Gratis',
       body.prizePool || '$500 USD',
       JSON.stringify(body.prizeDistribution || [{ place: '1er Lugar', prize: '$350 USD' }, { place: '2do Lugar', prize: '$150 USD' }]),
       maxP,
@@ -244,7 +249,8 @@ export async function POST(request: Request) {
       false,
       body.description || 'Torneo organizado en CAOZ ARENA.',
       JSON.stringify(body.rules || ['Deportividad', 'Subir capturas a la sala de match']),
-      JSON.stringify(body.schedule || [{ stage: 'Ronda 1', time: '20:00', format: 'BO3' }])
+      JSON.stringify(body.schedule || [{ stage: 'Ronda 1', time: '20:00', format: 'BO3' }]),
+      entryFeeAmount
     ]);
 
     // Generate bracket rounds and matches in PostgreSQL
@@ -365,6 +371,8 @@ export async function DELETE(request: Request) {
     const { searchParams } = new URL(request.url);
     const tournamentId = searchParams.get('id');
     const deleteAll = searchParams.get('all') === 'true';
+    const payments = await db.query(`SELECT id FROM tournament_payments WHERE ($1::boolean OR tournament_id IN (SELECT id FROM tournaments WHERE id=$2 OR slug=$2)) LIMIT 1`, [deleteAll,tournamentId || '']);
+    if (payments.rows.length) return NextResponse.json({ error: 'No se puede eliminar un torneo con historial de pagos. Puedes ocultarlo para conservar los registros.' }, { status: 409 });
 
     if (deleteAll) {
       await db.query('DELETE FROM match_messages');
