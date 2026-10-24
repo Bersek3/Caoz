@@ -323,18 +323,11 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCreateModal }) => {
                   <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-[#07090e] rounded-full" />
                 </div>
                 <div className="hidden lg:flex flex-col text-left">
-                  <div className="flex items-center space-x-1.5">
-                    <span className="text-xs font-semibold text-white leading-tight">
-                      {user.fullName || user.username}
-                    </span>
-                    {isAdmin && (
-                      <span className="text-[9px] px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-300 font-mono font-bold">
-                        ADMIN
-                      </span>
-                    )}
-                  </div>
+                  <span className="text-xs font-semibold text-white leading-tight">
+                    {user.fullName || user.username}
+                  </span>
                   <span className="text-[10px] text-slate-400 font-mono">
-                    {user.teamTag || 'CAOZ'} â€¢ {user.riotId || user.username}
+                    {user.username}
                   </span>
                 </div>
               </Link>
