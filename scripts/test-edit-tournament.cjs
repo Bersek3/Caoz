@@ -14,7 +14,7 @@ function load(file, overrides = {}) {
 }
 async function main() {
   const mockData = load('../src/data/mockData.ts');
-  const service = load('../src/lib/editTournament.ts', { '@/data/mockData': mockData });
+  const service = load('../src/lib/editTournament.ts', { '@/data/mockData': mockData, './tournamentRules': load('../src/lib/tournamentRules.ts') });
   const db = new PGlite();
   try {
     // Exercise the production table definitions and compatibility views in memory.
@@ -24,6 +24,8 @@ async function main() {
       assert(ddl, table); await db.exec(ddl[0]);
     }
     await db.exec(`ALTER TABLE torneos ADD COLUMN entry_fee_amount INT DEFAULT 0;
+      ALTER TABLE torneos ADD COLUMN rules_mode VARCHAR(16) DEFAULT 'custom';
+      ALTER TABLE torneos ADD COLUMN rules_template_version VARCHAR(64);
       CREATE VIEW tournaments AS SELECT * FROM torneos;
       CREATE VIEW tournament_participants AS SELECT * FROM participantes_torneo;
       CREATE VIEW tournament_rounds AS SELECT * FROM rondas_torneo;

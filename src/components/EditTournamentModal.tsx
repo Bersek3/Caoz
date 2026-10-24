@@ -6,6 +6,7 @@ import type { Tournament } from '../types/tournament';
 import { useAuth } from '../context/AuthContext';
 import { useTournament } from '../context/TournamentContext';
 import { prepareTournamentBanner, MAX_TOURNAMENT_REQUEST_BYTES } from '../lib/tournamentBanner';
+import { TournamentRulesEditor } from './TournamentRulesEditor';
 import { showAlert, showConfirm } from './StyledDialog';
 
 export function EditTournamentModal({ tournament, onClose }: { tournament: Tournament; onClose: () => void }) {
@@ -18,7 +19,7 @@ export function EditTournamentModal({ tournament, onClose }: { tournament: Tourn
     checkInOpensAt: tournament.checkInOpensAt || '', checkInClosesAt: tournament.checkInClosesAt || '',
     checkInActive: Boolean(tournament.checkInActive),
     entryFeeAmount: tournament.entryFeeAmount || 0, isHidden: Boolean(tournament.isHidden),
-    rules: tournament.rules || [], prizeDistribution: tournament.prizeDistribution || [],
+    rulesMode: tournament.rulesMode || 'custom', rules: tournament.rules || [], prizeDistribution: tournament.prizeDistribution || [],
     schedule: (tournament.schedule || []).map(row => ({ ...row, format: row.format || '' })),
     organizer: { ...tournament.organizer, avatar: tournament.organizer.avatar || '', verified: Boolean(tournament.organizer.verified), followers: tournament.organizer.followers || 0 }
   }));
@@ -51,7 +52,7 @@ export function EditTournamentModal({ tournament, onClose }: { tournament: Tourn
     setBusy(true); setError('');
     try {
       if (structural && !await showConfirm('Cambiaste el juego, formato, modalidad o cupos. Se reconstruirán y sortearán las llaves. Se conservarán las inscripciones, pero se borrarán los resultados y chats de las partidas actuales. Revisa que los inscritos cumplan la nueva modalidad. ¿Guardar estos cambios?')) return;
-      const body = JSON.stringify({ ...data, participants: undefined, rounds: undefined, losersRounds: undefined, grandFinal: undefined, rebuildBracket: structural });
+      const body = JSON.stringify({ ...data, rules: data.rules.map(rule => rule.trim()).filter(Boolean), participants: undefined, rounds: undefined, losersRounds: undefined, grandFinal: undefined, rebuildBracket: structural });
       if (new Blob([body]).size > MAX_TOURNAMENT_REQUEST_BYTES) throw new Error('Las imágenes o el texto superan el tamaño permitido. Reduce las imágenes.');
       const response = await fetch(`/api/tournaments/${tournament.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body });
       const result = await response.json();
@@ -104,8 +105,8 @@ export function EditTournamentModal({ tournament, onClose }: { tournament: Tourn
                 <option value="single_elimination">Eliminación simple</option><option value="double_elimination">Doble eliminación</option><option value="round_robin">Round Robin</option><option value="swiss">Suizo</option>
               </select></label>
               <label className="text-xs text-slate-300">Cupos<select value={data.maxParticipants} onChange={e => change('maxParticipants', Number(e.target.value))} className={inputClass}>{[8,16,32].map(size => <option key={size} value={size}>{size}</option>)}</select></label>
-              <label className="text-xs text-slate-300">Modalidad<select value={data.teamType} onChange={e => setData(previous => ({ ...previous, teamType: e.target.value as 'solo' | 'team', teamSize: e.target.value === 'solo' ? 1 : games.find(g => g.id === data.gameId)?.defaultTeamSize || 5 }))} className={inputClass}><option value="solo">Individual</option><option value="team">Por equipos</option></select></label>
-              <label className="text-xs text-slate-300">Jugadores por equipo<input type="number" required min={1} max={100} step={1} disabled={data.teamType === 'solo'} value={data.teamSize} onChange={e => change('teamSize', Number(e.target.value))} className={inputClass} /></label>
+              <label className="text-xs text-slate-300">Modalidad<select value={data.teamType} onChange={e => setData(previous => ({ ...previous, teamType: e.target.value as 'solo' | 'team', teamSize: e.target.value === 'solo' ? 1 : (data.gameId === 'fortnite' ? 2 : games.find(g => g.id === data.gameId)?.defaultTeamSize || 5) }))} className={inputClass}><option value="solo">Individual</option><option value="team">Por equipos</option></select></label>
+              <label className="text-xs text-slate-300">Jugadores por equipo<input type="number" required min={1} max={data.gameId === 'fortnite' ? 4 : 100} step={1} disabled={data.teamType === 'solo'} value={data.teamSize} onChange={e => change('teamSize', Number(e.target.value))} className={inputClass} /></label>
             </div>
             {structural && <p role="status" className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-200">Este cambio requiere reconstruir las llaves. Al guardar se pedirá confirmar la eliminación de los resultados y chats actuales. Las inscripciones se conservan.</p>}
           </div>
@@ -121,7 +122,7 @@ export function EditTournamentModal({ tournament, onClose }: { tournament: Tourn
             </div>)}
             <button type="button" disabled={data.prizeDistribution.length >= 100} onClick={() => change('prizeDistribution', [...data.prizeDistribution,{ place: '', prize: '' }])} className="flex items-center gap-2 text-xs text-red-300"><Plus size={14} />Agregar premio</button>
           </div>
-          <label className="block text-xs text-slate-300">Reglas (una por línea)<textarea rows={5} value={data.rules.join('\n')} onChange={e => change('rules', e.target.value.split('\n'))} className={inputClass} /></label>
+          <TournamentRulesEditor config={data} mode={data.rulesMode} customRules={data.rules} onChange={(mode,rules) => setData(previous => ({ ...previous, rulesMode: mode, rules }))} />
           <div className="space-y-2"><h3 className="text-sm font-bold text-white">Cronograma</h3>
             {data.schedule.map((row,index) => <div key={index} className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
               {(['stage','time','format'] as const).map((field) => <input key={field} required={field !== 'format'} maxLength={field === 'stage' ? 150 : 100} aria-label={`${field === 'stage' ? 'Etapa' : field === 'time' ? 'Horario' : 'Formato'} ${index+1}`} placeholder={field === 'stage' ? 'Etapa' : field === 'time' ? 'Horario' : 'BO3'} value={row[field] || ''} onChange={e => change('schedule', data.schedule.map((p,i) => i === index ? { ...p,[field]: e.target.value } : p))} className={`${inputClass} flex-1 basis-24`} />)}

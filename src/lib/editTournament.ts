@@ -2,6 +2,7 @@ import { randomInt, randomUUID } from 'crypto';
 import type { DbSession } from './db';
 import type { Tournament } from '@/types/tournament';
 import { POPULAR_GAMES } from '@/data/mockData';
+import { resolveTournamentRules } from './tournamentRules';
 
 export class TournamentEditError extends Error {
   constructor(message: string, public status = 400) { super(message); }
@@ -30,8 +31,10 @@ export async function editTournament(db: DbSession, id: string, input: unknown) 
   if (![8,16,32].includes(data.maxParticipants)) throw new TournamentEditError('El cupo debe ser 8, 16 o 32.');
   if (!Number.isInteger(data.entryFeeAmount) || data.entryFeeAmount! < 0 || data.entryFeeAmount! > 10_000_000) throw new TournamentEditError('El costo debe estar entre 0 y 10.000.000 CLP.');
   if (typeof data.checkInActive !== 'boolean' || typeof data.isHidden !== 'boolean') throw new TournamentEditError('Visibilidad o check-in inválidos.');
-  if (!Array.isArray(data.rules) || data.rules.length > 100) throw new TournamentEditError('Ingresa hasta 100 reglas.');
-  const rules = data.rules.map(rule => text(rule, 'Regla', 5000)).filter(Boolean);
+  let ruleSettings;
+  try {
+    ruleSettings = resolveTournamentRules(data, { rulesMode: data.rulesMode ?? current.rules_mode ?? 'custom', rules: data.rules });
+  } catch (error) { throw new TournamentEditError((error as Error).message); }
   if (!Array.isArray(data.prizeDistribution) || data.prizeDistribution.length > 100) throw new TournamentEditError('Distribución de premios inválida.');
   const prizes = data.prizeDistribution.map(row => ({ place: text(row?.place, 'Puesto', 100, true), prize: text(row?.prize, 'Premio', 200, true) }));
   if (!Array.isArray(data.schedule) || data.schedule.length > 100) throw new TournamentEditError('Cronograma inválido.');
@@ -47,7 +50,9 @@ export async function editTournament(db: DbSession, id: string, input: unknown) 
     prize_pool: text(data.prizePool, 'Premio total', 100), prize_distribution: JSON.stringify(prizes), max_participants: data.maxParticipants,
     start_date: text(data.startDate, 'Fecha de inicio', 100, true), check_in_opens_at: text(data.checkInOpensAt, 'Apertura de check-in', 100),
     check_in_closes_at: text(data.checkInClosesAt, 'Cierre de check-in', 100), check_in_active: data.checkInActive,
-    description: text(data.description, 'Descripción', 50000), rules: JSON.stringify(rules), schedule: JSON.stringify(schedule), is_hidden: data.isHidden
+    description: text(data.description, 'Descripción', 50000), rules: JSON.stringify(ruleSettings.rules),
+    rules_mode: ruleSettings.rulesMode, rules_template_version: ruleSettings.rulesTemplateVersion,
+    schedule: JSON.stringify(schedule), is_hidden: data.isHidden
   };
   const participants = (await db.query('SELECT * FROM tournament_participants WHERE tournament_id=$1 ORDER BY seed', [current.id])).rows;
   const payments = (await db.query("SELECT * FROM tournament_payments WHERE tournament_id=$1 AND status IN ('creating','pending','review')", [current.id])).rows;

@@ -200,6 +200,9 @@ async function initializeDatabase() {
   `);
 
   await db.query('ALTER TABLE torneos ADD COLUMN IF NOT EXISTS entry_fee_amount INTEGER NOT NULL DEFAULT 0');
+  // Existing published rules remain custom until an administrator opts into a preset.
+  await db.query("ALTER TABLE torneos ADD COLUMN IF NOT EXISTS rules_mode VARCHAR(16) NOT NULL DEFAULT 'custom'");
+  await db.query('ALTER TABLE torneos ADD COLUMN IF NOT EXISTS rules_template_version VARCHAR(64)');
   await db.query(`CREATE TABLE IF NOT EXISTS tournament_payments (
     id VARCHAR(64) PRIMARY KEY,
     tournament_id VARCHAR(64) NOT NULL REFERENCES torneos(id),

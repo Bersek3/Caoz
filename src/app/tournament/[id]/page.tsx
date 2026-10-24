@@ -36,6 +36,7 @@ import { RegisterModal } from '../../../components/RegisterModal';
 import { TournamentCountdown } from '../../../components/TournamentCountdown';
 import { TournamentMatch } from '../../../types/tournament';
 import { formatTournamentDate } from '../../../lib/dateUtils';
+import { downloadTournamentRules } from '../../../components/TournamentRulesEditor';
 
 export default function TournamentDetailPage() {
   const params = useParams();
@@ -757,9 +758,10 @@ export default function TournamentDetailPage() {
         {activeTab === 'rules' && (
           <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
             <div className="p-6 rounded-2xl bg-[#191213] border border-slate-800 space-y-4">
-              <div className="flex items-center space-x-2 text-base font-bold text-white uppercase tracking-wider">
+              <div className="flex flex-wrap items-center gap-2 text-base font-bold text-white uppercase tracking-wider">
                 <Shield className="w-5 h-5 text-red-400" />
-                <span>Reglamento Competitivo Oficial</span>
+                <span>Bases y reglamento del torneo</span>
+                <button type="button" onClick={() => downloadTournamentRules(tournament.title, tournament.rules)} className="ml-auto rounded-lg border border-red-400/30 bg-red-400/10 px-3 py-2 text-xs font-semibold normal-case text-red-300 hover:bg-red-400/20">Descargar bases</button>
               </div>
 
               <div className="space-y-3">

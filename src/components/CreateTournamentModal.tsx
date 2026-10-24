@@ -5,12 +5,7 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   X, 
-  Gamepad2, 
   Trophy, 
-  Settings, 
-  Calendar, 
-  DollarSign, 
-  Users, 
   Check, 
   ChevronRight, 
   ChevronLeft,
@@ -18,7 +13,6 @@ import {
   ShieldCheck,
   AlertCircle,
   Upload,
-  Image as ImageIcon,
   CheckCircle2,
   Trash2,
   Clock
@@ -26,6 +20,8 @@ import {
 import { useTournament } from '../context/TournamentContext';
 import { GameId, TournamentFormat } from '../types/tournament';
 import { formatTournamentDate } from '../lib/dateUtils';
+import { TournamentRulesEditor } from './TournamentRulesEditor';
+import { DEFAULT_TOURNAMENT_RULES, resolveTournamentRules, type RulesMode } from '../lib/tournamentRules';
 import { prepareTournamentBanner } from '../lib/tournamentBanner';
 
 interface CreateTournamentModalProps {
@@ -50,6 +46,8 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
     return `${year}-${month}-${day}T${hours}:${minutes}`;
   };
 
+  const [rulesMode, setRulesMode] = useState<RulesMode>('automatic');
+  const [customRules, setCustomRules] = useState<string[]>([...DEFAULT_TOURNAMENT_RULES]);
   const [step, setStep] = useState<number>(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
@@ -66,10 +64,7 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
     entryFeeAmount: 0,
     prizePool: '$500 USD',
     startDate: '',
-    description: '',
-    rule1: 'Check-in obligatorio 30 minutos antes de comenzar.',
-    rule2: 'Subir captura de pantalla del resultado final a la sala de partida.',
-    rule3: 'Tolerancia de 10 minutos por partida antes de considerar abandono.'
+    description: ''
   });
 
   const [isPreparingBanner, setIsPreparingBanner] = useState(false);
@@ -132,7 +127,10 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
       return;
     }
 
-    const rules = [formData.rule1, formData.rule2, formData.rule3].filter(Boolean);
+    let ruleSettings;
+    try {
+      ruleSettings = resolveTournamentRules({ ...formData, startDate: startDateTime }, { rulesMode, rules: customRules.map(rule => rule.trim()).filter(Boolean) });
+    } catch (error) { setSubmitError((error as Error).message); return; }
 
     setIsSubmitting(true);
     try {
@@ -151,7 +149,7 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
         prizePool: formData.prizePool,
         startDate: startDateTime || formData.startDate,
         description: formData.description || `Torneo oficial de ${games.find(g => g.id === formData.gameId)?.name}. Compite por el título y premios.`,
-        rules: rules
+        ...ruleSettings
       });
 
       onClose();
@@ -364,7 +362,7 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
                   </label>
                   <select
                     value={formData.region}
-                    onChange={(e) => setFormData({ ...formData, region: e.target.value as any })}
+                    onChange={(e) => setFormData({ ...formData, region: e.target.value as typeof formData.region })}
                     className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white text-sm focus:outline-none focus:border-red-400"
                   >
                     <option value="LATAM">LATAM (Sur / Norte)</option>
@@ -492,14 +490,14 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       type="button"
-                      onClick={() => setFormData({ ...formData, teamType: 'team', teamSize: selectedGame.defaultTeamSize })}
+                      onClick={() => setFormData({ ...formData, teamType: 'team', teamSize: formData.gameId === 'fortnite' ? 2 : selectedGame.defaultTeamSize })}
                       className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all ${
                         formData.teamType === 'team'
                           ? 'bg-red-500/20 border-red-400 text-white'
                           : 'bg-slate-900 border-slate-700 text-slate-400'
                       }`}
                     >
-                      Por Equipos ({selectedGame.defaultTeamSize}v{selectedGame.defaultTeamSize})
+                      {formData.gameId === 'fortnite' ? 'Por equipos (2 a 4)' : `Por Equipos (${selectedGame.defaultTeamSize}v${selectedGame.defaultTeamSize})`}
                     </button>
                     <button
                       type="button"
@@ -515,6 +513,12 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
                   </div>
                 </div>
               </div>
+
+              {formData.gameId === 'fortnite' && formData.teamType === 'team' && <label className="block text-xs text-slate-300">Integrantes por equipo
+                <select value={formData.teamSize} onChange={event => setFormData({ ...formData, teamSize: Number(event.target.value) })} className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-900 p-3 text-sm text-white">
+                  <option value={2}>Dúos (2 jugadores)</option><option value={3}>Tríos (3 jugadores)</option><option value={4}>Escuadras (4 jugadores)</option>
+                </select>
+              </label>}
 
               <div className="p-4 rounded-xl bg-red-950/20 border border-red-500/20 flex items-start space-x-3 text-xs text-red-200">
                 <Sparkles className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
@@ -562,31 +566,7 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-2">
-                  Reglas Oficiales del Torneo
-                </label>
-                <div className="space-y-2">
-                  <input
-                    type="text"
-                    value={formData.rule1}
-                    onChange={(e) => setFormData({ ...formData, rule1: e.target.value })}
-                    className="w-full px-3.5 py-2 rounded-lg bg-slate-900 border border-slate-700 text-xs text-white"
-                  />
-                  <input
-                    type="text"
-                    value={formData.rule2}
-                    onChange={(e) => setFormData({ ...formData, rule2: e.target.value })}
-                    className="w-full px-3.5 py-2 rounded-lg bg-slate-900 border border-slate-700 text-xs text-white"
-                  />
-                  <input
-                    type="text"
-                    value={formData.rule3}
-                    onChange={(e) => setFormData({ ...formData, rule3: e.target.value })}
-                    className="w-full px-3.5 py-2 rounded-lg bg-slate-900 border border-slate-700 text-xs text-white"
-                  />
-                </div>
-              </div>
+              <TournamentRulesEditor config={{ ...formData, startDate: startDateTime }} mode={rulesMode} customRules={customRules} onChange={(mode,rules) => { setRulesMode(mode); setCustomRules(rules); }} />
 
               {/* Summary Card */}
               <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800 text-xs space-y-2">

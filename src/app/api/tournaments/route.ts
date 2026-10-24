@@ -4,6 +4,7 @@ import { verifyToken } from '@/lib/auth';
 import { POPULAR_GAMES } from '../../../data/mockData';
 import { getMatchViewer, ownsMatchParticipant } from '@/lib/matchAccess';
 import { MAX_TOURNAMENT_REQUEST_BYTES } from '@/lib/tournamentBanner';
+import { resolveTournamentRules } from '@/lib/tournamentRules';
 
 function safeParse(val: any, fallback: any = []) {
   if (!val) return fallback;
@@ -147,6 +148,8 @@ export async function GET(request: Request) {
         checkInActive: t.check_in_active,
         description: t.description,
         rules: safeParse(t.rules, ['Reglas oficiales del torneo']),
+        rulesMode: t.rules_mode || 'custom',
+        rulesTemplateVersion: t.rules_template_version,
         schedule: safeParse(t.schedule, [{ stage: 'Fase Principal', time: '20:00' }]),
         participants,
         rounds: winnersRounds,
@@ -212,19 +215,32 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'El cupo debe ser de 8, 16 o 32 participantes.' }, { status: 400 });
     }
 
+    const teamType = body.teamType ?? (game.defaultTeamSize === 1 ? 'solo' : 'team');
+    const teamSize = body.teamSize ?? (teamType === 'solo' ? 1 : game.id === 'fortnite' ? 2 : game.defaultTeamSize);
+    let ruleSettings;
+    try {
+      ruleSettings = resolveTournamentRules({
+        gameId: game.id, format: body.format || 'single_elimination', teamType,
+        teamSize, maxParticipants: maxP, region: body.region || 'LATAM',
+        title: body.title, startDate: body.startDate, entryFeeAmount, prizePool: body.prizePool || '$500 USD'
+      }, body);
+    } catch (error) {
+      return NextResponse.json({ error: (error as Error).message }, { status: 400 });
+    }
+
     await db.query(`
       INSERT INTO tournaments (
         id, title, slug, game_id, game_name, banner_url, thumbnail_url,
         organizer_id, organizer_name, organizer_avatar, organizer_verified, organizer_followers,
         status, format, team_type, team_size, region, entry_fee, prize_pool, prize_distribution,
         max_participants, start_date, check_in_opens_at, check_in_closes_at, check_in_active,
-        description, rules, schedule, entry_fee_amount
+        description, rules, schedule, entry_fee_amount, rules_mode, rules_template_version
       ) VALUES (
         $1, $2, $3, $4, $5, $6, $7,
         $8, $9, $10, $11, $12,
         $13, $14, $15, $16, $17, $18, $19, $20,
         $21, $22, $23, $24, $25,
-        $26, $27, $28, $29
+        $26, $27, $28, $29, $30, $31
       )
     `, [
       newId,
@@ -241,8 +257,8 @@ export async function POST(request: Request) {
       140,
       'registration_open',
       body.format || 'single_elimination',
-      body.teamType || 'team',
-      body.teamSize || game.defaultTeamSize,
+      teamType,
+      teamSize,
       body.region || 'LATAM',
       entryFeeAmount > 0 ? `${new Intl.NumberFormat('es-CL').format(entryFeeAmount)} CLP` : 'Gratis',
       body.prizePool || '$500 USD',
@@ -253,9 +269,11 @@ export async function POST(request: Request) {
       '10 min antes',
       false,
       body.description || 'Torneo organizado en CAOZ ARENA.',
-      JSON.stringify(body.rules || ['Deportividad', 'Subir capturas a la sala de match']),
+      JSON.stringify(ruleSettings.rules),
       JSON.stringify(body.schedule || [{ stage: 'Ronda 1', time: '20:00', format: 'BO3' }]),
-      entryFeeAmount
+      entryFeeAmount,
+      ruleSettings.rulesMode,
+      ruleSettings.rulesTemplateVersion
     ]);
 
     // Generate bracket rounds and matches in PostgreSQL
