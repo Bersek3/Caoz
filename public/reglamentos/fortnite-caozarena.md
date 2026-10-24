@@ -1,6 +1,6 @@
 # CAOZ Arena: bases y reglamento de Fortnite
 
-Versión CAOZ-FN-1.0.
+Versión CAOZ-FN-1.1.
 
 Documento general para Battle Royale con construcción. Las bases que rigen cada evento son las guardadas en su ficha, con su formato, modalidad, cupos, horarios, región y premios. Se pueden descargar desde la pestaña Reglamento.
 
@@ -8,7 +8,7 @@ La carga de este documento no crea tablas de clasificación ni gestiona lobbies 
 
 ## Bases de ejemplo: individual, eliminación simple, ocho cupos
 
-1. Bases de Fortnite · Eliminación simple · Individual (Solo). Versión CAOZ-FN-1.0. Evento: Torneo CAOZ Arena. La organización responsable es la indicada en la ficha del torneo.
+1. Bases de Fortnite · Eliminación simple · Individual (Solo). Versión CAOZ-FN-1.1. Evento: Torneo CAOZ Arena. La organización responsable es la indicada en la ficha del torneo.
 
 2. Convocatoria: 8 jugadores; una persona por inscripción. Región de convocatoria: LATAM. Inicio: el horario publicado en la ficha del torneo.
 
@@ -42,7 +42,7 @@ La carga de este documento no crea tablas de clasificación ni gestiona lobbies 
 
 17. Sanciones: según la gravedad y las pruebas, pueden consistir en advertencia, pérdida de una partida, pérdida de serie o exclusión. Se documentan la conducta y la decisión; una sanción individual no se extiende sin fundamento a rivales ajenos al hecho.
 
-18. Premios: el premio total anunciado es el publicado en la ficha. La distribución por puestos se consulta en la ficha y se fija antes del inicio. La organización informa por un canal privado la verificación y entrega; los datos de documentos y teléfono no se publican.
+18. Premios: el premio total anunciado es el publicado en la ficha. La distribución por puestos se consulta en la ficha. Los premios se fijan antes del inicio y corresponden al jugador que obtenga cada puesto. La organización informa por un canal privado la verificación y entrega; los datos de documentos y teléfono no se publican.
 
 19. Cambios: las bases se publican antes de abrir la competición. Los cambios posteriores se anuncian a todos los inscritos antes de aplicarse y no alteran retroactivamente resultados validados. Al inscribirse se aceptan estas bases y las condiciones de uso del juego.
 
@@ -52,7 +52,7 @@ La carga de este documento no crea tablas de clasificación ni gestiona lobbies 
 
 ### Bases de Fortnite · Eliminación simple · Individual (Solo)
 
-1. Bases de Fortnite · Eliminación simple · Individual (Solo). Versión CAOZ-FN-1.0. Evento: Torneo CAOZ Arena. La organización responsable es la indicada en la ficha del torneo.
+1. Bases de Fortnite · Eliminación simple · Individual (Solo). Versión CAOZ-FN-1.1. Evento: Torneo CAOZ Arena. La organización responsable es la indicada en la ficha del torneo.
 
 2. Convocatoria: 8 jugadores; una persona por inscripción. Región de convocatoria: LATAM. Inicio: el horario publicado en la ficha del torneo.
 
@@ -86,7 +86,7 @@ La carga de este documento no crea tablas de clasificación ni gestiona lobbies 
 
 17. Sanciones: según la gravedad y las pruebas, pueden consistir en advertencia, pérdida de una partida, pérdida de serie o exclusión. Se documentan la conducta y la decisión; una sanción individual no se extiende sin fundamento a rivales ajenos al hecho.
 
-18. Premios: el premio total anunciado es el publicado en la ficha. La distribución por puestos se consulta en la ficha y se fija antes del inicio. La organización informa por un canal privado la verificación y entrega; los datos de documentos y teléfono no se publican.
+18. Premios: el premio total anunciado es el publicado en la ficha. La distribución por puestos se consulta en la ficha. Los premios se fijan antes del inicio y corresponden al jugador que obtenga cada puesto. La organización informa por un canal privado la verificación y entrega; los datos de documentos y teléfono no se publican.
 
 19. Cambios: las bases se publican antes de abrir la competición. Los cambios posteriores se anuncian a todos los inscritos antes de aplicarse y no alteran retroactivamente resultados validados. Al inscribirse se aceptan estas bases y las condiciones de uso del juego.
 
@@ -94,7 +94,7 @@ La carga de este documento no crea tablas de clasificación ni gestiona lobbies 
 
 ### Bases de Fortnite · Eliminación simple · Dúos
 
-1. Bases de Fortnite · Eliminación simple · Dúos. Versión CAOZ-FN-1.0. Evento: Torneo CAOZ Arena. La organización responsable es la indicada en la ficha del torneo.
+1. Bases de Fortnite · Eliminación simple · Dúos. Versión CAOZ-FN-1.1. Evento: Torneo CAOZ Arena. La organización responsable es la indicada en la ficha del torneo.
 
 2. Convocatoria: 8 equipos; 2 titulares por equipo, 16 plazas de jugador en total. Región de convocatoria: LATAM. Inicio: el horario publicado en la ficha del torneo.
 
@@ -128,7 +128,7 @@ La carga de este documento no crea tablas de clasificación ni gestiona lobbies 
 
 17. Sanciones: según la gravedad y las pruebas, pueden consistir en advertencia, pérdida de una partida, pérdida de serie o exclusión. Se documentan la conducta y la decisión; una sanción individual no se extiende sin fundamento a rivales ajenos al hecho.
 
-18. Premios: el premio total anunciado es el publicado en la ficha. La distribución por puestos se consulta en la ficha y se fija antes del inicio. La organización informa por un canal privado la verificación y entrega; los datos de documentos y teléfono no se publican.
+18. Premios: el premio total anunciado es el publicado en la ficha. La distribución por puestos se consulta en la ficha. Los premios se fijan antes del inicio y corresponden al equipo que obtenga cada puesto. La organización informa por un canal privado la verificación y entrega; los datos de documentos y teléfono no se publican.
 
 19. Cambios: las bases se publican antes de abrir la competición. Los cambios posteriores se anuncian a todos los inscritos antes de aplicarse y no alteran retroactivamente resultados validados. Al inscribirse se aceptan estas bases y las condiciones de uso del juego.
 
@@ -136,7 +136,7 @@ La carga de este documento no crea tablas de clasificación ni gestiona lobbies 
 
 ### Bases de Fortnite · Eliminación simple · Tríos
 
-1. Bases de Fortnite · Eliminación simple · Tríos. Versión CAOZ-FN-1.0. Evento: Torneo CAOZ Arena. La organización responsable es la indicada en la ficha del torneo.
+1. Bases de Fortnite · Eliminación simple · Tríos. Versión CAOZ-FN-1.1. Evento: Torneo CAOZ Arena. La organización responsable es la indicada en la ficha del torneo.
 
 2. Convocatoria: 8 equipos; 3 titulares por equipo, 24 plazas de jugador en total. Región de convocatoria: LATAM. Inicio: el horario publicado en la ficha del torneo.
 
@@ -170,7 +170,7 @@ La carga de este documento no crea tablas de clasificación ni gestiona lobbies 
 
 17. Sanciones: según la gravedad y las pruebas, pueden consistir en advertencia, pérdida de una partida, pérdida de serie o exclusión. Se documentan la conducta y la decisión; una sanción individual no se extiende sin fundamento a rivales ajenos al hecho.
 
-18. Premios: el premio total anunciado es el publicado en la ficha. La distribución por puestos se consulta en la ficha y se fija antes del inicio. La organización informa por un canal privado la verificación y entrega; los datos de documentos y teléfono no se publican.
+18. Premios: el premio total anunciado es el publicado en la ficha. La distribución por puestos se consulta en la ficha. Los premios se fijan antes del inicio y corresponden al equipo que obtenga cada puesto. La organización informa por un canal privado la verificación y entrega; los datos de documentos y teléfono no se publican.
 
 19. Cambios: las bases se publican antes de abrir la competición. Los cambios posteriores se anuncian a todos los inscritos antes de aplicarse y no alteran retroactivamente resultados validados. Al inscribirse se aceptan estas bases y las condiciones de uso del juego.
 
@@ -178,7 +178,7 @@ La carga de este documento no crea tablas de clasificación ni gestiona lobbies 
 
 ### Bases de Fortnite · Eliminación simple · Escuadras
 
-1. Bases de Fortnite · Eliminación simple · Escuadras. Versión CAOZ-FN-1.0. Evento: Torneo CAOZ Arena. La organización responsable es la indicada en la ficha del torneo.
+1. Bases de Fortnite · Eliminación simple · Escuadras. Versión CAOZ-FN-1.1. Evento: Torneo CAOZ Arena. La organización responsable es la indicada en la ficha del torneo.
 
 2. Convocatoria: 8 equipos; 4 titulares por equipo, 32 plazas de jugador en total. Región de convocatoria: LATAM. Inicio: el horario publicado en la ficha del torneo.
 
@@ -212,7 +212,7 @@ La carga de este documento no crea tablas de clasificación ni gestiona lobbies 
 
 17. Sanciones: según la gravedad y las pruebas, pueden consistir en advertencia, pérdida de una partida, pérdida de serie o exclusión. Se documentan la conducta y la decisión; una sanción individual no se extiende sin fundamento a rivales ajenos al hecho.
 
-18. Premios: el premio total anunciado es el publicado en la ficha. La distribución por puestos se consulta en la ficha y se fija antes del inicio. La organización informa por un canal privado la verificación y entrega; los datos de documentos y teléfono no se publican.
+18. Premios: el premio total anunciado es el publicado en la ficha. La distribución por puestos se consulta en la ficha. Los premios se fijan antes del inicio y corresponden al equipo que obtenga cada puesto. La organización informa por un canal privado la verificación y entrega; los datos de documentos y teléfono no se publican.
 
 19. Cambios: las bases se publican antes de abrir la competición. Los cambios posteriores se anuncian a todos los inscritos antes de aplicarse y no alteran retroactivamente resultados validados. Al inscribirse se aceptan estas bases y las condiciones de uso del juego.
 
@@ -220,7 +220,7 @@ La carga de este documento no crea tablas de clasificación ni gestiona lobbies 
 
 ### Bases de Fortnite · Doble eliminación · Individual (Solo)
 
-1. Bases de Fortnite · Doble eliminación · Individual (Solo). Versión CAOZ-FN-1.0. Evento: Torneo CAOZ Arena. La organización responsable es la indicada en la ficha del torneo.
+1. Bases de Fortnite · Doble eliminación · Individual (Solo). Versión CAOZ-FN-1.1. Evento: Torneo CAOZ Arena. La organización responsable es la indicada en la ficha del torneo.
 
 2. Convocatoria: 8 jugadores; una persona por inscripción. Región de convocatoria: LATAM. Inicio: el horario publicado en la ficha del torneo.
 
@@ -254,7 +254,7 @@ La carga de este documento no crea tablas de clasificación ni gestiona lobbies 
 
 17. Sanciones: según la gravedad y las pruebas, pueden consistir en advertencia, pérdida de una partida, pérdida de serie o exclusión. Se documentan la conducta y la decisión; una sanción individual no se extiende sin fundamento a rivales ajenos al hecho.
 
-18. Premios: el premio total anunciado es el publicado en la ficha. La distribución por puestos se consulta en la ficha y se fija antes del inicio. La organización informa por un canal privado la verificación y entrega; los datos de documentos y teléfono no se publican.
+18. Premios: el premio total anunciado es el publicado en la ficha. La distribución por puestos se consulta en la ficha. Los premios se fijan antes del inicio y corresponden al jugador que obtenga cada puesto. La organización informa por un canal privado la verificación y entrega; los datos de documentos y teléfono no se publican.
 
 19. Cambios: las bases se publican antes de abrir la competición. Los cambios posteriores se anuncian a todos los inscritos antes de aplicarse y no alteran retroactivamente resultados validados. Al inscribirse se aceptan estas bases y las condiciones de uso del juego.
 
@@ -262,7 +262,7 @@ La carga de este documento no crea tablas de clasificación ni gestiona lobbies 
 
 ### Bases de Fortnite · Doble eliminación · Dúos
 
-1. Bases de Fortnite · Doble eliminación · Dúos. Versión CAOZ-FN-1.0. Evento: Torneo CAOZ Arena. La organización responsable es la indicada en la ficha del torneo.
+1. Bases de Fortnite · Doble eliminación · Dúos. Versión CAOZ-FN-1.1. Evento: Torneo CAOZ Arena. La organización responsable es la indicada en la ficha del torneo.
 
 2. Convocatoria: 8 equipos; 2 titulares por equipo, 16 plazas de jugador en total. Región de convocatoria: LATAM. Inicio: el horario publicado en la ficha del torneo.
 
@@ -296,7 +296,7 @@ La carga de este documento no crea tablas de clasificación ni gestiona lobbies 
 
 17. Sanciones: según la gravedad y las pruebas, pueden consistir en advertencia, pérdida de una partida, pérdida de serie o exclusión. Se documentan la conducta y la decisión; una sanción individual no se extiende sin fundamento a rivales ajenos al hecho.
 
-18. Premios: el premio total anunciado es el publicado en la ficha. La distribución por puestos se consulta en la ficha y se fija antes del inicio. La organización informa por un canal privado la verificación y entrega; los datos de documentos y teléfono no se publican.
+18. Premios: el premio total anunciado es el publicado en la ficha. La distribución por puestos se consulta en la ficha. Los premios se fijan antes del inicio y corresponden al equipo que obtenga cada puesto. La organización informa por un canal privado la verificación y entrega; los datos de documentos y teléfono no se publican.
 
 19. Cambios: las bases se publican antes de abrir la competición. Los cambios posteriores se anuncian a todos los inscritos antes de aplicarse y no alteran retroactivamente resultados validados. Al inscribirse se aceptan estas bases y las condiciones de uso del juego.
 
@@ -304,7 +304,7 @@ La carga de este documento no crea tablas de clasificación ni gestiona lobbies 
 
 ### Bases de Fortnite · Doble eliminación · Tríos
 
-1. Bases de Fortnite · Doble eliminación · Tríos. Versión CAOZ-FN-1.0. Evento: Torneo CAOZ Arena. La organización responsable es la indicada en la ficha del torneo.
+1. Bases de Fortnite · Doble eliminación · Tríos. Versión CAOZ-FN-1.1. Evento: Torneo CAOZ Arena. La organización responsable es la indicada en la ficha del torneo.
 
 2. Convocatoria: 8 equipos; 3 titulares por equipo, 24 plazas de jugador en total. Región de convocatoria: LATAM. Inicio: el horario publicado en la ficha del torneo.
 
@@ -338,7 +338,7 @@ La carga de este documento no crea tablas de clasificación ni gestiona lobbies 
 
 17. Sanciones: según la gravedad y las pruebas, pueden consistir en advertencia, pérdida de una partida, pérdida de serie o exclusión. Se documentan la conducta y la decisión; una sanción individual no se extiende sin fundamento a rivales ajenos al hecho.
 
-18. Premios: el premio total anunciado es el publicado en la ficha. La distribución por puestos se consulta en la ficha y se fija antes del inicio. La organización informa por un canal privado la verificación y entrega; los datos de documentos y teléfono no se publican.
+18. Premios: el premio total anunciado es el publicado en la ficha. La distribución por puestos se consulta en la ficha. Los premios se fijan antes del inicio y corresponden al equipo que obtenga cada puesto. La organización informa por un canal privado la verificación y entrega; los datos de documentos y teléfono no se publican.
 
 19. Cambios: las bases se publican antes de abrir la competición. Los cambios posteriores se anuncian a todos los inscritos antes de aplicarse y no alteran retroactivamente resultados validados. Al inscribirse se aceptan estas bases y las condiciones de uso del juego.
 
@@ -346,7 +346,7 @@ La carga de este documento no crea tablas de clasificación ni gestiona lobbies 
 
 ### Bases de Fortnite · Doble eliminación · Escuadras
 
-1. Bases de Fortnite · Doble eliminación · Escuadras. Versión CAOZ-FN-1.0. Evento: Torneo CAOZ Arena. La organización responsable es la indicada en la ficha del torneo.
+1. Bases de Fortnite · Doble eliminación · Escuadras. Versión CAOZ-FN-1.1. Evento: Torneo CAOZ Arena. La organización responsable es la indicada en la ficha del torneo.
 
 2. Convocatoria: 8 equipos; 4 titulares por equipo, 32 plazas de jugador en total. Región de convocatoria: LATAM. Inicio: el horario publicado en la ficha del torneo.
 
@@ -380,7 +380,7 @@ La carga de este documento no crea tablas de clasificación ni gestiona lobbies 
 
 17. Sanciones: según la gravedad y las pruebas, pueden consistir en advertencia, pérdida de una partida, pérdida de serie o exclusión. Se documentan la conducta y la decisión; una sanción individual no se extiende sin fundamento a rivales ajenos al hecho.
 
-18. Premios: el premio total anunciado es el publicado en la ficha. La distribución por puestos se consulta en la ficha y se fija antes del inicio. La organización informa por un canal privado la verificación y entrega; los datos de documentos y teléfono no se publican.
+18. Premios: el premio total anunciado es el publicado en la ficha. La distribución por puestos se consulta en la ficha. Los premios se fijan antes del inicio y corresponden al equipo que obtenga cada puesto. La organización informa por un canal privado la verificación y entrega; los datos de documentos y teléfono no se publican.
 
 19. Cambios: las bases se publican antes de abrir la competición. Los cambios posteriores se anuncian a todos los inscritos antes de aplicarse y no alteran retroactivamente resultados validados. Al inscribirse se aceptan estas bases y las condiciones de uso del juego.
 
@@ -388,7 +388,7 @@ La carga de este documento no crea tablas de clasificación ni gestiona lobbies 
 
 ### Bases de Fortnite · Round Robin · Individual (Solo)
 
-1. Bases de Fortnite · Round Robin · Individual (Solo). Versión CAOZ-FN-1.0. Evento: Torneo CAOZ Arena. La organización responsable es la indicada en la ficha del torneo.
+1. Bases de Fortnite · Round Robin · Individual (Solo). Versión CAOZ-FN-1.1. Evento: Torneo CAOZ Arena. La organización responsable es la indicada en la ficha del torneo.
 
 2. Convocatoria: 8 jugadores; una persona por inscripción. Región de convocatoria: LATAM. Inicio: el horario publicado en la ficha del torneo.
 
@@ -424,7 +424,7 @@ La carga de este documento no crea tablas de clasificación ni gestiona lobbies 
 
 18. Sanciones: según la gravedad y las pruebas, pueden consistir en advertencia, pérdida de una partida, pérdida de serie o exclusión. Se documentan la conducta y la decisión; una sanción individual no se extiende sin fundamento a rivales ajenos al hecho.
 
-19. Premios: el premio total anunciado es el publicado en la ficha. La distribución por puestos se consulta en la ficha y se fija antes del inicio. La organización informa por un canal privado la verificación y entrega; los datos de documentos y teléfono no se publican.
+19. Premios: el premio total anunciado es el publicado en la ficha. La distribución por puestos se consulta en la ficha. Los premios se fijan antes del inicio y corresponden al jugador que obtenga cada puesto. La organización informa por un canal privado la verificación y entrega; los datos de documentos y teléfono no se publican.
 
 20. Cambios: las bases se publican antes de abrir la competición. Los cambios posteriores se anuncian a todos los inscritos antes de aplicarse y no alteran retroactivamente resultados validados. Al inscribirse se aceptan estas bases y las condiciones de uso del juego.
 
@@ -432,7 +432,7 @@ La carga de este documento no crea tablas de clasificación ni gestiona lobbies 
 
 ### Bases de Fortnite · Round Robin · Dúos
 
-1. Bases de Fortnite · Round Robin · Dúos. Versión CAOZ-FN-1.0. Evento: Torneo CAOZ Arena. La organización responsable es la indicada en la ficha del torneo.
+1. Bases de Fortnite · Round Robin · Dúos. Versión CAOZ-FN-1.1. Evento: Torneo CAOZ Arena. La organización responsable es la indicada en la ficha del torneo.
 
 2. Convocatoria: 8 equipos; 2 titulares por equipo, 16 plazas de jugador en total. Región de convocatoria: LATAM. Inicio: el horario publicado en la ficha del torneo.
 
@@ -468,7 +468,7 @@ La carga de este documento no crea tablas de clasificación ni gestiona lobbies 
 
 18. Sanciones: según la gravedad y las pruebas, pueden consistir en advertencia, pérdida de una partida, pérdida de serie o exclusión. Se documentan la conducta y la decisión; una sanción individual no se extiende sin fundamento a rivales ajenos al hecho.
 
-19. Premios: el premio total anunciado es el publicado en la ficha. La distribución por puestos se consulta en la ficha y se fija antes del inicio. La organización informa por un canal privado la verificación y entrega; los datos de documentos y teléfono no se publican.
+19. Premios: el premio total anunciado es el publicado en la ficha. La distribución por puestos se consulta en la ficha. Los premios se fijan antes del inicio y corresponden al equipo que obtenga cada puesto. La organización informa por un canal privado la verificación y entrega; los datos de documentos y teléfono no se publican.
 
 20. Cambios: las bases se publican antes de abrir la competición. Los cambios posteriores se anuncian a todos los inscritos antes de aplicarse y no alteran retroactivamente resultados validados. Al inscribirse se aceptan estas bases y las condiciones de uso del juego.
 
@@ -476,7 +476,7 @@ La carga de este documento no crea tablas de clasificación ni gestiona lobbies 
 
 ### Bases de Fortnite · Round Robin · Tríos
 
-1. Bases de Fortnite · Round Robin · Tríos. Versión CAOZ-FN-1.0. Evento: Torneo CAOZ Arena. La organización responsable es la indicada en la ficha del torneo.
+1. Bases de Fortnite · Round Robin · Tríos. Versión CAOZ-FN-1.1. Evento: Torneo CAOZ Arena. La organización responsable es la indicada en la ficha del torneo.
 
 2. Convocatoria: 8 equipos; 3 titulares por equipo, 24 plazas de jugador en total. Región de convocatoria: LATAM. Inicio: el horario publicado en la ficha del torneo.
 
@@ -512,7 +512,7 @@ La carga de este documento no crea tablas de clasificación ni gestiona lobbies 
 
 18. Sanciones: según la gravedad y las pruebas, pueden consistir en advertencia, pérdida de una partida, pérdida de serie o exclusión. Se documentan la conducta y la decisión; una sanción individual no se extiende sin fundamento a rivales ajenos al hecho.
 
-19. Premios: el premio total anunciado es el publicado en la ficha. La distribución por puestos se consulta en la ficha y se fija antes del inicio. La organización informa por un canal privado la verificación y entrega; los datos de documentos y teléfono no se publican.
+19. Premios: el premio total anunciado es el publicado en la ficha. La distribución por puestos se consulta en la ficha. Los premios se fijan antes del inicio y corresponden al equipo que obtenga cada puesto. La organización informa por un canal privado la verificación y entrega; los datos de documentos y teléfono no se publican.
 
 20. Cambios: las bases se publican antes de abrir la competición. Los cambios posteriores se anuncian a todos los inscritos antes de aplicarse y no alteran retroactivamente resultados validados. Al inscribirse se aceptan estas bases y las condiciones de uso del juego.
 
@@ -520,7 +520,7 @@ La carga de este documento no crea tablas de clasificación ni gestiona lobbies 
 
 ### Bases de Fortnite · Round Robin · Escuadras
 
-1. Bases de Fortnite · Round Robin · Escuadras. Versión CAOZ-FN-1.0. Evento: Torneo CAOZ Arena. La organización responsable es la indicada en la ficha del torneo.
+1. Bases de Fortnite · Round Robin · Escuadras. Versión CAOZ-FN-1.1. Evento: Torneo CAOZ Arena. La organización responsable es la indicada en la ficha del torneo.
 
 2. Convocatoria: 8 equipos; 4 titulares por equipo, 32 plazas de jugador en total. Región de convocatoria: LATAM. Inicio: el horario publicado en la ficha del torneo.
 
@@ -556,7 +556,7 @@ La carga de este documento no crea tablas de clasificación ni gestiona lobbies 
 
 18. Sanciones: según la gravedad y las pruebas, pueden consistir en advertencia, pérdida de una partida, pérdida de serie o exclusión. Se documentan la conducta y la decisión; una sanción individual no se extiende sin fundamento a rivales ajenos al hecho.
 
-19. Premios: el premio total anunciado es el publicado en la ficha. La distribución por puestos se consulta en la ficha y se fija antes del inicio. La organización informa por un canal privado la verificación y entrega; los datos de documentos y teléfono no se publican.
+19. Premios: el premio total anunciado es el publicado en la ficha. La distribución por puestos se consulta en la ficha. Los premios se fijan antes del inicio y corresponden al equipo que obtenga cada puesto. La organización informa por un canal privado la verificación y entrega; los datos de documentos y teléfono no se publican.
 
 20. Cambios: las bases se publican antes de abrir la competición. Los cambios posteriores se anuncian a todos los inscritos antes de aplicarse y no alteran retroactivamente resultados validados. Al inscribirse se aceptan estas bases y las condiciones de uso del juego.
 
@@ -564,7 +564,7 @@ La carga de este documento no crea tablas de clasificación ni gestiona lobbies 
 
 ### Bases de Fortnite · Sistema suizo · Individual (Solo)
 
-1. Bases de Fortnite · Sistema suizo · Individual (Solo). Versión CAOZ-FN-1.0. Evento: Torneo CAOZ Arena. La organización responsable es la indicada en la ficha del torneo.
+1. Bases de Fortnite · Sistema suizo · Individual (Solo). Versión CAOZ-FN-1.1. Evento: Torneo CAOZ Arena. La organización responsable es la indicada en la ficha del torneo.
 
 2. Convocatoria: 8 jugadores; una persona por inscripción. Región de convocatoria: LATAM. Inicio: el horario publicado en la ficha del torneo.
 
@@ -600,7 +600,7 @@ La carga de este documento no crea tablas de clasificación ni gestiona lobbies 
 
 18. Sanciones: según la gravedad y las pruebas, pueden consistir en advertencia, pérdida de una partida, pérdida de serie o exclusión. Se documentan la conducta y la decisión; una sanción individual no se extiende sin fundamento a rivales ajenos al hecho.
 
-19. Premios: el premio total anunciado es el publicado en la ficha. La distribución por puestos se consulta en la ficha y se fija antes del inicio. La organización informa por un canal privado la verificación y entrega; los datos de documentos y teléfono no se publican.
+19. Premios: el premio total anunciado es el publicado en la ficha. La distribución por puestos se consulta en la ficha. Los premios se fijan antes del inicio y corresponden al jugador que obtenga cada puesto. La organización informa por un canal privado la verificación y entrega; los datos de documentos y teléfono no se publican.
 
 20. Cambios: las bases se publican antes de abrir la competición. Los cambios posteriores se anuncian a todos los inscritos antes de aplicarse y no alteran retroactivamente resultados validados. Al inscribirse se aceptan estas bases y las condiciones de uso del juego.
 
@@ -608,7 +608,7 @@ La carga de este documento no crea tablas de clasificación ni gestiona lobbies 
 
 ### Bases de Fortnite · Sistema suizo · Dúos
 
-1. Bases de Fortnite · Sistema suizo · Dúos. Versión CAOZ-FN-1.0. Evento: Torneo CAOZ Arena. La organización responsable es la indicada en la ficha del torneo.
+1. Bases de Fortnite · Sistema suizo · Dúos. Versión CAOZ-FN-1.1. Evento: Torneo CAOZ Arena. La organización responsable es la indicada en la ficha del torneo.
 
 2. Convocatoria: 8 equipos; 2 titulares por equipo, 16 plazas de jugador en total. Región de convocatoria: LATAM. Inicio: el horario publicado en la ficha del torneo.
 
@@ -644,7 +644,7 @@ La carga de este documento no crea tablas de clasificación ni gestiona lobbies 
 
 18. Sanciones: según la gravedad y las pruebas, pueden consistir en advertencia, pérdida de una partida, pérdida de serie o exclusión. Se documentan la conducta y la decisión; una sanción individual no se extiende sin fundamento a rivales ajenos al hecho.
 
-19. Premios: el premio total anunciado es el publicado en la ficha. La distribución por puestos se consulta en la ficha y se fija antes del inicio. La organización informa por un canal privado la verificación y entrega; los datos de documentos y teléfono no se publican.
+19. Premios: el premio total anunciado es el publicado en la ficha. La distribución por puestos se consulta en la ficha. Los premios se fijan antes del inicio y corresponden al equipo que obtenga cada puesto. La organización informa por un canal privado la verificación y entrega; los datos de documentos y teléfono no se publican.
 
 20. Cambios: las bases se publican antes de abrir la competición. Los cambios posteriores se anuncian a todos los inscritos antes de aplicarse y no alteran retroactivamente resultados validados. Al inscribirse se aceptan estas bases y las condiciones de uso del juego.
 
@@ -652,7 +652,7 @@ La carga de este documento no crea tablas de clasificación ni gestiona lobbies 
 
 ### Bases de Fortnite · Sistema suizo · Tríos
 
-1. Bases de Fortnite · Sistema suizo · Tríos. Versión CAOZ-FN-1.0. Evento: Torneo CAOZ Arena. La organización responsable es la indicada en la ficha del torneo.
+1. Bases de Fortnite · Sistema suizo · Tríos. Versión CAOZ-FN-1.1. Evento: Torneo CAOZ Arena. La organización responsable es la indicada en la ficha del torneo.
 
 2. Convocatoria: 8 equipos; 3 titulares por equipo, 24 plazas de jugador en total. Región de convocatoria: LATAM. Inicio: el horario publicado en la ficha del torneo.
 
@@ -688,7 +688,7 @@ La carga de este documento no crea tablas de clasificación ni gestiona lobbies 
 
 18. Sanciones: según la gravedad y las pruebas, pueden consistir en advertencia, pérdida de una partida, pérdida de serie o exclusión. Se documentan la conducta y la decisión; una sanción individual no se extiende sin fundamento a rivales ajenos al hecho.
 
-19. Premios: el premio total anunciado es el publicado en la ficha. La distribución por puestos se consulta en la ficha y se fija antes del inicio. La organización informa por un canal privado la verificación y entrega; los datos de documentos y teléfono no se publican.
+19. Premios: el premio total anunciado es el publicado en la ficha. La distribución por puestos se consulta en la ficha. Los premios se fijan antes del inicio y corresponden al equipo que obtenga cada puesto. La organización informa por un canal privado la verificación y entrega; los datos de documentos y teléfono no se publican.
 
 20. Cambios: las bases se publican antes de abrir la competición. Los cambios posteriores se anuncian a todos los inscritos antes de aplicarse y no alteran retroactivamente resultados validados. Al inscribirse se aceptan estas bases y las condiciones de uso del juego.
 
@@ -696,7 +696,7 @@ La carga de este documento no crea tablas de clasificación ni gestiona lobbies 
 
 ### Bases de Fortnite · Sistema suizo · Escuadras
 
-1. Bases de Fortnite · Sistema suizo · Escuadras. Versión CAOZ-FN-1.0. Evento: Torneo CAOZ Arena. La organización responsable es la indicada en la ficha del torneo.
+1. Bases de Fortnite · Sistema suizo · Escuadras. Versión CAOZ-FN-1.1. Evento: Torneo CAOZ Arena. La organización responsable es la indicada en la ficha del torneo.
 
 2. Convocatoria: 8 equipos; 4 titulares por equipo, 32 plazas de jugador en total. Región de convocatoria: LATAM. Inicio: el horario publicado en la ficha del torneo.
 
@@ -732,7 +732,7 @@ La carga de este documento no crea tablas de clasificación ni gestiona lobbies 
 
 18. Sanciones: según la gravedad y las pruebas, pueden consistir en advertencia, pérdida de una partida, pérdida de serie o exclusión. Se documentan la conducta y la decisión; una sanción individual no se extiende sin fundamento a rivales ajenos al hecho.
 
-19. Premios: el premio total anunciado es el publicado en la ficha. La distribución por puestos se consulta en la ficha y se fija antes del inicio. La organización informa por un canal privado la verificación y entrega; los datos de documentos y teléfono no se publican.
+19. Premios: el premio total anunciado es el publicado en la ficha. La distribución por puestos se consulta en la ficha. Los premios se fijan antes del inicio y corresponden al equipo que obtenga cada puesto. La organización informa por un canal privado la verificación y entrega; los datos de documentos y teléfono no se publican.
 
 20. Cambios: las bases se publican antes de abrir la competición. Los cambios posteriores se anuncian a todos los inscritos antes de aplicarse y no alteran retroactivamente resultados validados. Al inscribirse se aceptan estas bases y las condiciones de uso del juego.
 

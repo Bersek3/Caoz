@@ -5,6 +5,7 @@ import { POPULAR_GAMES } from '../../../data/mockData';
 import { getMatchViewer, ownsMatchParticipant } from '@/lib/matchAccess';
 import { MAX_TOURNAMENT_REQUEST_BYTES } from '@/lib/tournamentBanner';
 import { resolveTournamentRules } from '@/lib/tournamentRules';
+import { validateTournamentPrizes } from '@/lib/tournamentPrizes';
 
 function safeParse(val: any, fallback: any = []) {
   if (!val) return fallback;
@@ -217,12 +218,14 @@ export async function POST(request: Request) {
 
     const teamType = body.teamType ?? (game.defaultTeamSize === 1 ? 'solo' : 'team');
     const teamSize = body.teamSize ?? (teamType === 'solo' ? 1 : game.id === 'fortnite' ? 2 : game.defaultTeamSize);
+    let prizeSettings;
     let ruleSettings;
     try {
+      prizeSettings = validateTournamentPrizes(body.prizePool, body.prizeDistribution, maxP);
       ruleSettings = resolveTournamentRules({
         gameId: game.id, format: body.format || 'single_elimination', teamType,
         teamSize, maxParticipants: maxP, region: body.region || 'LATAM',
-        title: body.title, startDate: body.startDate, entryFeeAmount, prizePool: body.prizePool || '$500 USD'
+        title: body.title, startDate: body.startDate, entryFeeAmount, ...prizeSettings
       }, body);
     } catch (error) {
       return NextResponse.json({ error: (error as Error).message }, { status: 400 });
@@ -261,8 +264,8 @@ export async function POST(request: Request) {
       teamSize,
       body.region || 'LATAM',
       entryFeeAmount > 0 ? `${new Intl.NumberFormat('es-CL').format(entryFeeAmount)} CLP` : 'Gratis',
-      body.prizePool || '$500 USD',
-      JSON.stringify(body.prizeDistribution || [{ place: '1er Lugar', prize: '$350 USD' }, { place: '2do Lugar', prize: '$150 USD' }]),
+      prizeSettings.prizePool,
+      JSON.stringify(prizeSettings.prizeDistribution),
       maxP,
       body.startDate || 'Próximo Sábado 20:00 GMT-3',
       '45 min antes',

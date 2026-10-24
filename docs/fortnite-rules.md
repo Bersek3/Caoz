@@ -1,6 +1,6 @@
 # Bases automáticas de Fortnite
 
-La fuente de las plantillas es `src/lib/tournamentRules.ts`, versión `CAOZ-FN-1.0`.
+La fuente de las plantillas es `src/lib/tournamentRules.ts`, versión `CAOZ-FN-1.1`.
 El archivo público `public/reglamentos/fortnite-caozarena.md` se genera con
 `node scripts/generate-fortnite-rules.cjs`. Incluye ejemplos completos para los
 cuatro formatos y las modalidades individual, dúos, tríos y escuadras.
@@ -38,6 +38,8 @@ a su evento, incluidos avisos y textos exigidos por la licencia.
 - Personalizar copia las bases actuales como punto de partida. Volver a automático
   conserva el borrador personalizado, pero publica la plantilla calculada.
 - La descarga de un torneo usa las bases guardadas, no las plantillas actuales.
+- La versión 1.1 incluye la distribución configurada por puesto en el texto de
+  premios, además del premio total, y aclara si se entrega a un jugador o equipo.
 
 ## Alcance del motor actual
 

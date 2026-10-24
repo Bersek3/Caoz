@@ -1,6 +1,6 @@
 import type { GameId, TournamentFormat } from '../types/tournament';
 
-export const RULES_TEMPLATE_VERSION = 'CAOZ-FN-1.0';
+export const RULES_TEMPLATE_VERSION = 'CAOZ-FN-1.1';
 export type RulesMode = 'automatic' | 'custom';
 export interface RulesConfiguration {
   gameId: GameId;
@@ -13,6 +13,7 @@ export interface RulesConfiguration {
   startDate?: string;
   entryFeeAmount?: number;
   prizePool?: string;
+  prizeDistribution?: { place: string; prize: string }[];
   checkInOpensAt?: string;
   checkInClosesAt?: string;
 }
@@ -78,7 +79,7 @@ export function getTournamentRulesPreset(config: RulesConfiguration) {
     'Juego limpio: se prohíben trampas, automatizaciones que otorguen ventaja, explotación deliberada de fallos, suplantación, manipulación de resultados, alianzas entre rivales y acoso. No se puede obtener información de la transmisión de un rival para usarla en la partida.',
     'Reclamaciones: se presentan en la sala mediante la solicitud de árbitro dentro de los quince minutos siguientes a la publicación del resultado, con identificación de la partida y pruebas. La organización comunica su resolución y permite aportar antecedentes antes de aplicar una sanción.',
     'Sanciones: según la gravedad y las pruebas, pueden consistir en advertencia, pérdida de una partida, pérdida de serie o exclusión. Se documentan la conducta y la decisión; una sanción individual no se extiende sin fundamento a rivales ajenos al hecho.',
-    `Premios: el premio total anunciado es ${config.prizePool?.trim() || 'el indicado en la ficha'}. La distribución por puestos se consulta en la ficha y se fija antes del inicio. La organización informa por un canal privado la verificación y entrega; los datos de documentos y teléfono no se publican.`,
+    `Premios: el premio total anunciado es ${config.prizePool?.trim() || 'el indicado en la ficha'}. ${config.prizeDistribution?.length ? `Distribución: ${config.prizeDistribution.map(row => `${row.place}: ${row.prize.trim() || 'por definir'}`).join('; ')}.` : 'La distribución por puestos se consulta en la ficha.'} Los premios se fijan antes del inicio y corresponden al ${solo ? 'jugador' : 'equipo'} que obtenga cada puesto. La organización informa por un canal privado la verificación y entrega; los datos de documentos y teléfono no se publican.`,
     'Cambios: las bases se publican antes de abrir la competición. Los cambios posteriores se anuncian a todos los inscritos antes de aplicarse y no alteran retroactivamente resultados validados. Al inscribirse se aceptan estas bases y las condiciones de uso del juego.',
     'Independencia: este evento no está patrocinado, respaldado ni administrado por Epic Games. La información de inscripción se entrega a la organización del evento y no a Epic Games.'
   ] };

@@ -20,6 +20,8 @@ import {
 import { useTournament } from '../context/TournamentContext';
 import { GameId, TournamentFormat } from '../types/tournament';
 import { formatTournamentDate } from '../lib/dateUtils';
+import { TournamentPrizesEditor } from './TournamentPrizesEditor';
+import { prizePlace, validateTournamentPrizes, type TournamentPrize } from '../lib/tournamentPrizes';
 import { TournamentRulesEditor } from './TournamentRulesEditor';
 import { DEFAULT_TOURNAMENT_RULES, resolveTournamentRules, type RulesMode } from '../lib/tournamentRules';
 import { prepareTournamentBanner } from '../lib/tournamentBanner';
@@ -48,6 +50,8 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
 
   const [rulesMode, setRulesMode] = useState<RulesMode>('automatic');
   const [customRules, setCustomRules] = useState<string[]>([...DEFAULT_TOURNAMENT_RULES]);
+  const [prizeMode, setPrizeMode] = useState<'single' | 'multiple'>('single');
+  const [rankedPrizes, setRankedPrizes] = useState<TournamentPrize[]>([{ place: prizePlace(0),prize: '' },{ place: prizePlace(1),prize: '' }]);
   const [step, setStep] = useState<number>(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
@@ -62,10 +66,12 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
     region: 'LATAM' as 'LATAM' | 'NA' | 'EU' | 'GLOBAL',
     entryFee: 'Gratis',
     entryFeeAmount: 0,
-    prizePool: '$500 USD',
+    prizePool: '',
     startDate: '',
     description: ''
   });
+
+  const prizeDistribution = prizeMode === 'single' ? [{ place: prizePlace(0),prize: formData.prizePool }] : rankedPrizes;
 
   const [isPreparingBanner, setIsPreparingBanner] = useState(false);
   const bannerVersion = React.useRef(0);
@@ -127,9 +133,11 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
       return;
     }
 
+    let prizeSettings;
     let ruleSettings;
     try {
-      ruleSettings = resolveTournamentRules({ ...formData, startDate: startDateTime }, { rulesMode, rules: customRules.map(rule => rule.trim()).filter(Boolean) });
+      prizeSettings = validateTournamentPrizes(formData.prizePool, prizeDistribution, formData.maxParticipants);
+      ruleSettings = resolveTournamentRules({ ...formData, ...prizeSettings, startDate: startDateTime }, { rulesMode, rules: customRules.map(rule => rule.trim()).filter(Boolean) });
     } catch (error) { setSubmitError((error as Error).message); return; }
 
     setIsSubmitting(true);
@@ -146,7 +154,7 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
         region: formData.region,
         entryFee: formData.entryFee,
         entryFeeAmount: formData.entryFeeAmount,
-        prizePool: formData.prizePool,
+        ...prizeSettings,
         startDate: startDateTime || formData.startDate,
         description: formData.description || `Torneo oficial de ${games.find(g => g.id === formData.gameId)?.name}. Compite por el título y premios.`,
         ...ruleSettings
@@ -532,22 +540,8 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
           {/* STEP 3 */}
           {step === 3 && (
             <div className="space-y-5 animate-fade-in">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">
-                    Pozo de Premios (Prize Pool)
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      placeholder="Ej: $1,000 USD o Riot Points"
-                      value={formData.prizePool}
-                      onChange={(e) => setFormData({ ...formData, prizePool: e.target.value })}
-                      className="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white text-sm focus:outline-none focus:border-red-400"
-                    />
-                  </div>
-                </div>
-
+              <TournamentPrizesEditor mode={prizeMode} onModeChange={setPrizeMode} total={formData.prizePool} onTotalChange={prizePool => setFormData({ ...formData,prizePool })} distribution={rankedPrizes} onDistributionChange={setRankedPrizes} maxPlaces={formData.maxParticipants} teamType={formData.teamType} />
+              <div>
                 <div>
                   <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">
                     Costo de Inscripción (Entry Fee)
@@ -566,7 +560,7 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
                 </div>
               </div>
 
-              <TournamentRulesEditor config={{ ...formData, startDate: startDateTime }} mode={rulesMode} customRules={customRules} onChange={(mode,rules) => { setRulesMode(mode); setCustomRules(rules); }} />
+              <TournamentRulesEditor config={{ ...formData, prizeDistribution, startDate: startDateTime }} mode={rulesMode} customRules={customRules} onChange={(mode,rules) => { setRulesMode(mode); setCustomRules(rules); }} />
 
               {/* Summary Card */}
               <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800 text-xs space-y-2">

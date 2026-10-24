@@ -66,7 +66,8 @@ async function main() {
       '../../../data/mockData': mockData,
       '@/lib/matchAccess': { getMatchViewer: async () => ({ role: 'admin' }),ownsMatchParticipant: () => false },
       '@/lib/tournamentBanner': { MAX_TOURNAMENT_REQUEST_BYTES: 1500000 },
-      '@/lib/tournamentRules': rules
+      '@/lib/tournamentRules': rules,
+      '@/lib/tournamentPrizes': load('../src/lib/tournamentPrizes.ts')
     };
     const api = load('../src/app/api/tournaments/route.ts',overrides);
     const create = body => api.POST(new Request('http://localhost/api/tournaments',{ method: 'POST',headers: { authorization: 'Bearer admin' },body: JSON.stringify(body) }));
@@ -76,6 +77,8 @@ async function main() {
     let saved = (await db.query('SELECT * FROM tournaments WHERE id=$1',[created.tournamentId])).rows[0];
     assert.equal(saved.rules_mode,'automatic');
     assert.equal(saved.rules_template_version,rules.RULES_TEMPLATE_VERSION);
+    assert.deepEqual(saved.prize_distribution,[{ place: '1.er lugar',prize: config.prizePool }], 'A total alone awards the configured prize to first place, without invented amounts');
+    assert(saved.rules.some(rule => rule.includes(`1.er lugar: ${config.prizePool}`)));
     assert(!saved.rules.includes('stale client text'),'Server generates the bases instead of trusting stale previews');
     const list = await (await api.GET(new Request('http://localhost/api/tournaments'))).json();
     const tournament = list.tournaments.find(t => t.id === created.tournamentId);
@@ -95,6 +98,16 @@ async function main() {
     assert.equal(response.status,400);
     const legacy = await create({ ...config,gameId: 'valorant',title: 'Custom legacy',rulesMode: 'custom',rules: custom });
     assert.equal(legacy.status,200);
+    const distribution = [{ place: '1.er lugar',prize: '70.000 CLP' },{ place: '2.º lugar',prize: '30.000 CLP' }];
+    const multiple = await create({ ...config,title: 'Premios por puesto',prizePool: '100.000 CLP',prizeDistribution: distribution });
+    assert.equal(multiple.status,200);
+    const multipleId = (await multiple.json()).tournamentId;
+    const awarded = (await db.query('SELECT * FROM tournaments WHERE id=$1',[multipleId])).rows[0];
+    assert.deepEqual(awarded.prize_distribution,distribution);
+    assert(awarded.rules.some(rule => rule.includes('1.er lugar: 70.000 CLP; 2.º lugar: 30.000 CLP')));
+    assert.equal((await create({ ...config,title: 'Missing award',prizeDistribution: [{ place: '1.er lugar',prize: '' }] })).status,400);
+    assert.equal((await create({ ...config,title: 'Missing total',prizePool: '' })).status,400);
+    assert.equal((await create({ ...config,title: 'Duplicate place',prizeDistribution: [{ place: '1.er lugar',prize: 'A' },{ place: '1.º lugar',prize: 'B' }] })).status,400);
     console.log('PASS: 48 distinct presets, solo/duos/trios/squads, four formats, validation, custom preservation, authoritative creation, saved text/version, automatic edits, legacy game rules and downloadable document text.');
   } finally { await db.close(); }
 }
