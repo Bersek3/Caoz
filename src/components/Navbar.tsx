@@ -1,5 +1,6 @@
 ﻿'use client';
 
+import { getUserAvatar } from '../lib/userAvatar';
 import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -316,7 +317,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCreateModal }) => {
               >
                 <div className="relative">
                   <img
-                    src={user.avatarUrl || 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?q=80&w=200&auto=format&fit=crop'}
+                    src={getUserAvatar(user.username)}
                     alt={user.username}
                     className="w-8 h-8 rounded-full border border-red-500/40 object-cover"
                   />

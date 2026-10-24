@@ -1,3 +1,4 @@
+import { getUserAvatar } from '@/lib/userAvatar';
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { getDb, initDb } from '@/lib/db';
@@ -73,7 +74,7 @@ export async function POST(request: Request) {
 
     const userId = `usr-${Date.now()}`;
     const passwordHash = await bcrypt.hash(password, 10);
-    const defaultAvatar = `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(username)}`;
+    const defaultAvatar = getUserAvatar(username);
 
     await db.query(`
       INSERT INTO users (

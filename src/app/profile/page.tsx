@@ -1,6 +1,7 @@
 'use client';
 import { showAlert, showConfirm } from '../../components/StyledDialog';
 
+import { getUserAvatar } from '../../lib/userAvatar';
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -164,8 +165,6 @@ export default function ProfilePage() {
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
 
-  // Default generic avatar that is fixed and cannot be changed
-  const defaultGenericAvatar = 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?q=80&w=200&auto=format&fit=crop';
 
   // Auth protection guard: If not logged in, redirect to '/arena' with replace so back-navigation doesn't re-render profile!
   useEffect(() => {
@@ -578,7 +577,7 @@ export default function ProfilePage() {
         <div className="flex items-center space-x-5 relative">
           <div className="relative">
             <img
-              src={defaultGenericAvatar}
+              src={getUserAvatar(user.username)}
               alt={user.username}
               className="w-20 h-20 rounded-2xl object-cover border-2 border-red-400 shadow-lg"
             />
@@ -590,22 +589,11 @@ export default function ProfilePage() {
               <h1 className="text-xl sm:text-2xl font-black text-white">
                 {fullName || user.username}
               </h1>
-              {user.role === 'admin' ? (
-                <span className="px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/40 text-[10px] font-bold uppercase font-mono">
-                  ADMINISTRADOR
-                </span>
-              ) : (
-                <span className="px-2 py-0.5 rounded bg-red-500/20 text-red-300 border border-red-500/40 text-[10px] font-bold uppercase font-mono">
-                  JUGADOR
-                </span>
-              )}
             </div>
             <p className="text-xs text-slate-400 font-mono">
-              @{user.username} • {user.email}
+              {user.username}
             </p>
-            <p className="text-xs text-slate-300 line-clamp-1 max-w-md pt-0.5">
-              {bio || 'Competidor en CAOZ ARENA.'}
-            </p>
+
           </div>
         </div>
 
@@ -975,7 +963,7 @@ export default function ProfilePage() {
                 {/* Team Info Card */}
                 <div className="flex items-center space-x-3.5 p-3 rounded-xl bg-slate-900/60 border border-slate-800">
                   <img
-                    src={defaultGenericAvatar}
+                    src={getUserAvatar(team.name)}
                     alt={team.name}
                     className="w-12 h-12 rounded-xl object-cover border border-purple-500/40"
                   />
@@ -1049,7 +1037,7 @@ export default function ProfilePage() {
                           <div className="flex items-center space-x-2.5 truncate">
                             <span className="font-mono text-slate-500 text-[11px]">#{idx + 1}</span>
                             <img
-                              src={defaultGenericAvatar}
+                              src={getUserAvatar(m.username)}
                               alt={m.username}
                               className="w-6 h-6 rounded-md object-cover border border-slate-700"
                             />

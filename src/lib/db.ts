@@ -1,3 +1,4 @@
+import { getUserAvatar } from './userAvatar';
 import path from 'path';
 import fs from 'fs';
 import { PGlite } from '@electric-sql/pglite';
@@ -328,7 +329,7 @@ async function initializeDatabase() {
   }
 
   // Usuario administrador por defecto
-  const defaultGenericAvatar = 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?q=80&w=200&auto=format&fit=crop';
+  const defaultGenericAvatar = getUserAvatar('bersek');
   const userCheck = await db.query('SELECT id FROM usuarios WHERE email = $1', ['francisco.jm.aguilar1@gmail.com']);
   if (userCheck.rows.length === 0) {
     const passwordHash = await bcrypt.hash('Bersek@1106@3200', 10);
