@@ -12,9 +12,11 @@ import {
   Layers,
   ZoomIn,
   ZoomOut,
-  Lock
+  Lock,
+  MessageCircle
 } from 'lucide-react';
 import { Tournament, TournamentRound, TournamentMatch } from '../types/tournament';
+import { useMatchChatActivity } from '../hooks/useMatchChatActivity';
 
 interface BracketVisualizerProps {
   tournament: Tournament;
@@ -27,6 +29,7 @@ export const BracketVisualizer: React.FC<BracketVisualizerProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'winners' | 'losers'>('winners');
   const [zoomLevel, setZoomLevel] = useState<number>(1);
+  const chatActivity = useMatchChatActivity(tournament.id);
 
   const hasLosers = tournament.format === 'double_elimination' && (tournament.losersRounds?.length || 0) > 0;
   const currentRounds = activeTab === 'winners' ? tournament.rounds : (tournament.losersRounds || []);
@@ -153,6 +156,8 @@ export const BracketVisualizer: React.FC<BracketVisualizerProps> = ({
                     const isCompleted = match.status === 'completed';
                     const isInProgress = match.status === 'in_progress';
                     const isDisputed = match.status === 'disputed';
+                    const activity = chatActivity[match.id];
+                    const hasUnread = Boolean(activity?.unreadCount);
 
                     return (
                       <div key={match.id} className="relative group">
@@ -171,7 +176,7 @@ export const BracketVisualizer: React.FC<BracketVisualizerProps> = ({
                           title={match.canAccessRoom ? 'Abrir sala privada de la partida' : 'Sala privada: solo participantes de esta partida y administradores'}
                           className={`match-card ${match.canAccessRoom ? 'cursor-pointer' : 'cursor-default'} ${
                             isInProgress ? 'is-active ring-1 ring-red-500/50' : ''
-                          } ${isDisputed ? 'ring-1 ring-red-500/60' : ''}`}
+                          } ${isDisputed ? 'ring-1 ring-red-500/60' : ''} ${hasUnread ? 'ring-2 ring-red-400/70 shadow-lg shadow-red-500/10' : ''}`}
                         >
                           {/* Match Top Bar */}
                           <div className="px-3 py-1.5 bg-[#21191d] border-b border-white/5 flex items-center justify-between text-[10px]">
@@ -179,6 +184,15 @@ export const BracketVisualizer: React.FC<BracketVisualizerProps> = ({
                               BO{match.bestOf}
                             </span>
                             <div className="flex items-center space-x-1.5">
+                              {(hasUnread || activity?.active) && (
+                                <span role="status" aria-live="polite" title={hasUnread ? `${activity.unreadCount} mensajes nuevos de jugadores. Abre la sala para leerlos.` : 'Los jugadores enviaron mensajes en el último minuto.'}
+                                  className="inline-flex items-center gap-1 rounded-md border border-red-400/40 bg-red-400/15 px-1.5 py-0.5 font-bold text-red-300">
+                                  <MessageCircle aria-hidden="true" className="h-3 w-3" />
+                                  {activity?.active && <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-red-400 motion-safe:animate-pulse" />}
+                                  <span>{hasUnread ? (activity.unreadCount > 99 ? '99+' : activity.unreadCount) : 'Chat activo'}</span>
+                                  {hasUnread && <span className="sr-only">mensajes sin leer</span>}
+                                </span>
+                              )}
                               {isInProgress && (
                                 <span className="flex items-center space-x-1 text-rose-400 font-bold">
                                   <span className="w-1.5 h-1.5 rounded-full bg-rose-500 inline-block animate-ping" />

@@ -62,6 +62,7 @@ export const MatchRoomModal: React.FC<MatchRoomModalProps> = ({
         if (data.messages && Array.isArray(data.messages)) {
           setMessages(data.messages);
           setChatError('');
+          if (user?.role === 'admin') window.dispatchEvent(new Event('caoz:match-chat-read'));
         }
       } else {
         setMessages([]);
@@ -71,7 +72,7 @@ export const MatchRoomModal: React.FC<MatchRoomModalProps> = ({
     } catch (e) {
       // ignore
     }
-  }, [isOpen, match?.id, match?.canAccessRoom, user?.id]);
+  }, [isOpen, match?.id, match?.canAccessRoom, user?.id, user?.role]);
 
   // Keep scores and messages in sync when match changes
   React.useEffect(() => {

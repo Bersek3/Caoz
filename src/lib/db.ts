@@ -301,6 +301,15 @@ async function initializeDatabase() {
     );
   `);
 
+  await db.query(`CREATE TABLE IF NOT EXISTS match_chat_reads (
+    user_id VARCHAR(64) REFERENCES usuarios(id) ON DELETE CASCADE,
+    match_id VARCHAR(64) REFERENCES partidas_torneo(id) ON DELETE CASCADE,
+    last_read_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    PRIMARY KEY (user_id, match_id)
+  )`);
+  await db.query(`CREATE INDEX IF NOT EXISTS match_chat_activity_idx ON mensajes_partida(match_id, created_at)
+    WHERE sender_role IN ('team1', 'team2')`);
+
   // Vistas de compatibilidad en PostgreSQL
   const compatibilityViews = `
     CREATE OR REPLACE VIEW users AS SELECT * FROM usuarios;
