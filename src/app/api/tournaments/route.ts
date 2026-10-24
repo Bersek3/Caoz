@@ -6,6 +6,7 @@ import { getMatchViewer, ownsMatchParticipant } from '@/lib/matchAccess';
 import { MAX_TOURNAMENT_REQUEST_BYTES } from '@/lib/tournamentBanner';
 import { resolveTournamentRules } from '@/lib/tournamentRules';
 import { validateTournamentPrizes } from '@/lib/tournamentPrizes';
+import { getUserAvatar } from '@/lib/userAvatar';
 
 function safeParse(val: any, fallback: any = []) {
   if (!val) return fallback;
@@ -26,7 +27,8 @@ export async function GET(request: Request) {
     const trnRes = await db.query('SELECT * FROM tournaments ORDER BY created_at DESC');
 
     // 2. Fetch all participants
-    const partRes = await db.query('SELECT * FROM tournament_participants ORDER BY seed ASC');
+    const partRes = await db.query(`SELECT p.*, u.username AS account_username
+      FROM tournament_participants p LEFT JOIN users u ON u.id=p.user_id ORDER BY p.seed ASC`);
 
     // 3. Fetch all rounds
     const roundRes = await db.query('SELECT * FROM tournament_rounds ORDER BY round_index ASC');
@@ -53,7 +55,7 @@ export async function GET(request: Request) {
           userId: p.user_id,
           name: p.name,
           tag: p.tag,
-          avatar: p.avatar,
+          avatar: p.team_id ? p.avatar : getUserAvatar(p.account_username || p.name),
           seed: p.seed,
           checkedIn: p.checked_in,
           registeredAt: p.registered_at,
@@ -61,12 +63,16 @@ export async function GET(request: Request) {
             name: p.captain_name,
             discord: p.captain_discord,
             inGameId: p.captain_in_game_id,
-            avatar: p.captain_avatar
+            avatar: getUserAvatar(p.account_username || p.captain_name || p.name)
           },
           roster: safeParse(p.roster, [])
         }));
 
       const allMatches = matchRes.rows.filter((m) => m.tournament_id === t.id);
+      // Resolve old snapshots through the participant's current account avatar
+      // in every round, including already completed matches, without resetting results.
+      const avatarsById = new Map(participants.map(p => [p.id, p.avatar]));
+      const avatarsByName = new Map(participants.map(p => [p.name, p.avatar]));
 
       const assembleRounds = (bracketType: 'winners' | 'losers') => {
         return roundRes.rows
@@ -83,7 +89,7 @@ export async function GET(request: Request) {
                 team1: {
                   participantId: m.team1_participant_id,
                   name: m.team1_name,
-                  avatar: m.team1_avatar,
+                  avatar: avatarsById.get(m.team1_participant_id) || avatarsByName.get(m.team1_name) || m.team1_avatar,
                   seed: m.team1_seed,
                   score: m.team1_score,
                   isWinner: m.team1_is_winner
@@ -91,7 +97,7 @@ export async function GET(request: Request) {
                 team2: {
                   participantId: m.team2_participant_id,
                   name: m.team2_name,
-                  avatar: m.team2_avatar,
+                  avatar: avatarsById.get(m.team2_participant_id) || avatarsByName.get(m.team2_name) || m.team2_avatar,
                   seed: m.team2_seed,
                   score: m.team2_score,
                   isWinner: m.team2_is_winner

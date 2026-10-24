@@ -59,6 +59,7 @@ async function main() {
       CREATE VIEW tournament_rounds AS SELECT * FROM rondas_torneo;
       CREATE VIEW tournament_matches AS SELECT * FROM partidas_torneo;
       CREATE VIEW match_messages AS SELECT * FROM mensajes_partida;
+      CREATE TABLE users(id TEXT PRIMARY KEY,username TEXT);
       CREATE TABLE tournament_payments(tournament_id TEXT,status TEXT,expires_at TIMESTAMPTZ);`);
     const overrides = {
       '@/lib/db': { initDb: async () => {},getDb: async () => db },
@@ -67,7 +68,8 @@ async function main() {
       '@/lib/matchAccess': { getMatchViewer: async () => ({ role: 'admin' }),ownsMatchParticipant: () => false },
       '@/lib/tournamentBanner': { MAX_TOURNAMENT_REQUEST_BYTES: 1500000 },
       '@/lib/tournamentRules': rules,
-      '@/lib/tournamentPrizes': load('../src/lib/tournamentPrizes.ts')
+      '@/lib/tournamentPrizes': load('../src/lib/tournamentPrizes.ts'),
+      '@/lib/userAvatar': load('../src/lib/userAvatar.ts')
     };
     const api = load('../src/app/api/tournaments/route.ts',overrides);
     const create = body => api.POST(new Request('http://localhost/api/tournaments',{ method: 'POST',headers: { authorization: 'Bearer admin' },body: JSON.stringify(body) }));
@@ -80,10 +82,25 @@ async function main() {
     assert.deepEqual(saved.prize_distribution,[{ place: '1.er lugar',prize: config.prizePool }], 'A total alone awards the configured prize to first place, without invented amounts');
     assert(saved.rules.some(rule => rule.includes(`1.er lugar: ${config.prizePool}`)));
     assert(!saved.rules.includes('stale client text'),'Server generates the bases instead of trusting stale previews');
+    await db.exec(`INSERT INTO users VALUES ('avatar-user','Bersek_1'),('captain-user','Captain');`);
+    await db.query(`INSERT INTO tournament_participants(id,tournament_id,user_id,name,tag,seed,avatar,captain_name,captain_avatar)
+      VALUES ('avatar-player',$1,'avatar-user','Legacy display name','SOLO',1,'/old-photo.jpg','Old name','/old-photo.jpg')`,[created.tournamentId]);
+    await db.query(`INSERT INTO tournament_participants(id,tournament_id,user_id,team_id,name,tag,seed,avatar,captain_name,captain_avatar)
+      VALUES ('avatar-team',$1,'captain-user','team-id','Team Name','TEAM',2,'/team-logo.svg','Old captain','/old-photo.jpg')`,[created.tournamentId]);
+    await db.query(`UPDATE tournament_matches SET team1_participant_id='avatar-player',team1_name='Legacy display name',team1_avatar='/old-photo.jpg',
+      team2_participant_id='avatar-team',team2_name='Team Name',team2_avatar='/old-photo.jpg' WHERE tournament_id=$1`,[created.tournamentId]);
     const list = await (await api.GET(new Request('http://localhost/api/tournaments'))).json();
     const tournament = list.tournaments.find(t => t.id === created.tournamentId);
     assert.equal(tournament.rulesMode,'automatic');
     assert.deepEqual(tournament.rules,saved.rules);
+    const { getUserAvatar } = load('../src/lib/userAvatar.ts');
+    assert.equal(tournament.participants.find(p => p.id === 'avatar-player').avatar,getUserAvatar('Bersek_1'));
+    assert.equal(tournament.participants.find(p => p.id === 'avatar-team').captain.avatar,getUserAvatar('Captain'));
+    for (const round of tournament.rounds) for (const match of round.matches) {
+      assert.equal(match.team1.avatar,getUserAvatar('Bersek_1'),'All rounds use the account username, not the saved photo or display name');
+      assert.equal(match.team2.avatar,'/team-logo.svg','Team logos are preserved');
+    }
+    assert.equal((await db.query("SELECT avatar FROM tournament_participants WHERE id='avatar-player'")).rows[0].avatar,'/old-photo.jpg','Existing tournaments are corrected when read without rewriting their records');
     const changed = { ...tournament,title: 'Nuevo nombre',prizePool: '$999',region: 'EU' };
     await db.transaction(tx => service.editTournament(tx,created.tournamentId,changed));
     saved = (await db.query('SELECT * FROM tournaments WHERE id=$1',[created.tournamentId])).rows[0];

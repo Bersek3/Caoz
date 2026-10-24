@@ -1,5 +1,6 @@
 import { randomUUID, randomInt } from 'crypto';
 import { DbSession } from './db';
+import { getUserAvatar } from './userAvatar';
 
 export interface Registration {
   userId: string;
@@ -23,7 +24,8 @@ export async function insertRegistration(db: DbSession, tournamentId: string, ma
   const availableSeeds = Array.from({ length: maxParticipants }, (_, i) => i + 1).filter(seed => !participants.some(p => p.seed === seed));
   const seed = availableSeeds[randomInt(availableSeeds.length)];
   const participantId = `part-${randomUUID()}`;
-  const avatar = 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?q=80&w=200&auto=format&fit=crop';
+  const username = data.roster.find(member => member.userId === data.userId)?.username || (data.teamId ? data.captainName : data.name);
+  const avatar = getUserAvatar(username);
   await db.query(`INSERT INTO tournament_participants (
     id,tournament_id,team_id,user_id,name,tag,avatar,seed,checked_in,registered_at,captain_name,captain_discord,captain_in_game_id,captain_avatar,roster
   ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,false,$9,$10,$11,$12,$7,$13)`, [participantId,tournamentId,data.teamId,data.userId,data.name,data.tag,avatar,seed,new Date().toISOString(),data.captainName,data.captainDiscord,data.captainInGameId,JSON.stringify(data.roster)]);

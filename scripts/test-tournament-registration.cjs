@@ -27,6 +27,7 @@ async function main() {
     assert.throws(() => validateRegistrationDetails(invalid));
   }
   const { insertRegistration } = load('../src/lib/tournamentRegistration.ts', {
+    './userAvatar': load('../src/lib/userAvatar.ts'),
     crypto: { ...require('node:crypto'), randomInt: max => max - 1 }
   });
   const db = new PGlite();
@@ -45,6 +46,12 @@ async function main() {
     await assert.rejects(() => db.transaction(tx => insertRegistration(tx, 't1', 2, registration)));
     await db.transaction(tx => insertRegistration(tx, 't1', 2, { ...registration, userId: 'u2', name: 'Luis', roster: [{ userId: 'u2', username: 'Luis' }] }));
     const match = (await db.query('SELECT * FROM tournament_matches')).rows[0];
+    const { getUserAvatar } = load('../src/lib/userAvatar.ts');
+    assert.equal(match.team1_avatar, getUserAvatar('Luis'));
+    assert.equal(match.team2_avatar, getUserAvatar('Ana'));
+    const ana = (await db.query("SELECT avatar,captain_avatar FROM tournament_participants WHERE user_id='u1'")).rows[0];
+    assert.equal(ana.avatar,getUserAvatar('Ana'));
+    assert.equal(ana.captain_avatar,getUserAvatar('Ana'));
     assert.equal(match.team1_name, 'Luis');
     assert.equal(match.team2_name, 'Ana');
     assert.equal(match.status, 'ready');
