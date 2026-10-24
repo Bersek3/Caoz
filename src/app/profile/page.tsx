@@ -37,6 +37,8 @@ import {
   EyeOff,
   Archive
 } from 'lucide-react';
+import { EditTournamentModal } from '../../components/EditTournamentModal';
+import type { Tournament } from '../../types/tournament';
 import { useAuth } from '../../context/AuthContext';
 import { useTournament } from '../../context/TournamentContext';
 
@@ -75,6 +77,7 @@ interface TeamData {
 
 export default function ProfilePage() {
   const router = useRouter();
+  const [editingTournament, setEditingTournament] = useState<Tournament | null>(null);
   const { user, token, logout, updateProfile, refreshUser, isLoading } = useAuth();
   const { tournaments, withdrawFromTournament, toggleHideTournament, deleteTournament } = useTournament();
 
@@ -1282,7 +1285,8 @@ export default function ProfilePage() {
                           <span>Ver Torneo</span>
                         </Link>
 
-                        <div className="flex items-center space-x-2">
+                        <div className="flex items-center space-x-2 flex-wrap gap-y-2">
+                          <button type="button" onClick={() => setEditingTournament(trn)} className="rounded-lg border border-red-400/30 bg-red-400/10 px-3 py-1.5 text-xs font-bold text-red-300 hover:bg-red-400/20">Editar</button>
                           <button
                             type="button"
                             onClick={() => handleAdminToggleHide(trn.id, false, trn.title)}
@@ -1359,7 +1363,8 @@ export default function ProfilePage() {
                           <span>Ver Torneo</span>
                         </Link>
 
-                        <div className="flex items-center space-x-2">
+                        <div className="flex items-center space-x-2 flex-wrap gap-y-2">
+                          <button type="button" onClick={() => setEditingTournament(trn)} className="rounded-lg border border-red-400/30 bg-red-400/10 px-3 py-1.5 text-xs font-bold text-red-300 hover:bg-red-400/20">Editar</button>
                           <button
                             type="button"
                             onClick={() => handleAdminToggleHide(trn.id, true, trn.title)}
@@ -1587,6 +1592,7 @@ export default function ProfilePage() {
         </div>
       )}
 
+      {user?.role === 'admin' && editingTournament && <EditTournamentModal key={editingTournament.id} tournament={editingTournament} onClose={() => setEditingTournament(null)} />}
     </div>
   );
 }

@@ -58,6 +58,9 @@ export async function editTournament(db: DbSession, id: string, input: unknown) 
   if (structural && payments.length) throw new TournamentEditError('Resuelve los pagos pendientes o en revisión antes de cambiar la estructura del torneo.', 409);
   const keys = Object.keys(columns);
   await db.query(`UPDATE tournaments SET ${keys.map((key,i) => `${key}=$${i+1}`).join(',')} WHERE id=$${keys.length+1}`, [...Object.values(columns), current.id]);
+  if (!structural && data.startDate !== current.start_date) {
+    await db.query('UPDATE tournament_matches SET scheduled_time=$1 WHERE tournament_id=$2 AND scheduled_time=$3', [data.startDate, current.id, current.start_date]);
+  }
   if (structural) {
     await db.query('DELETE FROM match_messages WHERE match_id IN (SELECT id FROM tournament_matches WHERE tournament_id=$1)', [current.id]);
     await db.query('DELETE FROM tournament_matches WHERE tournament_id=$1', [current.id]);

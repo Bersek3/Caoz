@@ -31,6 +31,7 @@ import { useTournament } from '../../../context/TournamentContext';
 import { useAuth } from '../../../context/AuthContext';
 import { BracketVisualizer } from '../../../components/BracketVisualizer';
 import { MatchRoomModal } from '../../../components/MatchRoomModal';
+import { EditTournamentModal } from '../../../components/EditTournamentModal';
 import { RegisterModal } from '../../../components/RegisterModal';
 import { TournamentCountdown } from '../../../components/TournamentCountdown';
 import { TournamentMatch } from '../../../types/tournament';
@@ -59,6 +60,7 @@ export default function TournamentDetailPage() {
   const [activeTab, setActiveTab] = useState<'overview' | 'brackets' | 'participants' | 'rules'>('brackets');
   const [selectedMatch, setSelectedMatch] = useState<TournamentMatch | null>(null);
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
   const [participantSearch, setParticipantSearch] = useState('');
   const [isWithdrawing, setIsWithdrawing] = useState(false);
 
@@ -317,6 +319,7 @@ export default function TournamentDetailPage() {
             {/* Admin Controls */}
             {isAdmin && (
               <div className="flex flex-wrap items-center gap-2 border-t sm:border-t-0 sm:border-l border-slate-700/80 pt-2 sm:pt-0 sm:pl-3">
+                <button type="button" onClick={() => setIsEditOpen(true)} className="rounded-xl border border-red-400/40 bg-red-400/15 px-4 py-2.5 text-xs font-bold text-red-300 hover:bg-red-400/25">Editar torneo</button>
                 {/* Admin Generate Bracket CTA */}
                 {tournament.rounds.length > 0 && ['registration_open', 'check_in', 'upcoming'].includes(tournament.status) && (
                   <button
@@ -794,6 +797,7 @@ export default function TournamentDetailPage() {
 
       </div>
 
+      {isAdmin && isEditOpen && <EditTournamentModal key={tournament.id} tournament={tournament} onClose={() => { setIsEditOpen(false); setSelectedMatch(null); }} />}
       {/* Match Room Modal */}
       <MatchRoomModal
         key={`${user?.id || 'guest'}:${selectedMatch?.id || 'closed'}`}
