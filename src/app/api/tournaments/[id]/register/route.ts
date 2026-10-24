@@ -1,3 +1,4 @@
+import { validateRegistrationDetails } from '@/lib/registrationDetails';
 import { NextResponse } from 'next/server';
 import { getDb, initDb } from '@/lib/db';
 import { verifyToken } from '@/lib/auth';
@@ -30,7 +31,7 @@ export async function POST(
 
     // 1. Fetch tournament details
     const trnRes = await db.query(
-      'SELECT id, title, team_type, team_size, max_participants FROM tournaments WHERE id = $1 OR slug = $1',
+      'SELECT id, title, team_type, team_size, max_participants, entry_fee_amount FROM tournaments WHERE id = $1 OR slug = $1',
       [id]
     );
 
@@ -39,6 +40,12 @@ export async function POST(
     }
 
     const tournament = trnRes.rows[0];
+
+    let personalDetails;
+    if (!Number(tournament.entry_fee_amount)) {
+      try { personalDetails = validateRegistrationDetails(body.personalDetails); }
+      catch (error) { return NextResponse.json({ error: (error as Error).message }, { status: 400 }); }
+    }
 
     // 2. Check slots
     const countRes = await db.query(
@@ -140,6 +147,7 @@ export async function POST(
         const userRes = await db.query('SELECT username, birth_date, account_status FROM users WHERE id = $1', [userId]);
         if (userRes.rows.length > 0) {
           const u = userRes.rows[0];
+          if (personalDetails) u.birth_date = personalDetails.birthDate;
           if (!u.birth_date) {
             return NextResponse.json({
               error: 'Debes registrar tu Fecha de Nacimiento en tu Perfil antes de inscribirte para verificar tu aptitud legal.'
@@ -170,6 +178,7 @@ export async function POST(
         `, [userId]);
 
         for (const member of teamCheck.rows) {
+          if (member.id === userId && personalDetails) member.birth_date = personalDetails.birthDate;
           if (!member.birth_date) {
             return NextResponse.json({
               error: `El integrante @${member.username} no ha registrado su Fecha de Nacimiento en su perfil.`
@@ -237,7 +246,7 @@ export async function POST(
 
     const result = await reserveRegistration(tournament.id, {
       userId, teamId: teamObj?.id || null, name: participantName, tag: participantTag,
-      captainName, captainDiscord, captainInGameId, roster: candidates
+      captainName, captainDiscord, captainInGameId, roster: candidates, personalDetails
     }, body.payer || {});
     return NextResponse.json({ success: true, ...result,
       message: result.checkoutUrl ? 'Contin\u00faa al pago para confirmar tu inscripci\u00f3n.' : 'Inscripci\u00f3n confirmada.'

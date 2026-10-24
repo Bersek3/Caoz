@@ -46,17 +46,17 @@ export default function PaymentResultPage() {
   }, [user?.id]);
   return <section className="mx-auto max-w-2xl space-y-5 px-6 py-16 text-white">
     <h1 className="text-3xl font-bold">Estado de tu inscripción</h1>
-    {!user ? <button onClick={() => openAuthModal('login')} className="rounded-lg bg-cyan-400 p-3 text-black">Inicia sesión para consultar tu pago</button> : <>
+    {!user ? <button onClick={() => openAuthModal('login')} className="rounded-lg bg-red-400 p-3 text-black">Inicia sesión para consultar tu pago</button> : <>
       {error && <p role="alert" className="text-amber-300">{error}</p>}
       {payment ? <div className="space-y-4 rounded-xl border border-slate-700 bg-slate-900 p-6">
         <h2 className="text-lg font-semibold">{statusLabels[payment.status] || 'Verificando pago'}</h2>
         <p>{new Intl.NumberFormat('es-CL').format(payment.amount)} CLP</p>
         <p className="break-all text-sm text-slate-400">Referencia: {payment.id}</p>
-        {payment.checkoutUrl && <a href={payment.checkoutUrl} className="block rounded-lg bg-cyan-400 p-3 text-center text-black">Continuar pago en VirtualPOS</a>}
+        {payment.checkoutUrl && <a href={payment.checkoutUrl} className="block rounded-lg bg-red-400 p-3 text-center text-black">Continuar pago en VirtualPOS</a>}
         {['pending','creating'].includes(payment.status) && <p className="text-sm text-slate-400">La reserva dura 15 minutos. Si pagas después de que expire, el organizador deberá gestionar una devolución.</p>}
-        <Link href={`/tournament/${payment.tournamentSlug}`} className="inline-block text-cyan-300 underline">Volver al torneo</Link>
+        <Link href={`/tournament/${payment.tournamentSlug}`} className="inline-block text-red-300 underline">Volver al torneo</Link>
       </div> : !error && <p>Consultando el pago…</p>}
     </>}
-    <Link href="/arena/pagos" className="block text-cyan-300 underline">Ver historial de pagos</Link>
+    <Link href="/arena/pagos" className="block text-red-300 underline">Ver historial de pagos</Link>
   </section>;
 }

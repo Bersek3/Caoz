@@ -16,6 +16,8 @@ import {
   ArrowRight,
   UserCheck
 } from 'lucide-react';
+import { CountryPhoneInput } from './CountryPhoneInput';
+import { validateRegistrationDetails } from '../lib/registrationDetails';
 import confetti from 'canvas-confetti';
 import { useTournament } from '../context/TournamentContext';
 import { useAuth } from '../context/AuthContext';
@@ -62,11 +64,13 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
   const [errorMsg, setErrorMsg] = useState('');
   const [success, setSuccess] = useState(false);
   const [payer, setPayer] = useState({ first_name: '', last_name: '', social_id: '', phone: '' });
+  const [personalDetails, setPersonalDetails] = useState({ fullName: '', birthDate: '', documentNumber: '', phone: '+56' });
   const isPaid = (tournament.entryFeeAmount || 0) > 0;
 
   useEffect(() => {
     if (user) {
       setCaptainInGameId(user.riotId || user.steamId || user.epicGamesUsername || user.eaId || '');
+      setPersonalDetails({ fullName: user.fullName || '', birthDate: user.birthDate?.slice(0, 10) || '', documentNumber: '', phone: '+56' });
       setCaptainDiscord(user.discordTag || '');
     }
   }, [user]);
@@ -100,11 +104,11 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
     }
 
     // 2. Legal age & birth date validation (Chile)
-    if (!user.birthDate) {
+    if (isPaid && !user.birthDate) {
       setErrorMsg('Debes registrar tu Fecha de Nacimiento en tu Perfil antes de inscribirte a un torneo.');
       return;
     }
-    if (user.age != null && user.age < 14) {
+    if (isPaid && user.age != null && user.age < 14) {
       setErrorMsg('No cumples con la edad mínima legal (14 años) para competir en torneos en Chile.');
       return;
     }
@@ -116,13 +120,15 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
 
     try {
       setIsSubmitting(true);
+      const details = isPaid ? undefined : validateRegistrationDetails(personalDetails);
       const result = await registerParticipant(tournament.id, {
         username: user.username,
         teamName: isSolo ? user.username : user.teamName!,
         teamTag: isSolo ? 'SOLO' : (user.teamTag || 'TEAM'),
         captainDiscord,
         captainInGameId,
-        payer: isPaid ? payer : undefined
+        payer: isPaid ? payer : undefined,
+        personalDetails: details
       });
 
       if (!result.success) {
@@ -158,12 +164,12 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-fade-in">
-      <div className="relative w-full max-w-2xl bg-[#0c121d] border border-slate-700/80 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+      <div className="relative w-full max-w-2xl bg-[#191213] border border-slate-700/80 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
         
         {/* Header */}
-        <div className="px-6 py-4 bg-[#0f1728] border-b border-slate-800 flex items-center justify-between">
+        <div className="px-6 py-4 bg-[#211719] border-b border-slate-800 flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 rounded-lg bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400">
+            <div className="w-8 h-8 rounded-lg bg-red-500/20 border border-red-500/40 flex items-center justify-center text-red-400">
               <Users className="w-4 h-4" />
             </div>
             <div>
@@ -213,7 +219,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
                   onClose();
                   openAuthModal('login');
                 }}
-                className="px-5 py-2.5 rounded-xl bg-cyan-400 hover:bg-cyan-300 text-black font-bold text-xs uppercase tracking-wider font-mono transition-all cursor-pointer"
+                className="px-5 py-2.5 rounded-xl bg-red-400 hover:bg-red-300 text-black font-bold text-xs uppercase tracking-wider font-mono transition-all cursor-pointer"
               >
                 Cerrar e Iniciar Sesión
               </button>
@@ -244,7 +250,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
                     onClose();
                     router.push('/profile');
                   }}
-                  className="flex-1 py-3 px-4 rounded-xl font-bold text-xs uppercase tracking-wider text-black bg-cyan-400 hover:bg-cyan-300 shadow-lg shadow-cyan-400/20 transition-all font-mono flex items-center justify-center space-x-2"
+                  className="flex-1 py-3 px-4 rounded-xl font-bold text-xs uppercase tracking-wider text-black bg-red-400 hover:bg-red-300 shadow-lg shadow-red-400/20 transition-all font-mono flex items-center justify-center space-x-2"
                 >
                   <span>Ir a mi Perfil a Crear mi Equipo</span>
                   <ArrowRight className="w-4 h-4" />
@@ -271,13 +277,13 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
               {/* Tournament Slot Info */}
               <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between text-xs">
                 <span className="text-slate-400">Cupos Ocupados:</span>
-                <span className="font-mono font-bold text-cyan-400">
+                <span className="font-mono font-bold text-red-400">
                   {tournament.participants.length} / {tournament.maxParticipants} {isSolo ? 'Jugadores' : 'Equipos'}
                 </span>
               </div>
 
               {/* Legal Age & Eligibility Status Banner */}
-              {!user.birthDate ? (
+              {!isPaid ? null : !user.birthDate ? (
                 <div className="p-3 rounded-xl bg-amber-950/30 border border-amber-500/40 text-amber-300 text-xs flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <AlertTriangle className="w-4 h-4 shrink-0 text-amber-400" />
@@ -300,8 +306,8 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
                   <span>No cumples con la edad mínima legal (14 años) para competir en torneos según la ley chilena.</span>
                 </div>
               ) : user.age != null && user.age >= 14 && user.age < 18 ? (
-                <div className="p-3 rounded-xl bg-cyan-950/30 border border-cyan-500/40 text-cyan-200 text-xs flex items-center space-x-2">
-                  <ShieldCheck className="w-4 h-4 shrink-0 text-cyan-400" />
+                <div className="p-3 rounded-xl bg-red-950/30 border border-red-500/40 text-red-200 text-xs flex items-center space-x-2">
+                  <ShieldCheck className="w-4 h-4 shrink-0 text-red-400" />
                   <span>
                     <strong>Menor de edad ({user.age} años):</strong> Habilitado para competir. En caso de avanzar y ganar premios, se solicitará la firma de Acta de Entrega con Carnet de Identidad del apoderado.
                   </span>
@@ -311,8 +317,8 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
               {/* Mode Specific Info */}
               {isSolo ? (
                 /* SOLO MODE: Username highlighted */
-                <div className="p-4 rounded-xl bg-cyan-950/20 border border-cyan-500/30 space-y-2">
-                  <div className="flex items-center space-x-2 text-xs font-bold text-cyan-400 uppercase tracking-wider">
+                <div className="p-4 rounded-xl bg-red-950/20 border border-red-500/30 space-y-2">
+                  <div className="flex items-center space-x-2 text-xs font-bold text-red-400 uppercase tracking-wider">
                     <UserCheck className="w-4 h-4" />
                     <span>Inscripción Individual (Solo 1v1)</span>
                   </div>
@@ -321,7 +327,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
                   </p>
                   <div className="p-3 rounded-lg bg-slate-950/80 border border-slate-800 flex items-center justify-between">
                     <span className="text-xs text-slate-400 font-mono">Nombre en Bracket:</span>
-                    <span className="font-mono font-bold text-white text-sm bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/30">
+                    <span className="font-mono font-bold text-white text-sm bg-red-500/10 px-2 py-0.5 rounded border border-red-500/30">
                       @{user.username}
                     </span>
                   </div>
@@ -380,7 +386,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
 
               {/* Player In-Game Data */}
               <div className="p-4 rounded-xl bg-slate-900/70 border border-slate-800 space-y-4">
-                <div className="flex items-center space-x-2 text-xs font-bold text-cyan-400 uppercase tracking-wider">
+                <div className="flex items-center space-x-2 text-xs font-bold text-red-400 uppercase tracking-wider">
                   <ShieldCheck className="w-4 h-4" />
                   <span>{isSolo ? 'Datos de tu Cuenta de Juego' : 'Datos del Capitán en el Juego'}</span>
                 </div>
@@ -396,7 +402,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
                       value={captainInGameId}
                       onChange={(e) => setCaptainInGameId(e.target.value)}
                       required
-                      className="w-full px-3.5 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white text-xs focus:border-cyan-400 focus:outline-none"
+                      className="w-full px-3.5 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white text-xs focus:border-red-400 focus:outline-none"
                     />
                   </div>
 
@@ -409,7 +415,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
                       placeholder="usuario#1234"
                       value={captainDiscord}
                       onChange={(e) => setCaptainDiscord(e.target.value)}
-                      className="w-full px-3.5 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white text-xs focus:border-cyan-400 focus:outline-none"
+                      className="w-full px-3.5 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white text-xs focus:border-red-400 focus:outline-none"
                     />
                   </div>
                 </div>
@@ -425,10 +431,30 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
                 </div>
               )}
 
+              {!isPaid && (
+                <fieldset className="space-y-3 rounded-xl border border-red-400/30 bg-red-950/10 p-4">
+                  <legend className="px-2 text-sm font-bold text-red-300">Datos de inscripción gratuita</legend>
+                  <p className="text-xs text-slate-400">Completa tus datos para confirmar tu inscripción. Estos datos son privados y no se muestran en las llaves.</p>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <label className="text-xs text-slate-300">Nombre completo *
+                      <input required autoComplete="name" maxLength={150} value={personalDetails.fullName} onChange={e => setPersonalDetails({ ...personalDetails, fullName: e.target.value })} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 p-2 text-white" />
+                    </label>
+                    <label className="text-xs text-slate-300">Fecha de nacimiento *
+                      <input required type="date" autoComplete="bday" max={new Date().toISOString().slice(0, 10)} value={personalDetails.birthDate} onChange={e => setPersonalDetails({ ...personalDetails, birthDate: e.target.value })} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 p-2 text-white [color-scheme:dark]" />
+                    </label>
+                    <label className="text-xs text-slate-300">Número de documento *
+                      <input required maxLength={80} value={personalDetails.documentNumber} onChange={e => setPersonalDetails({ ...personalDetails, documentNumber: e.target.value })} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 p-2 text-white" />
+                    </label>
+                    <div className="text-xs text-slate-300">Número de teléfono *
+                      <CountryPhoneInput value={personalDetails.phone} onChange={phone => setPersonalDetails({ ...personalDetails, phone })} />
+                    </div>
+                  </div>
+                </fieldset>
+              )}
               {/* Submit CTA */}
               {isPaid && (
-                <fieldset className="space-y-3 rounded-xl border border-cyan-500/30 p-4">
-                  <legend className="px-2 text-sm font-bold text-cyan-300">Pagar inscripción: {tournament.entryFee}</legend>
+                <fieldset className="space-y-3 rounded-xl border border-red-500/30 p-4">
+                  <legend className="px-2 text-sm font-bold text-red-300">Pagar inscripción: {tournament.entryFee}</legend>
                   <p className="text-xs text-slate-400">Pago único por {isSolo ? 'jugador' : 'equipo'} mediante VirtualPOS. Reservamos el cupo durante 15 minutos. La inscripción se confirma cuando se aprueba el pago.</p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {([
@@ -446,7 +472,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
                 <button
                   type="submit"
                   disabled={isSubmitting || isAlreadyRegistered || (!isSolo && !isTeamComplete)}
-                  className="w-full py-3 rounded-xl font-bold text-xs uppercase tracking-wider text-black bg-cyan-400 hover:bg-cyan-300 shadow-lg shadow-cyan-400/25 transition-all font-mono disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="w-full py-3 rounded-xl font-bold text-xs uppercase tracking-wider text-black bg-red-400 hover:bg-red-300 shadow-lg shadow-red-400/25 transition-all font-mono disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   {isSubmitting 
                     ? 'PROCESANDO INSCRIPCIÓN...' 

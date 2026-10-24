@@ -1,4 +1,5 @@
 'use client';
+import { showAlert } from './StyledDialog';
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -127,7 +128,7 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
     if (isSubmitting || isPreparingBanner) return;
     setSubmitError('');
     if (!formData.title.trim()) {
-      alert('Por favor, ingresa un nombre para el torneo');
+      showAlert('Por favor, ingresa un nombre para el torneo');
       return;
     }
 
@@ -167,12 +168,12 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
-      <div className="relative w-full max-w-3xl bg-[#0c121d] border border-slate-700/80 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+      <div className="relative w-full max-w-3xl bg-[#191213] border border-slate-700/80 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
         
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-[#0f1726]">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-[#21181c]">
           <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 rounded-lg bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400">
+            <div className="w-8 h-8 rounded-lg bg-red-500/20 border border-red-500/40 flex items-center justify-center text-red-400">
               <Trophy className="w-4 h-4" />
             </div>
             <div>
@@ -197,21 +198,21 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
         <div className="grid grid-cols-3 border-b border-slate-800 text-xs text-center font-medium bg-[#090d16]">
           <div
             className={`py-2.5 transition-colors border-b-2 ${
-              step >= 1 ? 'border-cyan-400 text-cyan-300 bg-cyan-500/5' : 'border-transparent text-slate-500'
+              step >= 1 ? 'border-red-400 text-red-300 bg-red-500/5' : 'border-transparent text-slate-500'
             }`}
           >
             1. Juego y Datos Básicos
           </div>
           <div
             className={`py-2.5 transition-colors border-b-2 ${
-              step >= 2 ? 'border-cyan-400 text-cyan-300 bg-cyan-500/5' : 'border-transparent text-slate-500'
+              step >= 2 ? 'border-red-400 text-red-300 bg-red-500/5' : 'border-transparent text-slate-500'
             }`}
           >
             2. Formato y Llaves
           </div>
           <div
             className={`py-2.5 transition-colors border-b-2 ${
-              step >= 3 ? 'border-cyan-400 text-cyan-300 bg-cyan-500/5' : 'border-transparent text-slate-500'
+              step >= 3 ? 'border-red-400 text-red-300 bg-red-500/5' : 'border-transparent text-slate-500'
             }`}
           >
             3. Premios y Reglas
@@ -238,7 +239,7 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
                         onClick={() => handleGameSelect(game.id)}
                         className={`relative p-3 rounded-xl border text-left transition-all flex items-center space-x-3 ${
                           isSelected
-                            ? 'bg-cyan-500/15 border-cyan-400 shadow-md shadow-cyan-500/20'
+                            ? 'bg-red-500/15 border-red-400 shadow-md shadow-red-500/20'
                             : 'bg-slate-900/60 border-slate-800 hover:border-slate-700'
                         }`}
                       >
@@ -252,7 +253,7 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
                           <p className="text-[10px] text-slate-400">{game.genre}</p>
                         </div>
                         {isSelected && (
-                          <div className="absolute top-2 right-2 w-4 h-4 bg-cyan-400 rounded-full flex items-center justify-center">
+                          <div className="absolute top-2 right-2 w-4 h-4 bg-red-400 rounded-full flex items-center justify-center">
                             <Check className="w-2.5 h-2.5 text-black stroke-[3]" />
                           </div>
                         )}
@@ -271,7 +272,7 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
                   placeholder="Ej: VALORANT MASTERS LATAM - EDICIÓN OTOÑO"
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  className="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400"
+                  className="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-red-400 focus:ring-1 focus:ring-red-400"
                 />
               </div>
 
@@ -287,7 +288,7 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
                 </div>
 
                 {!customBanner ? (
-                  <div className="relative border-2 border-dashed border-slate-700 hover:border-cyan-500/60 rounded-xl p-4 transition-all bg-slate-900/40 hover:bg-slate-900/70 group text-center cursor-pointer">
+                  <div className="relative border-2 border-dashed border-slate-700 hover:border-red-500/60 rounded-xl p-4 transition-all bg-slate-900/40 hover:bg-slate-900/70 group text-center cursor-pointer">
                     <input
                       type="file"
                       accept="image/png, image/jpeg, image/jpg, image/webp"
@@ -295,7 +296,7 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
                       className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                     />
                     <div className="flex flex-col items-center justify-center py-3">
-                      <div className="w-10 h-10 rounded-full bg-cyan-500/10 text-cyan-400 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                      <div className="w-10 h-10 rounded-full bg-red-500/10 text-red-400 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
                         <Upload className="w-5 h-5" />
                       </div>
                       <p className="text-sm font-semibold text-slate-200">
@@ -364,7 +365,7 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
                   <select
                     value={formData.region}
                     onChange={(e) => setFormData({ ...formData, region: e.target.value as any })}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white text-sm focus:outline-none focus:border-cyan-400"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white text-sm focus:outline-none focus:border-red-400"
                   >
                     <option value="LATAM">LATAM (Sur / Norte)</option>
                     <option value="NA">Norteamérica (NA)</option>
@@ -378,7 +379,7 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
                     <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300">
                       Fecha y Horario de Inicio
                     </label>
-                    <span className="text-[10px] text-cyan-400 font-mono font-bold bg-cyan-950/60 px-2 py-0.5 rounded border border-cyan-800/40">
+                    <span className="text-[10px] text-red-400 font-mono font-bold bg-red-950/60 px-2 py-0.5 rounded border border-red-800/40">
                       Horario: GMT-3 (Chile / LATAM)
                     </span>
                   </div>
@@ -389,14 +390,14 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
                       value={startDateTime}
                       min={new Date().toISOString().slice(0, 16)}
                       onChange={(e) => setStartDateTime(e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white text-sm focus:outline-none focus:border-cyan-400 font-mono scheme-dark cursor-pointer transition-colors"
+                      className="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white text-sm focus:outline-none focus:border-red-400 font-mono scheme-dark cursor-pointer transition-colors"
                       required
                     />
                   </div>
 
                   {startDateTime && (
-                    <div className="p-2.5 rounded-xl bg-slate-950/80 border border-cyan-500/20 text-[11px] text-slate-300 flex items-center space-x-2">
-                      <Clock className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                    <div className="p-2.5 rounded-xl bg-slate-950/80 border border-red-500/20 text-[11px] text-slate-300 flex items-center space-x-2">
+                      <Clock className="w-3.5 h-3.5 text-red-400 shrink-0" />
                       <span>
                         📅 <strong className="text-white">{formatTournamentDate(startDateTime)}</strong>
                       </span>
@@ -414,7 +415,7 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
                   placeholder="Explica de qué trata el torneo, requisitos de rango, etc..."
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full px-4 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-cyan-400"
+                  className="w-full px-4 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-red-400"
                 />
               </div>
             </div>
@@ -432,14 +433,14 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
                     onClick={() => setFormData({ ...formData, format: 'single_elimination' })}
                     className={`cursor-pointer p-4 rounded-xl border text-left transition-all ${
                       formData.format === 'single_elimination'
-                        ? 'bg-cyan-500/15 border-cyan-400 shadow-lg shadow-cyan-500/15'
+                        ? 'bg-red-500/15 border-red-400 shadow-lg shadow-red-500/15'
                         : 'bg-slate-900/60 border-slate-800 hover:border-slate-700'
                     }`}
                   >
                     <div className="flex items-center justify-between mb-1">
                       <span className="font-bold text-sm text-white">Eliminación Simple</span>
                       {formData.format === 'single_elimination' && (
-                        <Check className="w-4 h-4 text-cyan-400" />
+                        <Check className="w-4 h-4 text-red-400" />
                       )}
                     </div>
                     <p className="text-xs text-slate-400">
@@ -476,7 +477,7 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
                   <select
                     value={formData.maxParticipants}
                     onChange={(e) => setFormData({ ...formData, maxParticipants: parseInt(e.target.value) })}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white text-sm focus:outline-none focus:border-cyan-400"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white text-sm focus:outline-none focus:border-red-400"
                   >
                     <option value={8}>8 Participantes (3 Rondas)</option>
                     <option value={16}>16 Participantes (4 Rondas)</option>
@@ -494,7 +495,7 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
                       onClick={() => setFormData({ ...formData, teamType: 'team', teamSize: selectedGame.defaultTeamSize })}
                       className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all ${
                         formData.teamType === 'team'
-                          ? 'bg-cyan-500/20 border-cyan-400 text-white'
+                          ? 'bg-red-500/20 border-red-400 text-white'
                           : 'bg-slate-900 border-slate-700 text-slate-400'
                       }`}
                     >
@@ -505,7 +506,7 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
                       onClick={() => setFormData({ ...formData, teamType: 'solo', teamSize: 1 })}
                       className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all ${
                         formData.teamType === 'solo'
-                          ? 'bg-cyan-500/20 border-cyan-400 text-white'
+                          ? 'bg-red-500/20 border-red-400 text-white'
                           : 'bg-slate-900 border-slate-700 text-slate-400'
                       }`}
                     >
@@ -515,8 +516,8 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
                 </div>
               </div>
 
-              <div className="p-4 rounded-xl bg-cyan-950/20 border border-cyan-500/20 flex items-start space-x-3 text-xs text-cyan-200">
-                <Sparkles className="w-5 h-5 text-cyan-400 shrink-0 mt-0.5" />
+              <div className="p-4 rounded-xl bg-red-950/20 border border-red-500/20 flex items-start space-x-3 text-xs text-red-200">
+                <Sparkles className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
                 <p>
                   El motor generará automáticamente las llaves interactivas, asignación de semillas (seeding) y salas de chat privadas para cada match programado.
                 </p>
@@ -538,7 +539,7 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
                       placeholder="Ej: $1,000 USD o Riot Points"
                       value={formData.prizePool}
                       onChange={(e) => setFormData({ ...formData, prizePool: e.target.value })}
-                      className="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white text-sm focus:outline-none focus:border-cyan-400"
+                      className="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white text-sm focus:outline-none focus:border-red-400"
                     />
                   </div>
                 </div>
@@ -555,7 +556,7 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
                     placeholder="0 = Gratis"
                     value={formData.entryFeeAmount}
                     onChange={(e) => setFormData({ ...formData, entryFeeAmount: Number(e.target.value) })}
-                    className="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white text-sm focus:outline-none focus:border-cyan-400"
+                    className="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white text-sm focus:outline-none focus:border-red-400"
                   />
                   <p className="mt-1 text-xs text-slate-400">Pesos chilenos (CLP) por inscripción. 0 = gratis. En equipos, paga una persona por todo el equipo.</p>
                 </div>
@@ -595,7 +596,7 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
                 </div>
                 <div className="flex justify-between text-slate-400">
                   <span>Estructura de llaves:</span>
-                  <span className="font-semibold text-cyan-300 capitalize">{formData.format.replace('_', ' ')} ({formData.maxParticipants} slots)</span>
+                  <span className="font-semibold text-red-300 capitalize">{formData.format.replace('_', ' ')} ({formData.maxParticipants} slots)</span>
                 </div>
                 <div className="flex justify-between text-slate-400">
                   <span>Tipo de competición:</span>
@@ -607,14 +608,14 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
 
         </div>
 
-        {isPreparingBanner && <p role="status" className="mx-6 mb-4 text-sm text-cyan-300">Optimizando banner...</p>}
+        {isPreparingBanner && <p role="status" className="mx-6 mb-4 text-sm text-red-300">Optimizando banner...</p>}
         {/* Footer Navigation */}
         {submitError && (
           <p role="alert" className="mx-6 mb-4 rounded-xl border border-rose-500/40 bg-rose-500/10 p-3 text-sm text-rose-300">
             {submitError}
           </p>
         )}
-        <div className="px-6 py-4 border-t border-slate-800 bg-[#0c121d] flex items-center justify-between">
+        <div className="px-6 py-4 border-t border-slate-800 bg-[#191213] flex items-center justify-between">
           {step > 1 ? (
             <button
               type="button"
@@ -634,12 +635,12 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
               type="button"
               onClick={() => {
                 if (step === 1 && !formData.title.trim()) {
-                  alert('Por favor ingresa un título para el torneo');
+                  showAlert('Por favor ingresa un título para el torneo');
                   return;
                 }
                 setStep(step + 1);
               }}
-              className="px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-white bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 flex items-center space-x-1.5 shadow-lg shadow-cyan-500/25 transition-all"
+              className="px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-white bg-gradient-to-r from-red-500 to-red-600 hover:from-red-400 hover:to-red-500 flex items-center space-x-1.5 shadow-lg shadow-red-500/25 transition-all"
             >
               <span>Continuar</span>
               <ChevronRight className="w-4 h-4" />
@@ -649,7 +650,7 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
               type="button"
               onClick={handleFinish}
               disabled={isSubmitting || isPreparingBanner}
-              className="px-6 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-black bg-cyan-400 hover:bg-cyan-300 flex items-center space-x-2 shadow-lg shadow-cyan-400/30 transition-all font-mono tracking-wider"
+              className="px-6 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-black bg-red-400 hover:bg-red-300 flex items-center space-x-2 shadow-lg shadow-red-400/30 transition-all font-mono tracking-wider"
             >
               <ShieldCheck className="w-4 h-4 text-black" />
               <span>{isSubmitting ? 'PUBLICANDO...' : 'PUBLICAR TORNEO'}</span>

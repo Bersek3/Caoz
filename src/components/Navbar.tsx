@@ -132,17 +132,17 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCreateModal }) => {
         {/* Brand Logo */}
         <div className="flex items-center space-x-8">
           <Link href="/arena" className="flex items-center space-x-3 group">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 via-blue-600 to-purple-600 p-[2px] shadow-lg shadow-cyan-500/20 group-hover:shadow-cyan-400/40 transition-all duration-300">
-              <div className="w-full h-full bg-[#0a0e17] rounded-[10px] flex items-center justify-center">
-                <Swords className="w-5 h-5 text-cyan-400 group-hover:scale-110 transition-transform duration-300" />
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-red-500 via-red-600 to-purple-600 p-[2px] shadow-lg shadow-red-500/20 group-hover:shadow-red-400/40 transition-all duration-300">
+              <div className="w-full h-full bg-[#130f10] rounded-[10px] flex items-center justify-center">
+                <Swords className="w-5 h-5 text-red-400 group-hover:scale-110 transition-transform duration-300" />
               </div>
             </div>
             <div className="flex flex-col">
               <div className="flex items-center space-x-2">
                 <span className="font-black text-xl tracking-wider text-white uppercase bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-100 to-slate-400">
-                  CAOZ<span className="text-cyan-400 font-extrabold">ARENA</span>
+                  CAOZ<span className="text-red-400 font-extrabold">ARENA</span>
                 </span>
-                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-300 border border-cyan-500/30">
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-500/10 text-red-300 border border-red-500/30">
                   ESPORTS
                 </span>
               </div>
@@ -153,12 +153,12 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCreateModal }) => {
           </Link>
 
           {/* Navigation items */}
-          {user && <Link href="/arena/pagos" className="px-3 py-1.5 text-sm text-cyan-300">Pagos</Link>}
+          {user && <Link href="/arena/pagos" className="px-3 py-1.5 text-sm text-red-300">Pagos</Link>}
           <nav className="hidden md:flex items-center space-x-1">
             <Link
               href="/arena"
               className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${pathname.startsWith('/arena') || pathname.startsWith('/torneo')
-                  ? 'bg-white/10 text-cyan-300 shadow-sm'
+                  ? 'bg-white/10 text-red-300 shadow-sm'
                   : 'text-slate-300 hover:text-white hover:bg-white/5'
                 }`}
             >
@@ -169,7 +169,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCreateModal }) => {
               <Link
                 href="/profile"
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${pathname === '/profile'
-                    ? 'bg-white/10 text-cyan-300 shadow-sm'
+                    ? 'bg-white/10 text-red-300 shadow-sm'
                     : 'text-slate-300 hover:text-white hover:bg-white/5'
                   }`}
               >
@@ -186,7 +186,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCreateModal }) => {
           {isAdmin && onOpenCreateModal && (
             <button
               onClick={onOpenCreateModal}
-              className="relative inline-flex items-center space-x-2 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold text-white bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 shadow-lg shadow-cyan-500/25 hover:shadow-cyan-400/40 transition-all duration-200 transform hover:-translate-y-0.5"
+              className="relative inline-flex items-center space-x-2 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold text-white bg-gradient-to-r from-red-500 to-red-600 hover:from-red-400 hover:to-red-500 shadow-lg shadow-red-500/25 hover:shadow-red-400/40 transition-all duration-200 transform hover:-translate-y-0.5"
             >
               <PlusCircle className="w-4 h-4" />
               <span className="hidden sm:inline">Crear Torneo (Admin)</span>
@@ -218,11 +218,11 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCreateModal }) => {
                     className="fixed inset-0 z-40"
                     onClick={() => setShowNotifications(false)}
                   />
-                  <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl bg-[#0c121e] border border-slate-700/80 shadow-2xl z-50 overflow-hidden animate-fade-in divide-y divide-slate-800">
+                  <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl bg-[#1c1417] border border-slate-700/80 shadow-2xl z-50 overflow-hidden animate-fade-in divide-y divide-slate-800">
                     {/* Header */}
-                    <div className="px-4 py-3 bg-[#0f1726] flex items-center justify-between">
+                    <div className="px-4 py-3 bg-[#21181c] flex items-center justify-between">
                       <div className="flex items-center space-x-2">
-                        <Bell className="w-4 h-4 text-cyan-400" />
+                        <Bell className="w-4 h-4 text-red-400" />
                         <h4 className="text-xs font-bold text-white uppercase tracking-wider">
                           Notificaciones de Torneo
                         </h4>
@@ -235,7 +235,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCreateModal }) => {
                       {unreadCount > 0 && (
                         <button
                           onClick={markAllAsRead}
-                          className="text-[11px] text-cyan-400 hover:text-cyan-300 transition-colors font-medium flex items-center space-x-1 cursor-pointer"
+                          className="text-[11px] text-red-400 hover:text-red-300 transition-colors font-medium flex items-center space-x-1 cursor-pointer"
                         >
                           <CheckCheck className="w-3.5 h-3.5" />
                           <span>Marcar leídas</span>
@@ -264,7 +264,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCreateModal }) => {
                                 setReadIds((prev) => [...prev, notif.id]);
                                 setShowNotifications(false);
                               }}
-                              className={`p-3.5 flex items-start space-x-3 hover:bg-slate-800/60 transition-colors block ${isUnread ? 'bg-cyan-950/25' : ''
+                              className={`p-3.5 flex items-start space-x-3 hover:bg-slate-800/60 transition-colors block ${isUnread ? 'bg-red-950/25' : ''
                                 }`}
                             >
                               <div
@@ -272,7 +272,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCreateModal }) => {
                                     ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
                                     : notif.type === 'in_progress'
                                       ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
-                                      : 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30'
+                                      : 'bg-red-500/20 text-red-400 border border-red-500/30'
                                   }`}
                               >
                                 {notif.type === 'check_in' && <Clock className="w-4 h-4" />}
@@ -285,7 +285,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCreateModal }) => {
                                   <h5 className="text-xs font-bold text-white line-clamp-1">
                                     {notif.title}
                                   </h5>
-                                  <span className="text-[10px] font-mono text-cyan-400 shrink-0">
+                                  <span className="text-[10px] font-mono text-red-400 shrink-0">
                                     {notif.timeLabel}
                                   </span>
                                 </div>
@@ -318,7 +318,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCreateModal }) => {
                   <img
                     src={user.avatarUrl || 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?q=80&w=200&auto=format&fit=crop'}
                     alt={user.username}
-                    className="w-8 h-8 rounded-full border border-cyan-500/40 object-cover"
+                    className="w-8 h-8 rounded-full border border-red-500/40 object-cover"
                   />
                   <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-[#07090e] rounded-full" />
                 </div>
@@ -353,7 +353,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCreateModal }) => {
                 onClick={() => openAuthModal('login')}
                 className="px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-200 hover:text-white bg-slate-800 hover:bg-slate-700 flex items-center space-x-1.5 transition-colors cursor-pointer"
               >
-                <LogIn className="w-3.5 h-3.5 text-cyan-400" />
+                <LogIn className="w-3.5 h-3.5 text-red-400" />
                 <span>Ingresar</span>
               </button>
             </div>

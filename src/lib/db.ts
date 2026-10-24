@@ -238,6 +238,13 @@ async function initializeDatabase() {
     );
   `);
 
+  // Identity details stay outside the publicly exposed participants view.
+  await db.query(`CREATE TABLE IF NOT EXISTS tournament_registration_details (
+    participant_id VARCHAR(64) PRIMARY KEY REFERENCES participantes_torneo(id) ON DELETE CASCADE,
+    full_name VARCHAR(150) NOT NULL, birth_date DATE NOT NULL,
+    document_number VARCHAR(80) NOT NULL, phone VARCHAR(30) NOT NULL
+  )`);
+
   // 7. Tabla: rondas_torneo
   await db.query(`
     CREATE TABLE IF NOT EXISTS rondas_torneo (

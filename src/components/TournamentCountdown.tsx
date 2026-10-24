@@ -126,19 +126,19 @@ export const TournamentCountdown: React.FC<TournamentCountdownProps> = ({
 
   // Standard Upcoming Countdown
   return (
-    <div className={`p-4 sm:p-5 rounded-2xl bg-[#0c121e]/90 border border-cyan-500/30 shadow-xl shadow-cyan-950/20 flex flex-col md:flex-row md:items-center justify-between gap-5 relative overflow-hidden ${className}`}>
-      <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/5 rounded-full blur-3xl pointer-events-none" />
+    <div className={`p-4 sm:p-5 rounded-2xl bg-[#1c1417]/90 border border-red-500/30 shadow-xl shadow-red-950/20 flex flex-col md:flex-row md:items-center justify-between gap-5 relative overflow-hidden ${className}`}>
+      <div className="absolute top-0 right-0 w-64 h-64 bg-red-500/5 rounded-full blur-3xl pointer-events-none" />
 
       {/* Left Info */}
       <div className="space-y-1 relative z-10">
         <div className="flex items-center space-x-2">
-          <div className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
-          <span className="text-[11px] font-bold text-cyan-400 uppercase tracking-widest font-mono">
+          <div className="w-2 h-2 rounded-full bg-red-400 animate-ping" />
+          <span className="text-[11px] font-bold text-red-400 uppercase tracking-widest font-mono">
             Cuenta Regresiva Oficial
           </span>
         </div>
         <h3 className="text-sm font-bold text-white flex items-center space-x-2">
-          <Calendar className="w-4 h-4 text-cyan-400" />
+          <Calendar className="w-4 h-4 text-red-400" />
           <span>{formattedDate}</span>
         </h3>
         <p className="text-[11px] text-slate-400">
@@ -174,12 +174,12 @@ export const TournamentCountdown: React.FC<TournamentCountdownProps> = ({
 
         {/* Minutes */}
         <div className="flex flex-col items-center">
-          <div className="w-14 sm:w-16 h-14 sm:h-16 rounded-xl bg-slate-900/90 border border-cyan-500/40 shadow-inner flex items-center justify-center">
-            <span className="text-xl sm:text-2xl font-black text-cyan-300 tracking-wider">
+          <div className="w-14 sm:w-16 h-14 sm:h-16 rounded-xl bg-slate-900/90 border border-red-500/40 shadow-inner flex items-center justify-center">
+            <span className="text-xl sm:text-2xl font-black text-red-300 tracking-wider">
               {String(countdown.minutes).padStart(2, '0')}
             </span>
           </div>
-          <span className="text-[9px] uppercase tracking-wider text-cyan-400 mt-1 font-sans font-semibold">Min</span>
+          <span className="text-[9px] uppercase tracking-wider text-red-400 mt-1 font-sans font-semibold">Min</span>
         </div>
 
         <span className="text-slate-600 font-bold text-lg -mt-4">:</span>

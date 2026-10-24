@@ -110,7 +110,7 @@ function JoinTeamContent() {
 
   return (
     <div className="min-h-[75vh] flex items-center justify-center px-4 py-12">
-      <div className="w-full max-w-md bg-[#0c121d] border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden space-y-6 animate-fade-in">
+      <div className="w-full max-w-md bg-[#191213] border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden space-y-6 animate-fade-in">
         <div className="absolute top-0 right-0 w-64 h-64 bg-purple-500/10 rounded-full blur-[80px] pointer-events-none" />
 
         {/* Top Header */}
@@ -165,7 +165,7 @@ function JoinTeamContent() {
             {/* If user logged in: Player info */}
             {user ? (
               <div className="space-y-3 p-4 rounded-xl bg-slate-900/60 border border-slate-800">
-                <div className="flex items-center space-x-2 text-xs font-bold text-cyan-400 uppercase tracking-wider">
+                <div className="flex items-center space-x-2 text-xs font-bold text-red-400 uppercase tracking-wider">
                   <ShieldCheck className="w-4 h-4" />
                   <span>Tu Ficha de Jugador (@{user.username})</span>
                 </div>
@@ -180,7 +180,7 @@ function JoinTeamContent() {
                     value={inGameId}
                     onChange={(e) => setInGameId(e.target.value)}
                     required
-                    className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white text-xs focus:border-cyan-400 focus:outline-none"
+                    className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white text-xs focus:border-red-400 focus:outline-none"
                   />
                 </div>
 
@@ -193,7 +193,7 @@ function JoinTeamContent() {
                     placeholder="usuario#0000"
                     value={discordTag}
                     onChange={(e) => setDiscordTag(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white text-xs focus:border-cyan-400 focus:outline-none"
+                    className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white text-xs focus:border-red-400 focus:outline-none"
                   />
                 </div>
               </div>
@@ -207,7 +207,7 @@ function JoinTeamContent() {
                   onClick={() => openAuthModal('login')}
                   className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold font-mono uppercase tracking-wider flex items-center justify-center space-x-2 transition-colors border border-slate-700 cursor-pointer"
                 >
-                  <LogIn className="w-4 h-4 text-cyan-400" />
+                  <LogIn className="w-4 h-4 text-red-400" />
                   <span>Iniciar Sesión / Registrarme</span>
                 </button>
               </div>
@@ -242,7 +242,7 @@ export default function JoinTeamPage() {
   return (
     <Suspense fallback={
       <div className="min-h-[70vh] flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
       </div>
     }>
       <JoinTeamContent />
