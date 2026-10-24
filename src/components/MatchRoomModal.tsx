@@ -378,7 +378,7 @@ export const MatchRoomModal: React.FC<MatchRoomModalProps> = ({
                   </label>
                   <input
                     type="url"
-                    placeholder="https://imgur.com/tu-captura-o-screenshot.png"
+                    placeholder="Pega el enlace de tu captura de pantalla"
                     value={proofUrl}
                     onChange={(e) => setProofUrl(e.target.value)}
                     className="w-full text-xs py-2 px-3 rounded-xl bg-slate-950 border border-slate-700 text-white placeholder-slate-600 focus:border-red-400 focus:outline-none"

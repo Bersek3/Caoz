@@ -178,7 +178,7 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
             </div>
             <div>
               <h2 className="text-base sm:text-lg font-bold text-white">
-                Creador de Torneos (Estilo Battlefy)
+                Crear torneo
               </h2>
               <p className="text-xs text-slate-400">
                 Paso {step} de 3 • Configura formato, brackets y reglas
