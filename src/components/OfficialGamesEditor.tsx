@@ -9,7 +9,7 @@ import { showConfirm } from './StyledDialog';
 
 const emptyGame = (): GameInfo => ({ id: '', name: '', genre: '', publisher: '', defaultTeamSize: 1, coverImage: '', bannerImage: '', tagFieldLabel: 'ID de jugador', tagPlaceholder: 'Tu usuario' });
 const fields = [
-  ['id', 'Identificador (ej. mi-juego)'], ['name', 'Nombre'], ['genre', 'G\u00e9nero'],
+  ['name', 'Nombre'], ['genre', 'G\u00e9nero'],
   ['publisher', 'Editor'], ['coverImage', 'Imagen de portada (HTTPS o /assets/...)'],
   ['bannerImage', 'Banner (HTTPS o /assets/...)'],
 ] as const;
@@ -119,7 +119,7 @@ export function OfficialGamesEditor({ children }: { children: ReactNode }) {
         <div className="flex items-center justify-between gap-4"><h2 id="game-editor-title" className="text-lg font-bold">{originalId === null ? 'Crear videojuego oficial' : 'Editar videojuego oficial'}</h2><button type="button" disabled={busy} aria-label="Cerrar" onClick={() => setDraft(null)} className="rounded-lg p-2 hover:bg-white/10"><X size={20} /></button></div>
         <fieldset disabled={busy} className="grid gap-4 sm:grid-cols-2">
           {fields.map(([field, label]) => <label key={field} className="text-xs text-slate-300">{label}
-            <input required readOnly={field === 'id' && originalId !== null} maxLength={field === 'id' ? 64 : 2000} pattern={field === 'id' ? '[a-z0-9]+(-[a-z0-9]+)*' : undefined} value={draft[field]} onChange={event => setDraft({ ...draft, [field]: event.target.value })} className="mt-1 block w-full rounded-lg border border-slate-700 bg-slate-950 p-2.5 text-white read-only:text-slate-500" />
+            <input required maxLength={2000} value={draft[field]} onChange={event => setDraft({ ...draft, [field]: event.target.value })} className="mt-1 block w-full rounded-lg border border-slate-700 bg-slate-950 p-2.5 text-white" />
           </label>)}
         </fieldset>
         {error && <p role="alert" className="text-sm text-rose-300">{error}</p>}
