@@ -10,8 +10,7 @@ import { showConfirm } from './StyledDialog';
 const emptyGame = (): GameInfo => ({ id: '', name: '', genre: '', publisher: '', defaultTeamSize: 1, coverImage: '', bannerImage: '', tagFieldLabel: 'ID de jugador', tagPlaceholder: 'Tu usuario' });
 const fields = [
   ['name', 'Nombre'], ['genre', 'G\u00e9nero'],
-  ['publisher', 'Editor'], ['coverImage', 'Imagen de portada (HTTPS o /assets/...)'],
-  ['bannerImage', 'Banner (HTTPS o /assets/...)'],
+  ['coverImage', 'Imagen de portada (HTTPS o /assets/...)'],
 ] as const;
 
 type Selection = { x: number; y: number; game?: GameInfo };

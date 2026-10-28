@@ -40,12 +40,14 @@ export async function PUT(request: Request) {
     const usedIds = new Set(existingIds);
     const games = submittedGames.map(game => {
       if (!game || typeof game.name !== 'string') return game;
-      if (existingIds.has(game.id)) return game;
+      // A game only needs its index image; reuse it as the tournament fallback.
+      const normalized = { ...game, publisher: '', bannerImage: game.coverImage };
+      if (existingIds.has(game.id)) return normalized;
       const id = createGameId(game.name, usedIds);
       usedIds.add(id);
-      return { ...game, id };
+      return { ...normalized, id };
     });
-    const fields = ['id', 'name', 'genre', 'publisher', 'coverImage', 'bannerImage', 'tagFieldLabel', 'tagPlaceholder'] as const;
+    const fields = ['id', 'name', 'genre', 'coverImage', 'bannerImage', 'tagFieldLabel', 'tagPlaceholder'] as const;
     if (!Array.isArray(games) || games.length > 100 || games.some(game =>
       !game || fields.some(field => typeof game[field] !== 'string' || !game[field].trim() || game[field].length > 2000) ||
       !/^[a-zA-Z0-9]+(?:-[a-zA-Z0-9]+)*$/.test(game.id) || game.id.length > 64 ||

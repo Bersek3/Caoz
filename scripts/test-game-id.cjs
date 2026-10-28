@@ -37,13 +37,17 @@ async function main() {
   const save = games => api.PUT(new Request('http://localhost/api/games', {
     method: 'PUT', headers: { authorization: 'Bearer admin' }, body: JSON.stringify({ games }),
   }));
-  const game = { name: 'Mortal Kombat 11', genre: 'Fighting', publisher: 'WB', coverImage: '/assets/mk.jpg', bannerImage: '/assets/mk.jpg', defaultTeamSize: 1, tagFieldLabel: 'ID de jugador', tagPlaceholder: 'Tu usuario' };
+  const game = { name: 'Mortal Kombat 11', genre: 'Fighting', coverImage: '/assets/mk.jpg', defaultTeamSize: 1, tagFieldLabel: 'ID de jugador', tagPlaceholder: 'Tu usuario' };
   assert.equal((await save([game])).status, 200);
   assert.equal(catalog[0].id, 'Mortal-Kombat-11');
+  assert.equal(catalog[0].bannerImage, game.coverImage, 'One image is sufficient for new games');
+  assert.equal(catalog[0].publisher, '', 'Publisher is not required');
   assert.equal((await save([{ ...catalog[0], name: 'Mortal Kombat XI' }])).status, 200);
   assert.equal(catalog[0].id, 'Mortal-Kombat-11', 'Renaming preserves tournament links');
   assert.equal((await save([...catalog, { ...game, id: 'manually-supplied-id' }])).status, 200);
   assert.equal(catalog[1].id, 'Mortal-Kombat-11-2', 'Server generates a unique ID from the name');
+  assert.equal((await save([{ ...catalog[0], coverImage: '/assets/updated.jpg' }])).status, 200);
+  assert.equal(catalog[0].bannerImage, '/assets/updated.jpg', 'Editing the image updates the fallback automatically');
   assert.equal((await save([{ ...game, name: '' }])).status, 400);
   assert.equal((await save([catalog[0], catalog[0]])).status, 400);
   console.log('PASS: name-based IDs, accents, punctuation, collisions, length, automatic persistence and stable IDs after rename.');
