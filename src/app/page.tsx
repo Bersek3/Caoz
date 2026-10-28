@@ -81,7 +81,7 @@ export default function CaozPortalPage() {
             </div>
             <div className="flex flex-col">
               <span className="font-black text-2xl tracking-wider uppercase text-white font-mono">
-                CAOZ<span className="text-[#ff1744]"></span>
+                CZ ARENA<span className="text-[#ff1744]"></span>
               </span>
               <span className="text-[10px] text-zinc-400 font-mono tracking-widest uppercase -mt-1">
                 Streamer & Creator
@@ -388,7 +388,7 @@ export default function CaozPortalPage() {
           <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
             <div>
               <div className="font-mono font-black text-xl text-white tracking-wider">
-                CAOZ<span className="text-[#ff1744]"></span>
+                CZ ARENA<span className="text-[#ff1744]"></span>
               </div>
               <p className="text-xs text-zinc-500 mt-1">
                 Portal oficial de streamer gaming & creador de contenido.

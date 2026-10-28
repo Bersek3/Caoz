@@ -9,6 +9,7 @@ import { MAX_TOURNAMENT_REQUEST_BYTES } from '../lib/tournamentBanner';
 interface TournamentContextType {
   tournaments: Tournament[];
   games: GameInfo[];
+  refreshGames: () => Promise<void>;
   userRole: UserRole;
   setUserRole: (role: UserRole) => void;
   currentUser: {
@@ -53,6 +54,14 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [userRole, setUserRole] = useState<UserRole>('player');
   const [isLoading, setIsLoading] = useState(false);
   const refreshVersion = useRef(0);
+  const [games, setGames] = useState<GameInfo[]>([]);
+  const refreshGames = async () => {
+    const response = await fetch('/api/games', { cache: 'no-store' });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'No se pudieron cargar los videojuegos.');
+    setGames(data.games);
+  };
+  useEffect(() => { refreshGames().catch(console.error); }, []);
 
   // Sync role with authUser role
   useEffect(() => {
@@ -380,7 +389,8 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     <TournamentContext.Provider
       value={{
         tournaments,
-        games: POPULAR_GAMES,
+        games,
+        refreshGames,
         userRole,
         setUserRole,
         currentUser,

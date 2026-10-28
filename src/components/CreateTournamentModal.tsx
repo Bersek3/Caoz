@@ -92,6 +92,12 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
     }));
   };
 
+  React.useEffect(() => {
+    if (games.length && !games.some(game => game.id === formData.gameId)) {
+      const game = games[0];
+      setFormData(previous => ({ ...previous, gameId: game.id, teamSize: game.defaultTeamSize, teamType: game.defaultTeamSize > 1 ? 'team' : 'solo' }));
+    }
+  }, [games, formData.gameId]);
   const selectedGame = games.find((g) => g.id === formData.gameId) || games[0];
 
   const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -164,6 +170,7 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
   };
 
   if (!isOpen) return null;
+  if (!selectedGame) return <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-6"><div className="rounded-2xl bg-slate-900 p-6 text-white"><p>A?ade un videojuego oficial antes de crear un torneo.</p><button type="button" onClick={onClose} className="mt-4 text-cyan-300">Cerrar</button></div></div>;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">

@@ -567,6 +567,10 @@ export default function ProfilePage() {
         </Link>
       </div>
 
+      <section className="rounded-2xl border border-slate-800 bg-[#0d1320] p-5 flex flex-wrap items-center justify-between gap-4">
+        <div><h2 className="font-bold text-white">Pagos</h2><p className="text-sm text-slate-400">Consulta el historial y estado de los pagos de inscripci?n.</p></div>
+        <Link href="/arena/pagos" className="rounded-xl bg-cyan-500/10 border border-cyan-500/30 px-4 py-2 text-sm font-semibold text-cyan-300">{user.role === 'admin' ? 'Ver pagos de inscripciones' : 'Ver mis pagos'}</Link>
+      </section>
       {/* Profile Header Banner */}
       <div className="p-6 sm:p-8 rounded-3xl bg-[#0d1320] border border-slate-800 shadow-2xl relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="absolute top-0 right-0 w-80 h-80 bg-cyan-500/10 rounded-full blur-[100px] pointer-events-none" />
@@ -600,7 +604,7 @@ export default function ProfilePage() {
               @{user.username} • {user.email}
             </p>
             <p className="text-xs text-slate-300 line-clamp-1 max-w-md pt-0.5">
-              {bio || 'Competidor en CAOZ ARENA.'}
+              {bio || 'Competidor en CZ ARENA.'}
             </p>
           </div>
         </div>

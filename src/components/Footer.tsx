@@ -15,7 +15,7 @@ export const Footer: React.FC = () => {
                 </div>
               </div>
               <span className="font-black text-lg tracking-wider text-white uppercase">
-                CAOZ<span className="text-cyan-400">ARENA</span>
+                CZ <span className="text-cyan-400">ARENA</span>
               </span>
             </div>
             <p className="text-sm text-slate-400 max-w-sm">
@@ -50,7 +50,7 @@ export const Footer: React.FC = () => {
         </div>
 
         <div className="border-t border-slate-800/80 mt-10 pt-6 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500">
-          <p>© 2026 CAOZ ARENA Esports. Todos los derechos reservados.</p>
+          <p>© 2026 CZ ARENA Esports. Todos los derechos reservados.</p>
 
         </div>
       </div>

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getDb, initDb } from '@/lib/db';
 import { verifyToken } from '@/lib/auth';
-import { POPULAR_GAMES } from '../../../data/mockData';
+import { getOfficialGames } from '@/lib/games';
 import { getMatchViewer, ownsMatchParticipant } from '@/lib/matchAccess';
 import { MAX_TOURNAMENT_REQUEST_BYTES } from '@/lib/tournamentBanner';
 
@@ -199,7 +199,7 @@ export async function POST(request: Request) {
       slug = `${baseSlug}-${Date.now().toString().slice(-4)}`;
     }
 
-    const game = POPULAR_GAMES.find((g) => g.id === body.gameId);
+    const game = (await getOfficialGames()).find((g) => g.id === body.gameId);
     if (!game || typeof body.title !== 'string' || !body.title.trim() || body.title.length > 255) {
       return NextResponse.json({ error: 'Selecciona un juego válido e ingresa un título de hasta 255 caracteres.' }, { status: 400 });
     }
@@ -252,7 +252,7 @@ export async function POST(request: Request) {
       '45 min antes',
       '10 min antes',
       false,
-      body.description || 'Torneo organizado en CAOZ ARENA.',
+      body.description || 'Torneo organizado en CZ ARENA.',
       JSON.stringify(body.rules || ['Deportividad', 'Subir capturas a la sala de match']),
       JSON.stringify(body.schedule || [{ stage: 'Ronda 1', time: '20:00', format: 'BO3' }]),
       entryFeeAmount

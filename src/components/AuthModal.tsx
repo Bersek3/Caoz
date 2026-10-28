@@ -151,7 +151,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 {mode === 'login' ? 'Iniciar Sesión' : 'Crear Cuenta'}
               </h3>
               <p className="text-[11px] text-slate-400">
-                CAOZ ARENA Esports
+                CZ ARENA Esports
               </p>
             </div>
           </div>

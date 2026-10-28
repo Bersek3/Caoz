@@ -140,7 +140,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCreateModal }) => {
             <div className="flex flex-col">
               <div className="flex items-center space-x-2">
                 <span className="font-black text-xl tracking-wider text-white uppercase bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-100 to-slate-400">
-                  CAOZ<span className="text-cyan-400 font-extrabold">ARENA</span>
+                  CZ <span className="text-cyan-400 font-extrabold">ARENA</span>
                 </span>
                 <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-300 border border-cyan-500/30">
                   ESPORTS
@@ -153,7 +153,6 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCreateModal }) => {
           </Link>
 
           {/* Navigation items */}
-          {user && <Link href="/arena/pagos" className="px-3 py-1.5 text-sm text-cyan-300">Pagos</Link>}
           <nav className="hidden md:flex items-center space-x-1">
             <Link
               href="/arena"

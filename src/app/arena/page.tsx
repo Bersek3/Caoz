@@ -22,6 +22,7 @@ import { useAuth } from '@/context/AuthContext';
 import { GameId, TournamentFormat, TournamentStatus } from '@/types/tournament';
 import { CreateTournamentModal } from '@/components/CreateTournamentModal';
 import { AuthModal } from '@/components/AuthModal';
+import { OfficialGamesEditor } from '@/components/OfficialGamesEditor';
 import { formatTournamentDate } from '@/lib/dateUtils';
 
 export default function HomePage() {
@@ -201,6 +202,7 @@ export default function HomePage() {
             <span className="text-xs text-slate-500">Filtrar títulos</span>
           </div>
 
+          {isAdmin && <OfficialGamesEditor />}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             {games.map((game) => {
               const count = tournaments.filter((t) => t.gameId === game.id).length;

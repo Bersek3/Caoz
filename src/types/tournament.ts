@@ -1,13 +1,4 @@
-export type GameId = 
-  | 'valorant' 
-  | 'league-of-legends' 
-  | 'cs2' 
-  | 'rocket-league' 
-  | 'ea-fc-25' 
-  | 'street-fighter-6' 
-  | 'fortnite' 
-  | 'pubg'
-  | 'apex-legends';
+export type GameId = string;
 
 export type TournamentFormat = 
   | 'single_elimination' 

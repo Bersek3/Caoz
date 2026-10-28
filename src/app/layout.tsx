@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'CAOZ | Streamer & Creador de Contenido Oficial',
+  title: 'CZ ARENA',
   description: 'Portal oficial de Caoz. Streamer oficial en Kick y Twitch, creador de contenido gaming, colaboraciones y comunidad.',
 };
 

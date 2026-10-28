@@ -205,7 +205,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
               </div>
               <h4 className="text-base font-bold text-white">Inicia Sesión para Inscribirte</h4>
               <p className="text-xs text-slate-400 max-w-sm mx-auto">
-                Necesitas tener una cuenta e iniciar sesión en CAOZ ARENA para inscribirte en los torneos.
+                Necesitas tener una cuenta e iniciar sesión en CZ ARENA para inscribirte en los torneos.
               </p>
               <button
                 type="button"

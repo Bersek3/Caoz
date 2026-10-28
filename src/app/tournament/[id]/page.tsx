@@ -603,7 +603,7 @@ export default function TournamentDetailPage() {
                 </div>
 
                 <p className="text-xs text-slate-400">
-                  Organización verificada en CAOZ ARENA. Garantía de pago de premios y moderación oficial.
+                  Organización verificada en CZ ARENA. Garantía de pago de premios y moderación oficial.
                 </p>
               </div>
 
@@ -775,7 +775,7 @@ export default function TournamentDetailPage() {
               <div>
                 <h4 className="text-sm font-bold text-white">¿Tienes dudas o necesitas un árbitro?</h4>
                 <p className="text-xs text-slate-400 mt-1">
-                  Los árbitros de CAOZ ARENA están disponibles durante todo el transcurso del torneo.
+                  Los árbitros de CZ ARENA están disponibles durante todo el transcurso del torneo.
                 </p>
               </div>
 
