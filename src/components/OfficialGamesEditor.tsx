@@ -11,8 +11,7 @@ const emptyGame = (): GameInfo => ({ id: '', name: '', genre: '', publisher: '',
 const fields = [
   ['id', 'Identificador (ej. mi-juego)'], ['name', 'Nombre'], ['genre', 'G\u00e9nero'],
   ['publisher', 'Editor'], ['coverImage', 'Imagen de portada (HTTPS o /assets/...)'],
-  ['bannerImage', 'Banner (HTTPS o /assets/...)'], ['tagFieldLabel', 'Etiqueta del ID de jugador'],
-  ['tagPlaceholder', 'Ejemplo de ID de jugador'],
+  ['bannerImage', 'Banner (HTTPS o /assets/...)'],
 ] as const;
 
 type Selection = { x: number; y: number; game?: GameInfo };
@@ -122,7 +121,6 @@ export function OfficialGamesEditor({ children }: { children: ReactNode }) {
           {fields.map(([field, label]) => <label key={field} className="text-xs text-slate-300">{label}
             <input required readOnly={field === 'id' && originalId !== null} maxLength={field === 'id' ? 64 : 2000} pattern={field === 'id' ? '[a-z0-9]+(-[a-z0-9]+)*' : undefined} value={draft[field]} onChange={event => setDraft({ ...draft, [field]: event.target.value })} className="mt-1 block w-full rounded-lg border border-slate-700 bg-slate-950 p-2.5 text-white read-only:text-slate-500" />
           </label>)}
-          <label className="text-xs text-slate-300">Jugadores por equipo<input type="number" required min={1} max={100} value={draft.defaultTeamSize} onChange={event => setDraft({ ...draft, defaultTeamSize: Number(event.target.value) })} className="mt-1 block w-full rounded-lg border border-slate-700 bg-slate-950 p-2.5 text-white" /></label>
         </fieldset>
         {error && <p role="alert" className="text-sm text-rose-300">{error}</p>}
         <div className="flex justify-end gap-3"><button type="button" disabled={busy} onClick={() => setDraft(null)} className="rounded-xl border border-white/15 px-4 py-2 text-sm">Cancelar</button><button disabled={busy} type="submit" className="rounded-xl bg-red-400 px-5 py-2 text-sm font-bold text-black disabled:opacity-50">{busy ? 'Guardando...' : 'Guardar cambios'}</button></div>

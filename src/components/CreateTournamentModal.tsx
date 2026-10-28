@@ -505,14 +505,14 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       type="button"
-                      onClick={() => setFormData({ ...formData, teamType: 'team', teamSize: formData.gameId === 'fortnite' ? 2 : selectedGame.defaultTeamSize })}
+                      onClick={() => setFormData({ ...formData, teamType: 'team', teamSize: formData.gameId === 'fortnite' ? 2 : Math.max(2, selectedGame.defaultTeamSize) })}
                       className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all ${
                         formData.teamType === 'team'
                           ? 'bg-red-500/20 border-red-400 text-white'
                           : 'bg-slate-900 border-slate-700 text-slate-400'
                       }`}
                     >
-                      {formData.gameId === 'fortnite' ? 'Por equipos (2 a 4)' : `Por Equipos (${selectedGame.defaultTeamSize}v${selectedGame.defaultTeamSize})`}
+                      {formData.gameId === 'fortnite' ? 'Por equipos (2 a 4)' : 'Por equipos'}
                     </button>
                     <button
                       type="button"
@@ -533,6 +533,10 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
                 <select value={formData.teamSize} onChange={event => setFormData({ ...formData, teamSize: Number(event.target.value) })} className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-900 p-3 text-sm text-white">
                   <option value={2}>Dúos (2 jugadores)</option><option value={3}>Tríos (3 jugadores)</option><option value={4}>Escuadras (4 jugadores)</option>
                 </select>
+              </label>}
+
+              {formData.gameId !== 'fortnite' && formData.teamType === 'team' && <label className="block text-xs text-slate-300">Integrantes por equipo
+                <input type="number" required min={2} max={100} value={formData.teamSize} onChange={event => setFormData({ ...formData, teamSize: Number(event.target.value) })} className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-900 p-3 text-sm text-white" />
               </label>}
 
               <div className="p-4 rounded-xl bg-red-950/20 border border-red-500/20 flex items-start space-x-3 text-xs text-red-200">
