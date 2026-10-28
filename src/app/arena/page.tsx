@@ -202,7 +202,7 @@ export default function HomePage() {
             <span className="text-xs text-slate-500">Filtrar títulos</span>
           </div>
 
-          {isAdmin && <OfficialGamesEditor />}
+          <OfficialGamesEditor>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             {games.map((game) => {
               const count = tournaments.filter((t) => t.gameId === game.id).length;
@@ -211,6 +211,7 @@ export default function HomePage() {
               return (
                 <button
                   key={game.id}
+                  data-official-game-id={game.id}
                   onClick={() => setSelectedGame(isSelected ? 'all' : game.id)}
                   className={`p-3 rounded-2xl border text-left transition-all relative overflow-hidden group ${isSelected
                     ? 'bg-red-500/15 border-red-400 shadow-lg shadow-red-500/20'
@@ -231,6 +232,7 @@ export default function HomePage() {
               );
             })}
           </div>
+          </OfficialGamesEditor>
         </div>
       </section>
 
