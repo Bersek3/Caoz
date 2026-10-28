@@ -31,6 +31,7 @@ interface TournamentContextType {
     teamTag: string;
     captainDiscord: string;
     captainInGameId: string;
+    personalDetails?: { fullName: string; birthDate: string; documentNumber: string; phone: string };
     payer?: { first_name: string; last_name: string; social_id: string; phone: string };
     rosterMembers?: { name: string; inGameId: string; role: 'starter' | 'sub' }[];
   }) => Promise<{ success: boolean; message: string; participantId?: string; checkoutUrl?: string; paymentId?: string }>;
@@ -121,7 +122,8 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       teamTag: string;
       captainDiscord: string;
       captainInGameId: string;
-      payer?: { first_name: string; last_name: string; social_id: string; phone: string };
+      personalDetails?: { fullName: string; birthDate: string; documentNumber: string; phone: string };
+    payer?: { first_name: string; last_name: string; social_id: string; phone: string };
       rosterMembers?: { name: string; inGameId: string; role: 'starter' | 'sub' }[];
     }
   ) => {
@@ -295,30 +297,12 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const generateBracketFromParticipants = async (tournamentId: string) => {
-    const tournament = getTournament(tournamentId);
-    if (!tournament || tournament.participants.length === 0 || tournament.rounds.length === 0) return;
-
-    // Seed participants into round 0 matches
-    const firstRound = tournament.rounds[0];
-    for (let idx = 0; idx < firstRound.matches.length; idx++) {
-      const m = firstRound.matches[idx];
-      const p1 = tournament.participants[idx * 2];
-      const p2 = tournament.participants[idx * 2 + 1];
-
-      if (p1 || p2) {
-        await fetch(`/api/matches/${m.id}/score`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            score1: 0,
-            score2: 0,
-            team1Name: p1 ? p1.name : (m.team1.name.startsWith('Semilla') ? 'Vacío' : m.team1.name),
-            team2Name: p2 ? p2.name : (m.team2.name.startsWith('Semilla') ? 'Vacío' : m.team2.name)
-          })
-        });
-      }
-    }
-
+    const res = await fetch(`/api/tournaments/${tournamentId}/draw`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${localStorage.getItem('caoz_auth_token') || ''}` }
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'No se pudieron sortear las llaves.');
     await refreshTournaments();
   };
 

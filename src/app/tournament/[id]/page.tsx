@@ -1,4 +1,5 @@
 'use client';
+import { showAlert, showConfirm } from '../../../components/StyledDialog';
 
 import React, { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -30,10 +31,12 @@ import { useTournament } from '../../../context/TournamentContext';
 import { useAuth } from '../../../context/AuthContext';
 import { BracketVisualizer } from '../../../components/BracketVisualizer';
 import { MatchRoomModal } from '../../../components/MatchRoomModal';
+import { EditTournamentModal } from '../../../components/EditTournamentModal';
 import { RegisterModal } from '../../../components/RegisterModal';
 import { TournamentCountdown } from '../../../components/TournamentCountdown';
 import { TournamentMatch } from '../../../types/tournament';
 import { formatTournamentDate } from '../../../lib/dateUtils';
+import { downloadTournamentRules } from '../../../components/TournamentRulesEditor';
 
 export default function TournamentDetailPage() {
   const params = useParams();
@@ -58,6 +61,7 @@ export default function TournamentDetailPage() {
   const [activeTab, setActiveTab] = useState<'overview' | 'brackets' | 'participants' | 'rules'>('brackets');
   const [selectedMatch, setSelectedMatch] = useState<TournamentMatch | null>(null);
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
   const [participantSearch, setParticipantSearch] = useState('');
   const [isWithdrawing, setIsWithdrawing] = useState(false);
 
@@ -68,7 +72,7 @@ export default function TournamentDetailPage() {
         <p className="text-slate-400 text-sm">El torneo que buscas no existe o ha sido movido.</p>
         <Link
           href="/arena"
-          className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-cyan-500 text-black font-bold text-sm"
+          className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-red-500 text-black font-bold text-sm"
         >
           <ChevronLeft className="w-4 h-4" />
           <span>Volver al Directorio</span>
@@ -90,7 +94,7 @@ export default function TournamentDetailPage() {
         </p>
         <Link
           href="/arena"
-          className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-cyan-500 text-black font-bold text-sm"
+          className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-red-500 text-black font-bold text-sm"
         >
           <ChevronLeft className="w-4 h-4" />
           <span>Volver al Directorio de Torneos</span>
@@ -127,18 +131,18 @@ export default function TournamentDetailPage() {
       ? '¿Estás seguro de que deseas salirte de este torneo individual? Tu puesto en las llaves volverá a quedar "Vacío".'
       : `¿Estás seguro de que deseas retirar a tu equipo "${myRegistration.name}" de este torneo? Como capitán, esta acción dará de baja la participación del equipo completo y liberará el cupo en las llaves.`;
 
-    if (!window.confirm(confirmMsg)) return;
+    if (!await showConfirm(confirmMsg)) return;
 
     try {
       setIsWithdrawing(true);
       const res = await withdrawFromTournament(tournament.id);
       if (res.success) {
-        alert(res.message || 'Has bajado la participación del torneo exitosamente.');
+        showAlert(res.message || 'Has bajado la participación del torneo exitosamente.');
       } else {
-        alert(res.message || 'Error al intentar retirarse del torneo.');
+        showAlert(res.message || 'Error al intentar retirarse del torneo.');
       }
     } catch (err: any) {
-      alert(err.message || 'Error al procesar la solicitud.');
+      showAlert(err.message || 'Error al procesar la solicitud.');
     } finally {
       setIsWithdrawing(false);
     }
@@ -147,26 +151,26 @@ export default function TournamentDetailPage() {
   const handleToggleHide = async () => {
     if (!isAdmin) return;
     const action = tournament.isHidden ? 'desocultar y publicar' : 'ocultar y archivar';
-    if (!window.confirm(`¿Estás seguro de que deseas ${action} el torneo "${tournament.title}"? ${tournament.isHidden ? 'Volverá a ser visible para todos los usuarios.' : 'Quedará invisible para los usuarios regulares y se archivará en tu perfil de administrador.'}`)) {
+    if (!await showConfirm(`¿Estás seguro de que deseas ${action} el torneo "${tournament.title}"? ${tournament.isHidden ? 'Volverá a ser visible para todos los usuarios.' : 'Quedará invisible para los usuarios regulares y se archivará en tu perfil de administrador.'}`)) {
       return;
     }
 
     const res = await toggleHideTournament(tournament.id, !tournament.isHidden);
-    alert(res.message);
+    showAlert(res.message);
   };
 
   const handleDeleteTournament = async () => {
     if (!isAdmin) return;
-    if (!window.confirm(`¿Estás SEGURO de eliminar definitivamente el torneo "${tournament.title}"? Esta acción borrará permanentemente las llaves, partidas y participantes.`)) {
+    if (!await showConfirm(`¿Estás SEGURO de eliminar definitivamente el torneo "${tournament.title}"? Esta acción borrará permanentemente las llaves, partidas y participantes.`)) {
       return;
     }
 
     const res = await deleteTournament(tournament.id);
     if (res.success) {
-      alert(res.message);
+      showAlert(res.message);
       router.push('/profile');
     } else {
-      alert(res.message || 'Error al eliminar el torneo');
+      showAlert(res.message || 'Error al eliminar el torneo');
     }
   };
 
@@ -175,7 +179,7 @@ export default function TournamentDetailPage() {
   const handleDoCheckIn = () => {
     if (myRegistration) {
       checkInParticipant(tournament.id, myRegistration.id);
-      alert('¡Check-in confirmado con éxito!');
+      showAlert('¡Check-in confirmado con éxito!');
     }
   };
 
@@ -212,7 +216,7 @@ export default function TournamentDetailPage() {
         <div className="absolute bottom-6 left-4 right-4 max-w-7xl mx-auto sm:px-6 lg:px-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="px-2.5 py-1 rounded-md bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 text-xs font-mono font-bold uppercase">
+              <span className="px-2.5 py-1 rounded-md bg-red-500/20 text-red-300 border border-red-500/40 text-xs font-mono font-bold uppercase">
                 {tournament.gameName}
               </span>
               <span className="px-2.5 py-1 rounded-md bg-purple-500/20 text-purple-300 border border-purple-500/40 text-xs font-mono font-bold uppercase">
@@ -247,18 +251,18 @@ export default function TournamentDetailPage() {
                 <img
                   src={tournament.organizer.avatar}
                   alt={tournament.organizer.name}
-                  className="w-5 h-5 rounded-full object-cover border border-cyan-400"
+                  className="w-5 h-5 rounded-full object-cover border border-red-400"
                 />
                 <span>Organizado por <strong className="text-white">{tournament.organizer.name}</strong></span>
               </div>
               <span>•</span>
               <div className="flex items-center space-x-1 text-slate-300">
-                <Calendar className="w-3.5 h-3.5 text-cyan-400" />
+                <Calendar className="w-3.5 h-3.5 text-red-400" />
                 <span>{formatTournamentDate(tournament.startDate)}</span>
               </div>
               <span>•</span>
               <div className="flex items-center space-x-1 text-slate-300">
-                <Users className="w-3.5 h-3.5 text-cyan-400" />
+                <Users className="w-3.5 h-3.5 text-red-400" />
                 <span>{tournament.teamType === 'solo' ? 'Individual 1v1' : `Equipos ${tournament.teamSize}v${tournament.teamSize}`}</span>
               </div>
             </div>
@@ -281,8 +285,8 @@ export default function TournamentDetailPage() {
             {tournament.status !== 'completed' && (
               myRegistration ? (
                 <div className="flex flex-wrap items-center gap-2">
-                  <div className="px-4 py-2.5 rounded-xl bg-cyan-950/70 border border-cyan-500/40 text-cyan-300 text-xs sm:text-sm font-semibold flex items-center space-x-2">
-                    <CheckCircle2 className="w-4 h-4 text-cyan-400 shrink-0" />
+                  <div className="px-4 py-2.5 rounded-xl bg-red-950/70 border border-red-500/40 text-red-300 text-xs sm:text-sm font-semibold flex items-center space-x-2">
+                    <CheckCircle2 className="w-4 h-4 text-red-400 shrink-0" />
                     <span>Inscrito: <strong className="text-white ml-1">{myRegistration.name}</strong></span>
                   </div>
 
@@ -305,7 +309,7 @@ export default function TournamentDetailPage() {
               ) : (
                 <button
                   onClick={() => setIsRegisterOpen(true)}
-                  className="px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm uppercase tracking-wider text-black bg-cyan-400 hover:bg-cyan-300 shadow-lg shadow-cyan-400/30 transition-all flex items-center space-x-2 font-mono"
+                  className="px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm uppercase tracking-wider text-black bg-red-400 hover:bg-red-300 shadow-lg shadow-red-400/30 transition-all flex items-center space-x-2 font-mono"
                 >
                   <Trophy className="w-4 h-4 text-black" />
                   <span>{isSolo ? 'Inscribirme (Individual)' : 'Inscribir Equipo'}</span>
@@ -316,12 +320,15 @@ export default function TournamentDetailPage() {
             {/* Admin Controls */}
             {isAdmin && (
               <div className="flex flex-wrap items-center gap-2 border-t sm:border-t-0 sm:border-l border-slate-700/80 pt-2 sm:pt-0 sm:pl-3">
+                <button type="button" onClick={() => setIsEditOpen(true)} className="rounded-xl border border-red-400/40 bg-red-400/15 px-4 py-2.5 text-xs font-bold text-red-300 hover:bg-red-400/25">Editar torneo</button>
                 {/* Admin Generate Bracket CTA */}
-                {tournament.rounds.length > 0 && (tournament.rounds[0].matches[0].team1.name.startsWith('Semilla') || tournament.rounds[0].matches[0].team1.name === 'Vacío') && (
+                {tournament.rounds.length > 0 && ['registration_open', 'check_in', 'upcoming'].includes(tournament.status) && (
                   <button
-                    onClick={() => {
-                      generateBracketFromParticipants(tournament.id);
-                      alert('¡Llaves sorteadas y generadas con los participantes registrados!');
+                    onClick={async () => {
+                      try {
+                        await generateBracketFromParticipants(tournament.id);
+                        showAlert('Llaves sorteadas correctamente.');
+                      } catch (error) { showAlert((error as Error).message); }
                     }}
                     className="px-3.5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider text-white bg-purple-600 hover:bg-purple-500 shadow-lg shadow-purple-600/30 transition-all flex items-center space-x-1.5 font-mono"
                   >
@@ -359,12 +366,12 @@ export default function TournamentDetailPage() {
       </div>
 
       {/* Main Tabs Navigation */}
-      <div className="border-b border-slate-800 bg-[#0a0e17] sticky top-16 z-30">
+      <div className="border-b border-slate-800 bg-[#130f10] sticky top-16 z-30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex space-x-8 text-xs sm:text-sm font-semibold">
           <button
             onClick={() => setActiveTab('brackets')}
             className={`py-4 border-b-2 flex items-center space-x-2 transition-all ${activeTab === 'brackets'
-                ? 'border-cyan-400 text-cyan-300'
+                ? 'border-red-400 text-red-300'
                 : 'border-transparent text-slate-400 hover:text-white'
               }`}
           >
@@ -375,7 +382,7 @@ export default function TournamentDetailPage() {
           <button
             onClick={() => setActiveTab('overview')}
             className={`py-4 border-b-2 flex items-center space-x-2 transition-all ${activeTab === 'overview'
-                ? 'border-cyan-400 text-cyan-300'
+                ? 'border-red-400 text-red-300'
                 : 'border-transparent text-slate-400 hover:text-white'
               }`}
           >
@@ -386,7 +393,7 @@ export default function TournamentDetailPage() {
           <button
             onClick={() => setActiveTab('participants')}
             className={`py-4 border-b-2 flex items-center space-x-2 transition-all ${activeTab === 'participants'
-                ? 'border-cyan-400 text-cyan-300'
+                ? 'border-red-400 text-red-300'
                 : 'border-transparent text-slate-400 hover:text-white'
               }`}
           >
@@ -397,7 +404,7 @@ export default function TournamentDetailPage() {
           <button
             onClick={() => setActiveTab('rules')}
             className={`py-4 border-b-2 flex items-center space-x-2 transition-all ${activeTab === 'rules'
-                ? 'border-cyan-400 text-cyan-300'
+                ? 'border-red-400 text-red-300'
                 : 'border-transparent text-slate-400 hover:text-white'
               }`}
           >
@@ -446,14 +453,14 @@ export default function TournamentDetailPage() {
         {/* TAB 1: BRACKETS */}
         {activeTab === 'brackets' && (
           <div className="space-y-6 animate-fade-in">
-            <div className="p-4 rounded-xl bg-cyan-950/20 border border-cyan-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-              <div className="flex items-center space-x-2 text-cyan-200">
-                <Sparkles className="w-4 h-4 text-cyan-400 shrink-0" />
+            <div className="p-4 rounded-xl bg-red-950/20 border border-red-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+              <div className="flex items-center space-x-2 text-red-200">
+                <Sparkles className="w-4 h-4 text-red-400 shrink-0" />
                 <span>
                   Haz clic en cualquier partida de la llave para abrir la <strong>Sala de Match</strong>, reportar el marcador, adjuntar captura de victoria o chatear con tu rival.
                 </span>
               </div>
-              <span className="font-mono text-cyan-400 text-[11px] shrink-0">
+              <span className="font-mono text-red-400 text-[11px] shrink-0">
                 Motor de Brackets Reactivo
               </span>
             </div>
@@ -473,7 +480,7 @@ export default function TournamentDetailPage() {
             <div className="lg:col-span-2 space-y-8">
 
               {/* Description */}
-              <div className="p-6 rounded-2xl bg-[#0c121d] border border-slate-800 space-y-3">
+              <div className="p-6 rounded-2xl bg-[#191213] border border-slate-800 space-y-3">
                 <h3 className="text-base font-bold text-white uppercase tracking-wider">
                   Acerca de este Torneo
                 </h3>
@@ -483,7 +490,7 @@ export default function TournamentDetailPage() {
               </div>
 
               {/* Prize Pool Breakdown */}
-              <div className="p-6 rounded-2xl bg-[#0c121d] border border-slate-800 space-y-4">
+              <div className="p-6 rounded-2xl bg-[#191213] border border-slate-800 space-y-4">
                 <div className="flex items-center justify-between">
                   <h3 className="text-base font-bold text-white uppercase tracking-wider flex items-center space-x-2">
                     <Trophy className="w-5 h-5 text-amber-400" />
@@ -510,7 +517,7 @@ export default function TournamentDetailPage() {
                       </div>
                       <div>
                         <h4 className="text-xs font-bold text-white">{p.place}</h4>
-                        <p className="text-xs font-mono font-semibold text-cyan-400">{p.prize}</p>
+                        <p className="text-xs font-mono font-semibold text-red-400">{p.prize}</p>
                       </div>
                     </div>
                   ))}
@@ -518,9 +525,9 @@ export default function TournamentDetailPage() {
               </div>
 
               {/* Schedule */}
-              <div className="p-6 rounded-2xl bg-[#0c121d] border border-slate-800 space-y-4">
+              <div className="p-6 rounded-2xl bg-[#191213] border border-slate-800 space-y-4">
                 <h3 className="text-base font-bold text-white uppercase tracking-wider flex items-center space-x-2">
-                  <Clock className="w-5 h-5 text-cyan-400" />
+                  <Clock className="w-5 h-5 text-red-400" />
                   <span>Cronograma Oficial</span>
                 </h3>
                 <div className="divide-y divide-slate-800">
@@ -530,7 +537,7 @@ export default function TournamentDetailPage() {
                         <span className="font-semibold text-white block">{item.stage}</span>
                         <span className="text-slate-400 text-[11px]">{item.format}</span>
                       </div>
-                      <span className="font-mono text-cyan-400">{item.time}</span>
+                      <span className="font-mono text-red-400">{item.time}</span>
                     </div>
                   ))}
                 </div>
@@ -541,7 +548,7 @@ export default function TournamentDetailPage() {
             {/* Right 1 Col: Quick Info Sidebar */}
             <div className="space-y-6">
 
-              <div className="p-6 rounded-2xl bg-[#0c121d] border border-slate-800 space-y-4">
+              <div className="p-6 rounded-2xl bg-[#191213] border border-slate-800 space-y-4">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
                   Ficha del Torneo
                 </h3>
@@ -553,7 +560,7 @@ export default function TournamentDetailPage() {
                   </div>
                   <div className="flex justify-between py-1.5 border-b border-slate-800/80">
                     <span className="text-slate-400">Formato:</span>
-                    <span className="font-semibold text-cyan-300 capitalize">{tournament.format.replace('_', ' ')}</span>
+                    <span className="font-semibold text-red-300 capitalize">{tournament.format.replace('_', ' ')}</span>
                   </div>
                   <div className="flex justify-between py-1.5 border-b border-slate-800/80">
                     <span className="text-slate-400">Región:</span>
@@ -575,25 +582,25 @@ export default function TournamentDetailPage() {
 
                 <button
                   onClick={() => setIsRegisterOpen(true)}
-                  className="w-full py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider text-black bg-cyan-400 hover:bg-cyan-300 shadow-md transition-all font-mono"
+                  className="w-full py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider text-black bg-red-400 hover:bg-red-300 shadow-md transition-all font-mono"
                 >
                   REGISTRARSE AL EVENTO
                 </button>
               </div>
 
               {/* Organizer Info Card */}
-              <div className="p-6 rounded-2xl bg-[#0c121d] border border-slate-800 space-y-4">
+              <div className="p-6 rounded-2xl bg-[#191213] border border-slate-800 space-y-4">
                 <div className="flex items-center space-x-3">
                   <img
                     src={tournament.organizer.avatar}
                     alt={tournament.organizer.name}
-                    className="w-12 h-12 rounded-xl object-cover border border-cyan-500/40"
+                    className="w-12 h-12 rounded-xl object-cover border border-red-500/40"
                   />
                   <div>
                     <div className="flex items-center space-x-1.5">
                       <h4 className="text-sm font-bold text-white">{tournament.organizer.name}</h4>
                       {tournament.organizer.verified && (
-                        <ShieldCheck className="w-4 h-4 text-cyan-400" />
+                        <ShieldCheck className="w-4 h-4 text-red-400" />
                       )}
                     </div>
                     <p className="text-xs text-slate-400 font-mono">
@@ -617,13 +624,13 @@ export default function TournamentDetailPage() {
           <div className="space-y-6 animate-fade-in">
 
             {/* Search and stats bar */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#0c121d] p-4 rounded-xl border border-slate-800">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#191213] p-4 rounded-xl border border-slate-800">
               <div className="flex items-center space-x-3 text-xs text-slate-400">
                 <span>Inscritos: <strong className="text-white font-mono">{tournament.participants.length}</strong></span>
                 <span>•</span>
                 <span>Check-in: <strong className="text-amber-400 font-mono">{checkedInCount}</strong></span>
                 <span>•</span>
-                <span>Cupos restantes: <strong className="text-cyan-400 font-mono">{tournament.maxParticipants - tournament.participants.length}</strong></span>
+                <span>Cupos restantes: <strong className="text-red-400 font-mono">{tournament.maxParticipants - tournament.participants.length}</strong></span>
               </div>
 
               <div className="flex items-center space-x-3">
@@ -632,12 +639,12 @@ export default function TournamentDetailPage() {
                   placeholder="Buscar equipo o capitán..."
                   value={participantSearch}
                   onChange={(e) => setParticipantSearch(e.target.value)}
-                  className="px-3.5 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400"
+                  className="px-3.5 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-red-400"
                 />
 
                 <button
                   onClick={() => setIsRegisterOpen(true)}
-                  className="px-3.5 py-1.5 rounded-lg bg-cyan-400 text-black text-xs font-bold font-mono hover:bg-cyan-300"
+                  className="px-3.5 py-1.5 rounded-lg bg-red-400 text-black text-xs font-bold font-mono hover:bg-red-300"
                 >
                   + Inscribir
                 </button>
@@ -646,7 +653,7 @@ export default function TournamentDetailPage() {
 
             {/* Participants Grid */}
             {filteredParticipants.length === 0 ? (
-              <div className="text-center py-16 bg-[#0c121d] rounded-2xl border border-slate-800">
+              <div className="text-center py-16 bg-[#191213] rounded-2xl border border-slate-800">
                 <Users className="w-10 h-10 text-slate-600 mx-auto mb-2" />
                 <p className="text-sm text-slate-400">No se encontraron participantes registrados.</p>
               </div>
@@ -655,7 +662,7 @@ export default function TournamentDetailPage() {
                 {filteredParticipants.map((p) => (
                   <div
                     key={p.id}
-                    className="p-5 rounded-2xl bg-[#0c121d] border border-slate-800 hover:border-slate-700 transition-all space-y-4"
+                    className="p-5 rounded-2xl bg-[#191213] border border-slate-800 hover:border-slate-700 transition-all space-y-4"
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex items-center space-x-3">
@@ -667,7 +674,7 @@ export default function TournamentDetailPage() {
                         <div>
                           <div className="flex items-center space-x-2">
                             <h4 className="text-sm font-bold text-white line-clamp-1">{p.name}</h4>
-                            <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-800 text-cyan-400 border border-slate-700">
+                            <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-800 text-red-400 border border-slate-700">
                               {p.tag}
                             </span>
                           </div>
@@ -697,7 +704,7 @@ export default function TournamentDetailPage() {
                       </div>
                       <div className="flex justify-between text-slate-400">
                         <span>Tag de Juego:</span>
-                        <span className="font-mono text-cyan-300">{p.captain.inGameId}</span>
+                        <span className="font-mono text-red-300">{p.captain.inGameId}</span>
                       </div>
                       {p.captain.discord && (
                         <div className="flex justify-between text-slate-400">
@@ -750,10 +757,11 @@ export default function TournamentDetailPage() {
         {/* TAB 4: RULES & SUPPORT */}
         {activeTab === 'rules' && (
           <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
-            <div className="p-6 rounded-2xl bg-[#0c121d] border border-slate-800 space-y-4">
-              <div className="flex items-center space-x-2 text-base font-bold text-white uppercase tracking-wider">
-                <Shield className="w-5 h-5 text-cyan-400" />
-                <span>Reglamento Competitivo Oficial</span>
+            <div className="p-6 rounded-2xl bg-[#191213] border border-slate-800 space-y-4">
+              <div className="flex flex-wrap items-center gap-2 text-base font-bold text-white uppercase tracking-wider">
+                <Shield className="w-5 h-5 text-red-400" />
+                <span>Bases y reglamento del torneo</span>
+                <button type="button" onClick={() => downloadTournamentRules(tournament.title, tournament.rules)} className="ml-auto rounded-lg border border-red-400/30 bg-red-400/10 px-3 py-2 text-xs font-semibold normal-case text-red-300 hover:bg-red-400/20">Descargar bases</button>
               </div>
 
               <div className="space-y-3">
@@ -762,7 +770,7 @@ export default function TournamentDetailPage() {
                     key={idx}
                     className="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800 flex items-start space-x-3 text-xs sm:text-sm text-slate-300"
                   >
-                    <span className="font-mono font-bold text-cyan-400 shrink-0">
+                    <span className="font-mono font-bold text-red-400 shrink-0">
                       #{idx + 1}
                     </span>
                     <p>{rule}</p>
@@ -771,7 +779,7 @@ export default function TournamentDetailPage() {
               </div>
             </div>
 
-            <div className="p-6 rounded-2xl bg-gradient-to-r from-purple-950/30 to-blue-950/30 border border-purple-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="p-6 rounded-2xl bg-gradient-to-r from-purple-950/30 to-red-950/30 border border-purple-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <h4 className="text-sm font-bold text-white">¿Tienes dudas o necesitas un árbitro?</h4>
                 <p className="text-xs text-slate-400 mt-1">
@@ -780,7 +788,7 @@ export default function TournamentDetailPage() {
               </div>
 
               <button
-                onClick={() => alert('Para soporte o dudas durante una partida, abre la Sala del Match y haz clic en "Llamar a un árbitro".')}
+                onClick={() => showAlert('Para soporte o dudas durante una partida, abre la Sala del Match y haz clic en "Llamar a un árbitro".')}
                 className="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold whitespace-nowrap shadow-md"
               >
                 Centro de Ayuda & Discord
@@ -791,6 +799,7 @@ export default function TournamentDetailPage() {
 
       </div>
 
+      {isAdmin && isEditOpen && <EditTournamentModal key={tournament.id} tournament={tournament} onClose={() => { setIsEditOpen(false); setSelectedMatch(null); }} />}
       {/* Match Room Modal */}
       <MatchRoomModal
         key={`${user?.id || 'guest'}:${selectedMatch?.id || 'closed'}`}

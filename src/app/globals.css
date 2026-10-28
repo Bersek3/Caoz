@@ -210,3 +210,20 @@
 .animate-fade-in {
   animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+
+/* Muted crimson palette for the tournament platform. */
+.arena-theme {
+  --color-red-300: #e7a6a9; --color-red-400: #d78086; --color-red-500: #ba6169;
+  --color-red-600: #a44e58; --color-red-700: #843d47; --color-red-950: #32191e;
+  --color-slate-950: #100d0e; --color-slate-900: #1b1618;
+  --color-slate-800: #30272b; --color-slate-700: #483b41;
+  --primary-cyan: #d78086; --primary-cyan-glow: rgba(186,97,105,.2);
+  --border-accent: rgba(186,97,105,.35);
+  background: radial-gradient(ellipse at top, #321c22 0%, #110e0f 65%);
+}
+.arena-theme .glass-panel, .arena-theme .glass-card { background-color: rgb(28 21 24 / 85%); }
+.arena-theme .glass-card:hover { border-color: #ba616966; box-shadow: 0 12px 30px -10px #0008; }
+
+.arena-theme .match-card { background: #1b1518; }
+.arena-theme .match-card:hover, .arena-theme .match-card.is-active { border-color: #ba6169; box-shadow: 0 4px 20px #0006; }
+.arena-theme .bracket-connector-h, .arena-theme .bracket-connector-v { background: #483b41; }

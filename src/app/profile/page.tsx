@@ -1,5 +1,7 @@
 'use client';
+import { showAlert, showConfirm } from '../../components/StyledDialog';
 
+import { getUserAvatar } from '../../lib/userAvatar';
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -36,6 +38,8 @@ import {
   EyeOff,
   Archive
 } from 'lucide-react';
+import { EditTournamentModal } from '../../components/EditTournamentModal';
+import type { Tournament } from '../../types/tournament';
 import { useAuth } from '../../context/AuthContext';
 import { useTournament } from '../../context/TournamentContext';
 
@@ -74,6 +78,7 @@ interface TeamData {
 
 export default function ProfilePage() {
   const router = useRouter();
+  const [editingTournament, setEditingTournament] = useState<Tournament | null>(null);
   const { user, token, logout, updateProfile, refreshUser, isLoading } = useAuth();
   const { tournaments, withdrawFromTournament, toggleHideTournament, deleteTournament } = useTournament();
 
@@ -107,7 +112,7 @@ export default function ProfilePage() {
     if (!file) return;
 
     if (file.size > 8 * 1024 * 1024) {
-      alert('El archivo es demasiado grande. El límite máximo es 8MB.');
+      showAlert('El archivo es demasiado grande. El límite máximo es 8MB.');
       return;
     }
 
@@ -160,8 +165,6 @@ export default function ProfilePage() {
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
 
-  // Default generic avatar that is fixed and cannot be changed
-  const defaultGenericAvatar = 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?q=80&w=200&auto=format&fit=crop';
 
   // Auth protection guard: If not logged in, redirect to '/arena' with replace so back-navigation doesn't re-render profile!
   useEffect(() => {
@@ -215,7 +218,7 @@ export default function ProfilePage() {
   if (isLoading || !user) {
     return (
       <div className="min-h-[70vh] flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -243,7 +246,7 @@ export default function ProfilePage() {
       await refreshUser();
       setTimeout(() => setSavedSuccess(false), 2500);
     } else {
-      alert(res.error || 'Error al guardar cambios');
+      showAlert(res.error || 'Error al guardar cambios');
     }
   };
 
@@ -391,7 +394,7 @@ export default function ProfilePage() {
   };
 
   const handleKickMember = async (memberId: string, memberUsername: string) => {
-    if (!confirm(`¿Estás seguro de que deseas expulsar a @${memberUsername} del equipo?`)) {
+    if (!await showConfirm(`¿Estás seguro de que deseas expulsar a @${memberUsername} del equipo?`)) {
       return;
     }
     setTeamError('');
@@ -415,7 +418,7 @@ export default function ProfilePage() {
   };
 
   const handleDisbandTeam = async () => {
-    if (!confirm('⚠️ ¿Estás seguro de que deseas DISOLVER tu equipo? Esta acción no se puede deshacer y desvinculará a todos los miembros.')) {
+    if (!await showConfirm('⚠️ ¿Estás seguro de que deseas DISOLVER tu equipo? Esta acción no se puede deshacer y desvinculará a todos los miembros.')) {
       return;
     }
     setTeamError('');
@@ -440,7 +443,7 @@ export default function ProfilePage() {
   };
 
   const handleLeaveTeam = async () => {
-    if (!confirm('¿Estás seguro de que deseas abandonar este equipo?')) {
+    if (!await showConfirm('¿Estás seguro de que deseas abandonar este equipo?')) {
       return;
     }
     setTeamError('');
@@ -497,18 +500,18 @@ export default function ProfilePage() {
       ? `¿Estás seguro de que deseas salirte de "${trn.title}"? Tu cupo en el torneo volverá a estar vacío.`
       : `¿Estás seguro de que deseas retirar a tu equipo de "${trn.title}"? Como capitán, esta acción dará de baja la participación del equipo completo.`;
 
-    if (!window.confirm(confirmMsg)) return;
+    if (!await showConfirm(confirmMsg)) return;
 
     try {
       setWithdrawingId(trn.id);
       const res = await withdrawFromTournament(trn.id);
       if (res.success) {
-        alert(res.message || 'Has bajado la participación del torneo.');
+        showAlert(res.message || 'Has bajado la participación del torneo.');
       } else {
-        alert(res.message || 'Error al retirarse del torneo.');
+        showAlert(res.message || 'Error al retirarse del torneo.');
       }
     } catch (err: any) {
-      alert(err.message || 'Error al procesar la solicitud.');
+      showAlert(err.message || 'Error al procesar la solicitud.');
     } finally {
       setWithdrawingId(null);
     }
@@ -522,32 +525,32 @@ export default function ProfilePage() {
 
   const handleAdminToggleHide = async (tId: string, isHidden: boolean, title: string) => {
     const action = isHidden ? 'ocultar y archivar' : 'desocultar y publicar';
-    if (!window.confirm(`¿Estás seguro de que deseas ${action} el torneo "${title}"?`)) {
+    if (!await showConfirm(`¿Estás seguro de que deseas ${action} el torneo "${title}"?`)) {
       return;
     }
 
     try {
       setAdminActionId(tId);
       const res = await toggleHideTournament(tId, isHidden);
-      alert(res.message);
+      showAlert(res.message);
     } catch (e: any) {
-      alert(e.message || 'Error al cambiar visibilidad');
+      showAlert(e.message || 'Error al cambiar visibilidad');
     } finally {
       setAdminActionId(null);
     }
   };
 
   const handleAdminDelete = async (tId: string, title: string) => {
-    if (!window.confirm(`¿Estás SEGURO de eliminar definitivamente el torneo "${title}"? Se borrarán todas sus partidas, brackets y participantes permanentemente.`)) {
+    if (!await showConfirm(`¿Estás SEGURO de eliminar definitivamente el torneo "${title}"? Se borrarán todas sus partidas, brackets y participantes permanentemente.`)) {
       return;
     }
 
     try {
       setAdminActionId(tId);
       const res = await deleteTournament(tId);
-      alert(res.message);
+      showAlert(res.message);
     } catch (e: any) {
-      alert(e.message || 'Error al eliminar torneo');
+      showAlert(e.message || 'Error al eliminar torneo');
     } finally {
       setAdminActionId(null);
     }
@@ -568,19 +571,19 @@ export default function ProfilePage() {
       </div>
 
       <section className="rounded-2xl border border-slate-800 bg-[#0d1320] p-5 flex flex-wrap items-center justify-between gap-4">
-        <div><h2 className="font-bold text-white">Pagos</h2><p className="text-sm text-slate-400">Consulta el historial y estado de los pagos de inscripci?n.</p></div>
+        <div><h2 className="font-bold text-white">Pagos</h2><p className="text-sm text-slate-400">Consulta el historial y estado de los pagos de inscripción.</p></div>
         <Link href="/arena/pagos" className="rounded-xl bg-cyan-500/10 border border-cyan-500/30 px-4 py-2 text-sm font-semibold text-cyan-300">{user.role === 'admin' ? 'Ver pagos de inscripciones' : 'Ver mis pagos'}</Link>
       </section>
       {/* Profile Header Banner */}
       <div className="p-6 sm:p-8 rounded-3xl bg-[#0d1320] border border-slate-800 shadow-2xl relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div className="absolute top-0 right-0 w-80 h-80 bg-cyan-500/10 rounded-full blur-[100px] pointer-events-none" />
+        <div className="absolute top-0 right-0 w-80 h-80 bg-red-500/10 rounded-full blur-[100px] pointer-events-none" />
 
         <div className="flex items-center space-x-5 relative">
           <div className="relative">
             <img
-              src={defaultGenericAvatar}
+              src={getUserAvatar(user.username)}
               alt={user.username}
-              className="w-20 h-20 rounded-2xl object-cover border-2 border-cyan-400 shadow-lg"
+              className="w-20 h-20 rounded-2xl object-cover border-2 border-red-400 shadow-lg"
             />
             <span className="absolute bottom-1 right-1 w-4 h-4 bg-emerald-500 border-2 border-[#0d1320] rounded-full" />
           </div>
@@ -590,22 +593,11 @@ export default function ProfilePage() {
               <h1 className="text-xl sm:text-2xl font-black text-white">
                 {fullName || user.username}
               </h1>
-              {user.role === 'admin' ? (
-                <span className="px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/40 text-[10px] font-bold uppercase font-mono">
-                  ADMINISTRADOR
-                </span>
-              ) : (
-                <span className="px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 text-[10px] font-bold uppercase font-mono">
-                  JUGADOR
-                </span>
-              )}
             </div>
             <p className="text-xs text-slate-400 font-mono">
-              @{user.username} • {user.email}
+              {user.username}
             </p>
-            <p className="text-xs text-slate-300 line-clamp-1 max-w-md pt-0.5">
-              {bio || 'Competidor en CZ ARENA.'}
-            </p>
+
           </div>
         </div>
 
@@ -618,7 +610,7 @@ export default function ProfilePage() {
             <span className="text-[11px] text-slate-400">Torneos Jugados</span>
           </div>
           <div>
-            <span className="text-2xl font-black text-cyan-400 font-mono block">
+            <span className="text-2xl font-black text-red-400 font-mono block">
               {team ? '1' : '0'}
             </span>
             <span className="text-[11px] text-slate-400">Equipo</span>
@@ -638,10 +630,10 @@ export default function ProfilePage() {
         
         {/* Left Column: Edit Profile Form (6 cols) */}
         <div className="lg:col-span-6 space-y-6">
-          <div className="p-6 rounded-2xl bg-[#0c121d] border border-slate-800 space-y-5">
+          <div className="p-6 rounded-2xl bg-[#191213] border border-slate-800 space-y-5">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <h2 className="text-sm font-bold uppercase tracking-wider text-white flex items-center space-x-2">
-                <User className="w-4 h-4 text-cyan-400" />
+                <User className="w-4 h-4 text-red-400" />
                 <span>Datos del Perfil & Cuentas de Juego</span>
               </h2>
             </div>
@@ -660,7 +652,7 @@ export default function ProfilePage() {
                   type="text"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:border-cyan-400 focus:outline-none"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:border-red-400 focus:outline-none"
                 />
               </div>
 
@@ -670,7 +662,7 @@ export default function ProfilePage() {
                   rows={2}
                   value={bio}
                   onChange={(e) => setBio(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:border-cyan-400 focus:outline-none"
+                  className="w-full px-3.5 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:border-red-400 focus:outline-none"
                 />
               </div>
 
@@ -678,7 +670,7 @@ export default function ProfilePage() {
               <div className="p-5 rounded-xl bg-slate-900/60 border border-slate-800 space-y-4">
                 <div className="flex items-center justify-between border-b border-slate-800/80 pb-2.5">
                   <div className="flex items-center space-x-2">
-                    <Gamepad2 className="w-4 h-4 text-cyan-400" />
+                    <Gamepad2 className="w-4 h-4 text-red-400" />
                     <span className="text-xs font-bold text-slate-200 uppercase tracking-wider">
                       Identificadores de Videojuegos (In-Game Tags)
                     </span>
@@ -692,7 +684,7 @@ export default function ProfilePage() {
                   {/* Steam ID */}
                   <div>
                     <label className="block text-[11px] font-semibold text-slate-300 mb-1 flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-blue-500 inline-block" />
+                      <span className="w-2 h-2 rounded-full bg-red-500 inline-block" />
                       Steam ID
                     </label>
                     <input
@@ -700,14 +692,14 @@ export default function ProfilePage() {
                       placeholder="STEAM_0:1:12345678 o ID64"
                       value={steamId}
                       onChange={(e) => setSteamId(e.target.value)}
-                      className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white text-xs focus:border-cyan-400 focus:outline-none"
+                      className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white text-xs focus:border-red-400 focus:outline-none"
                     />
                   </div>
 
                   {/* Discord Tag */}
                   <div>
                     <label className="block text-[11px] font-semibold text-slate-300 mb-1 flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-indigo-500 inline-block" />
+                      <span className="w-2 h-2 rounded-full bg-red-500 inline-block" />
                       Discord Tag
                     </label>
                     <input
@@ -715,7 +707,7 @@ export default function ProfilePage() {
                       placeholder="usuario#0000 o @usuario"
                       value={discordTag}
                       onChange={(e) => setDiscordTag(e.target.value)}
-                      className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white text-xs focus:border-cyan-400 focus:outline-none"
+                      className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white text-xs focus:border-red-400 focus:outline-none"
                     />
                   </div>
 
@@ -730,7 +722,7 @@ export default function ProfilePage() {
                       placeholder="Tu usuario en Epic Games"
                       value={epicGamesUsername}
                       onChange={(e) => setEpicGamesUsername(e.target.value)}
-                      className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white text-xs focus:border-cyan-400 focus:outline-none"
+                      className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white text-xs focus:border-red-400 focus:outline-none"
                     />
                   </div>
 
@@ -745,14 +737,14 @@ export default function ProfilePage() {
                       placeholder="Jugador#LAS (Valorant, LoL)"
                       value={riotId}
                       onChange={(e) => setRiotId(e.target.value)}
-                      className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white text-xs focus:border-cyan-400 focus:outline-none"
+                      className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white text-xs focus:border-red-400 focus:outline-none"
                     />
                   </div>
 
                   {/* PSN ID */}
                   <div>
                     <label className="block text-[11px] font-semibold text-slate-300 mb-1 flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-blue-600 inline-block" />
+                      <span className="w-2 h-2 rounded-full bg-red-600 inline-block" />
                       PSN ID (PlayStation Network)
                     </label>
                     <input
@@ -760,7 +752,7 @@ export default function ProfilePage() {
                       placeholder="Tu ID Online de PSN"
                       value={psnId}
                       onChange={(e) => setPsnId(e.target.value)}
-                      className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white text-xs focus:border-cyan-400 focus:outline-none"
+                      className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white text-xs focus:border-red-400 focus:outline-none"
                     />
                   </div>
 
@@ -775,7 +767,7 @@ export default function ProfilePage() {
                       placeholder="Tu Gamertag de Xbox Live"
                       value={xboxGamertag}
                       onChange={(e) => setXboxGamertag(e.target.value)}
-                      className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white text-xs focus:border-cyan-400 focus:outline-none"
+                      className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white text-xs focus:border-red-400 focus:outline-none"
                     />
                   </div>
                 </div>
@@ -784,7 +776,7 @@ export default function ProfilePage() {
               <button
                 type="submit"
                 disabled={saving}
-                className="w-full py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider text-black bg-cyan-400 hover:bg-cyan-300 shadow-md font-mono flex items-center justify-center space-x-1.5 disabled:opacity-50"
+                className="w-full py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider text-black bg-red-400 hover:bg-red-300 shadow-md font-mono flex items-center justify-center space-x-1.5 disabled:opacity-50"
               >
                 <Save className="w-4 h-4 text-black" />
                 <span>{saving ? 'GUARDANDO...' : 'GUARDAR CAMBIOS EN EL PERFIL'}</span>
@@ -797,7 +789,7 @@ export default function ProfilePage() {
         <div className="lg:col-span-6 space-y-6">
           
           {/* Team Section */}
-          <div className="p-6 rounded-2xl bg-[#0c121d] border border-slate-800 space-y-5">
+          <div className="p-6 rounded-2xl bg-[#191213] border border-slate-800 space-y-5">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <h3 className="text-xs font-bold uppercase tracking-wider text-white flex items-center space-x-2">
                 <Users className="w-4 h-4 text-purple-400" />
@@ -807,7 +799,7 @@ export default function ProfilePage() {
                 <span className={`px-2 py-0.5 rounded text-[10px] font-bold font-mono flex items-center space-x-1 ${
                   team.isCaptain 
                     ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' 
-                    : 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
+                    : 'bg-red-500/20 text-red-300 border border-red-500/40'
                 }`}>
                   {team.isCaptain ? <Crown className="w-3 h-3 text-amber-400" /> : null}
                   <span>{team.isCaptain ? 'Capitán' : 'Miembro'}</span>
@@ -865,7 +857,7 @@ export default function ProfilePage() {
                     }}
                     className={`py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center space-x-1.5 ${
                       activeTeamTab === 'join'
-                        ? 'bg-cyan-500 text-black shadow-md'
+                        ? 'bg-red-500 text-black shadow-md'
                         : 'text-slate-400 hover:text-white'
                     }`}
                   >
@@ -928,7 +920,7 @@ export default function ProfilePage() {
                         placeholder="Ej: CZ-8K2Q-94XF"
                         value={joinCode}
                         onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-                        className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white font-mono uppercase text-xs focus:border-cyan-400 focus:outline-none"
+                        className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white font-mono uppercase text-xs focus:border-red-400 focus:outline-none"
                       />
                     </div>
 
@@ -942,7 +934,7 @@ export default function ProfilePage() {
                           placeholder="Tu Riot ID / Steam ID"
                           value={joinInGameId}
                           onChange={(e) => setJoinInGameId(e.target.value)}
-                          className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white text-xs focus:border-cyan-400 focus:outline-none"
+                          className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white text-xs focus:border-red-400 focus:outline-none"
                         />
                       </div>
                       <div>
@@ -954,7 +946,7 @@ export default function ProfilePage() {
                           placeholder="usuario#0000"
                           value={joinDiscord}
                           onChange={(e) => setJoinDiscord(e.target.value)}
-                          className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white text-xs focus:border-cyan-400 focus:outline-none"
+                          className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white text-xs focus:border-red-400 focus:outline-none"
                         />
                       </div>
                     </div>
@@ -962,7 +954,7 @@ export default function ProfilePage() {
                     <button
                       type="submit"
                       disabled={joiningTeam}
-                      className="w-full py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider text-black bg-cyan-400 hover:bg-cyan-300 shadow-md transition-all font-mono disabled:opacity-50"
+                      className="w-full py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider text-black bg-red-400 hover:bg-red-300 shadow-md transition-all font-mono disabled:opacity-50"
                     >
                       {joiningTeam ? 'UNIÉNDOSE...' : 'UNIRME AL ROSTER DEL EQUIPO'}
                     </button>
@@ -975,7 +967,7 @@ export default function ProfilePage() {
                 {/* Team Info Card */}
                 <div className="flex items-center space-x-3.5 p-3 rounded-xl bg-slate-900/60 border border-slate-800">
                   <img
-                    src={defaultGenericAvatar}
+                    src={getUserAvatar(team.name)}
                     alt={team.name}
                     className="w-12 h-12 rounded-xl object-cover border border-purple-500/40"
                   />
@@ -1004,7 +996,7 @@ export default function ProfilePage() {
                   </p>
 
                   <div className="flex items-center space-x-2">
-                    <div className="flex-1 px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-[11px] font-mono text-cyan-300 truncate">
+                    <div className="flex-1 px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-[11px] font-mono text-red-300 truncate">
                       {typeof window !== 'undefined' ? `${window.location.origin}/join-team?code=${team.inviteCode}` : `/join-team?code=${team.inviteCode}`}
                     </div>
                     <button
@@ -1049,7 +1041,7 @@ export default function ProfilePage() {
                           <div className="flex items-center space-x-2.5 truncate">
                             <span className="font-mono text-slate-500 text-[11px]">#{idx + 1}</span>
                             <img
-                              src={defaultGenericAvatar}
+                              src={getUserAvatar(m.username)}
                               alt={m.username}
                               className="w-6 h-6 rounded-md object-cover border border-slate-700"
                             />
@@ -1120,7 +1112,7 @@ export default function ProfilePage() {
           </div>
 
           {/* Tournaments Participation */}
-          <div className="p-6 rounded-2xl bg-[#0c121d] border border-slate-800 space-y-4">
+          <div className="p-6 rounded-2xl bg-[#191213] border border-slate-800 space-y-4">
             <h3 className="text-xs font-bold uppercase tracking-wider text-white flex items-center space-x-2">
               <Trophy className="w-4 h-4 text-amber-400" />
               <span>Mis Torneos Activos</span>
@@ -1145,15 +1137,15 @@ export default function ProfilePage() {
                   return (
                     <div
                       key={trn.id}
-                      className="p-3 rounded-xl bg-slate-900/80 border border-slate-800 hover:border-cyan-500/30 flex items-center justify-between gap-3 transition-colors"
+                      className="p-3 rounded-xl bg-slate-900/80 border border-slate-800 hover:border-red-500/30 flex items-center justify-between gap-3 transition-colors"
                     >
                       <Link
                         href={`/tournament/${trn.slug}`}
                         className="flex-1 min-w-0 group"
                       >
-                        <h4 className="text-xs font-bold text-white group-hover:text-cyan-400 transition-colors line-clamp-1 flex items-center gap-1.5">
+                        <h4 className="text-xs font-bold text-white group-hover:text-red-400 transition-colors line-clamp-1 flex items-center gap-1.5">
                           <span>{trn.title}</span>
-                          <ExternalLink className="w-3 h-3 text-slate-500 group-hover:text-cyan-400 shrink-0" />
+                          <ExternalLink className="w-3 h-3 text-slate-500 group-hover:text-red-400 shrink-0" />
                         </h4>
                         <p className="text-[10px] text-slate-400 font-mono mt-0.5">
                           {trn.gameName} • {isSolo ? 'Individual (1v1)' : `Equipos (${trn.teamSize}v${trn.teamSize})`} • {trn.status === 'in_progress' ? 'En Juego' : 'Inscrito'}
@@ -1184,7 +1176,7 @@ export default function ProfilePage() {
 
       {/* ADMINISTRATOR TOURNAMENT MANAGEMENT SECTION */}
       {user.role === 'admin' && (
-        <div className="p-6 sm:p-8 rounded-3xl bg-[#0c121e] border border-purple-500/30 shadow-2xl space-y-6">
+        <div className="p-6 sm:p-8 rounded-3xl bg-[#1c1417] border border-purple-500/30 shadow-2xl space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-5">
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 rounded-xl bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-purple-400 shrink-0">
@@ -1224,7 +1216,7 @@ export default function ProfilePage() {
                 onClick={() => setAdminTab('active')}
                 className={`px-3.5 py-1.5 rounded-lg font-bold flex items-center space-x-1.5 transition-all cursor-pointer ${
                   adminTab === 'active'
-                    ? 'bg-cyan-400 text-black shadow-lg shadow-cyan-400/20'
+                    ? 'bg-red-400 text-black shadow-lg shadow-red-400/20'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -1285,7 +1277,8 @@ export default function ProfilePage() {
                           <span>Ver Torneo</span>
                         </Link>
 
-                        <div className="flex items-center space-x-2">
+                        <div className="flex items-center space-x-2 flex-wrap gap-y-2">
+                          <button type="button" onClick={() => setEditingTournament(trn)} className="rounded-lg border border-red-400/30 bg-red-400/10 px-3 py-1.5 text-xs font-bold text-red-300 hover:bg-red-400/20">Editar</button>
                           <button
                             type="button"
                             onClick={() => handleAdminToggleHide(trn.id, false, trn.title)}
@@ -1362,7 +1355,8 @@ export default function ProfilePage() {
                           <span>Ver Torneo</span>
                         </Link>
 
-                        <div className="flex items-center space-x-2">
+                        <div className="flex items-center space-x-2 flex-wrap gap-y-2">
+                          <button type="button" onClick={() => setEditingTournament(trn)} className="rounded-lg border border-red-400/30 bg-red-400/10 px-3 py-1.5 text-xs font-bold text-red-300 hover:bg-red-400/20">Editar</button>
                           <button
                             type="button"
                             onClick={() => handleAdminToggleHide(trn.id, true, trn.title)}
@@ -1397,7 +1391,7 @@ export default function ProfilePage() {
       {/* Parental Authorization Upload Modal */}
       {showAuthModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fade-in overflow-y-auto">
-          <div className="relative w-full max-w-lg my-auto bg-[#0c121d] border border-amber-500/40 rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+          <div className="relative w-full max-w-lg my-auto bg-[#191213] border border-amber-500/40 rounded-2xl shadow-2xl overflow-hidden flex flex-col">
             
             {/* Header */}
             <div className="px-6 py-4 bg-[#14120a] border-b border-amber-500/30 flex items-center justify-between">
@@ -1590,6 +1584,7 @@ export default function ProfilePage() {
         </div>
       )}
 
+      {user?.role === 'admin' && editingTournament && <EditTournamentModal key={editingTournament.id} tournament={editingTournament} onClose={() => setEditingTournament(null)} />}
     </div>
   );
 }

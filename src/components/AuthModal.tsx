@@ -138,12 +138,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fade-in overflow-y-auto">
-      <div className="relative w-full max-w-md my-auto bg-[#0c121d] border border-slate-700/80 rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+      <div className="relative w-full max-w-md my-auto bg-[#191213] border border-slate-700/80 rounded-2xl shadow-2xl overflow-hidden flex flex-col">
         
         {/* Header */}
-        <div className="px-6 py-4 bg-[#0f1726] border-b border-slate-800 flex items-center justify-between">
+        <div className="px-6 py-4 bg-[#21181c] border-b border-slate-800 flex items-center justify-between">
           <div className="flex items-center space-x-2.5">
-            <div className="w-8 h-8 rounded-lg bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400">
+            <div className="w-8 h-8 rounded-lg bg-red-500/20 border border-red-500/40 flex items-center justify-center text-red-400">
               {mode === 'login' ? <LogIn className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
             </div>
             <div>
@@ -170,7 +170,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             onClick={() => { setMode('login'); setErrorMsg(''); }}
             className={`py-3 transition-colors border-b-2 ${
               mode === 'login'
-                ? 'border-cyan-400 text-cyan-300 bg-cyan-500/5'
+                ? 'border-red-400 text-red-300 bg-red-500/5'
                 : 'border-transparent text-slate-500 hover:text-slate-300'
             }`}
           >
@@ -181,7 +181,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             onClick={() => { setMode('register'); setErrorMsg(''); }}
             className={`py-3 transition-colors border-b-2 ${
               mode === 'register'
-                ? 'border-cyan-400 text-cyan-300 bg-cyan-500/5'
+                ? 'border-red-400 text-red-300 bg-red-500/5'
                 : 'border-transparent text-slate-500 hover:text-slate-300'
             }`}
           >
@@ -220,7 +220,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     placeholder="Ej: BersekGamer"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:border-cyan-400 focus:outline-none"
+                    className="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:border-red-400 focus:outline-none"
                   />
                 </div>
               </div>
@@ -234,7 +234,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   placeholder="Tu nombre y apellido"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:border-cyan-400 focus:outline-none"
+                  className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:border-red-400 focus:outline-none"
                 />
               </div>
 
@@ -266,7 +266,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     required
                     value={birthDate}
                     onChange={(e) => setBirthDate(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:border-cyan-400 focus:outline-none"
+                    className="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:border-red-400 focus:outline-none"
                   />
                 </div>
                 {calculatedAge !== null && calculatedAge < 14 && (
@@ -295,7 +295,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 placeholder="tu@email.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:border-cyan-400 focus:outline-none"
+                className="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:border-red-400 focus:outline-none"
               />
             </div>
           </div>
@@ -312,7 +312,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:border-cyan-400 focus:outline-none"
+                className="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:border-red-400 focus:outline-none"
               />
             </div>
           </div>
@@ -366,7 +366,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               (mode === 'register' &&
                 (!swornDeclaration || !birthDate || (calculatedAge !== null && calculatedAge < 14)))
             }
-            className="w-full py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider text-black bg-cyan-400 hover:bg-cyan-300 shadow-lg shadow-cyan-400/20 transition-all font-mono disabled:opacity-40 disabled:cursor-not-allowed mt-2"
+            className="w-full py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider text-black bg-red-400 hover:bg-red-300 shadow-lg shadow-red-400/20 transition-all font-mono disabled:opacity-40 disabled:cursor-not-allowed mt-2"
           >
             {loading ? 'CARGANDO...' : mode === 'login' ? 'INICIAR SESIÓN' : 'CREAR CUENTA'}
           </button>

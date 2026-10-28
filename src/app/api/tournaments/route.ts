@@ -4,6 +4,9 @@ import { verifyToken } from '@/lib/auth';
 import { getOfficialGames } from '@/lib/games';
 import { getMatchViewer, ownsMatchParticipant } from '@/lib/matchAccess';
 import { MAX_TOURNAMENT_REQUEST_BYTES } from '@/lib/tournamentBanner';
+import { resolveTournamentRules } from '@/lib/tournamentRules';
+import { validateTournamentPrizes } from '@/lib/tournamentPrizes';
+import { getUserAvatar } from '@/lib/userAvatar';
 
 function safeParse(val: any, fallback: any = []) {
   if (!val) return fallback;
@@ -24,7 +27,8 @@ export async function GET(request: Request) {
     const trnRes = await db.query('SELECT * FROM tournaments ORDER BY created_at DESC');
 
     // 2. Fetch all participants
-    const partRes = await db.query('SELECT * FROM tournament_participants ORDER BY seed ASC');
+    const partRes = await db.query(`SELECT p.*, u.username AS account_username
+      FROM tournament_participants p LEFT JOIN users u ON u.id=p.user_id ORDER BY p.seed ASC`);
 
     // 3. Fetch all rounds
     const roundRes = await db.query('SELECT * FROM tournament_rounds ORDER BY round_index ASC');
@@ -51,7 +55,7 @@ export async function GET(request: Request) {
           userId: p.user_id,
           name: p.name,
           tag: p.tag,
-          avatar: p.avatar,
+          avatar: p.team_id ? p.avatar : getUserAvatar(p.account_username || p.name),
           seed: p.seed,
           checkedIn: p.checked_in,
           registeredAt: p.registered_at,
@@ -59,12 +63,16 @@ export async function GET(request: Request) {
             name: p.captain_name,
             discord: p.captain_discord,
             inGameId: p.captain_in_game_id,
-            avatar: p.captain_avatar
+            avatar: getUserAvatar(p.account_username || p.captain_name || p.name)
           },
           roster: safeParse(p.roster, [])
         }));
 
       const allMatches = matchRes.rows.filter((m) => m.tournament_id === t.id);
+      // Resolve old snapshots through the participant's current account avatar
+      // in every round, including already completed matches, without resetting results.
+      const avatarsById = new Map(participants.map(p => [p.id, p.avatar]));
+      const avatarsByName = new Map(participants.map(p => [p.name, p.avatar]));
 
       const assembleRounds = (bracketType: 'winners' | 'losers') => {
         return roundRes.rows
@@ -81,7 +89,7 @@ export async function GET(request: Request) {
                 team1: {
                   participantId: m.team1_participant_id,
                   name: m.team1_name,
-                  avatar: m.team1_avatar,
+                  avatar: avatarsById.get(m.team1_participant_id) || avatarsByName.get(m.team1_name) || m.team1_avatar,
                   seed: m.team1_seed,
                   score: m.team1_score,
                   isWinner: m.team1_is_winner
@@ -89,7 +97,7 @@ export async function GET(request: Request) {
                 team2: {
                   participantId: m.team2_participant_id,
                   name: m.team2_name,
-                  avatar: m.team2_avatar,
+                  avatar: avatarsById.get(m.team2_participant_id) || avatarsByName.get(m.team2_name) || m.team2_avatar,
                   seed: m.team2_seed,
                   score: m.team2_score,
                   isWinner: m.team2_is_winner
@@ -147,6 +155,8 @@ export async function GET(request: Request) {
         checkInActive: t.check_in_active,
         description: t.description,
         rules: safeParse(t.rules, ['Reglas oficiales del torneo']),
+        rulesMode: t.rules_mode || 'custom',
+        rulesTemplateVersion: t.rules_template_version,
         schedule: safeParse(t.schedule, [{ stage: 'Fase Principal', time: '20:00' }]),
         participants,
         rounds: winnersRounds,
@@ -212,19 +222,34 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'El cupo debe ser de 8, 16 o 32 participantes.' }, { status: 400 });
     }
 
+    const teamType = body.teamType ?? (game.defaultTeamSize === 1 ? 'solo' : 'team');
+    const teamSize = body.teamSize ?? (teamType === 'solo' ? 1 : game.id === 'fortnite' ? 2 : game.defaultTeamSize);
+    let prizeSettings;
+    let ruleSettings;
+    try {
+      prizeSettings = validateTournamentPrizes(body.prizePool, body.prizeDistribution, maxP);
+      ruleSettings = resolveTournamentRules({
+        gameId: game.id, format: body.format || 'single_elimination', teamType,
+        teamSize, maxParticipants: maxP, region: body.region || 'LATAM',
+        title: body.title, startDate: body.startDate, entryFeeAmount, ...prizeSettings
+      }, body);
+    } catch (error) {
+      return NextResponse.json({ error: (error as Error).message }, { status: 400 });
+    }
+
     await db.query(`
       INSERT INTO tournaments (
         id, title, slug, game_id, game_name, banner_url, thumbnail_url,
         organizer_id, organizer_name, organizer_avatar, organizer_verified, organizer_followers,
         status, format, team_type, team_size, region, entry_fee, prize_pool, prize_distribution,
         max_participants, start_date, check_in_opens_at, check_in_closes_at, check_in_active,
-        description, rules, schedule, entry_fee_amount
+        description, rules, schedule, entry_fee_amount, rules_mode, rules_template_version
       ) VALUES (
         $1, $2, $3, $4, $5, $6, $7,
         $8, $9, $10, $11, $12,
         $13, $14, $15, $16, $17, $18, $19, $20,
         $21, $22, $23, $24, $25,
-        $26, $27, $28, $29
+        $26, $27, $28, $29, $30, $31
       )
     `, [
       newId,
@@ -241,21 +266,23 @@ export async function POST(request: Request) {
       140,
       'registration_open',
       body.format || 'single_elimination',
-      body.teamType || 'team',
-      body.teamSize || game.defaultTeamSize,
+      teamType,
+      teamSize,
       body.region || 'LATAM',
       entryFeeAmount > 0 ? `${new Intl.NumberFormat('es-CL').format(entryFeeAmount)} CLP` : 'Gratis',
-      body.prizePool || '$500 USD',
-      JSON.stringify(body.prizeDistribution || [{ place: '1er Lugar', prize: '$350 USD' }, { place: '2do Lugar', prize: '$150 USD' }]),
+      prizeSettings.prizePool,
+      JSON.stringify(prizeSettings.prizeDistribution),
       maxP,
       body.startDate || 'Próximo Sábado 20:00 GMT-3',
       '45 min antes',
       '10 min antes',
       false,
       body.description || 'Torneo organizado en CZ ARENA.',
-      JSON.stringify(body.rules || ['Deportividad', 'Subir capturas a la sala de match']),
+      JSON.stringify(ruleSettings.rules),
       JSON.stringify(body.schedule || [{ stage: 'Ronda 1', time: '20:00', format: 'BO3' }]),
-      entryFeeAmount
+      entryFeeAmount,
+      ruleSettings.rulesMode,
+      ruleSettings.rulesTemplateVersion
     ]);
 
     // Generate bracket rounds and matches in PostgreSQL

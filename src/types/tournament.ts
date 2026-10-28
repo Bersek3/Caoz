@@ -125,6 +125,8 @@ export interface Tournament {
   checkInActive: boolean;
   description: string;
   rules: string[];
+  rulesMode?: 'automatic' | 'custom';
+  rulesTemplateVersion?: string | null;
   schedule: { stage: string; time: string; format: string }[];
   participants: Participant[];
   rounds: TournamentRound[];

@@ -63,7 +63,7 @@ export default function HomePage() {
       <section className="relative overflow-hidden pt-12 pb-20 border-b border-slate-800/80">
 
         {/* Glow ambient background lights */}
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[350px] bg-gradient-to-r from-cyan-500/10 via-purple-500/10 to-blue-500/10 blur-[130px] -z-10 pointer-events-none" />
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[350px] bg-gradient-to-r from-red-500/10 via-purple-500/10 to-red-500/10 blur-[130px] -z-10 pointer-events-none" />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
@@ -74,7 +74,7 @@ export default function HomePage() {
 
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-white tracking-tight uppercase leading-none">
                 CREA. COMPITE. <br />
-                <span className="bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400">
+                <span className="bg-clip-text text-transparent bg-gradient-to-r from-red-400 via-red-400 to-purple-400">
                   CONQUISTA.
                 </span>
               </h1>
@@ -89,7 +89,7 @@ export default function HomePage() {
                 {isAdmin ? (
                   <button
                     onClick={() => setIsCreateOpen(true)}
-                    className="px-6 py-3.5 rounded-xl font-bold text-sm uppercase tracking-wider text-black bg-cyan-400 hover:bg-cyan-300 shadow-xl shadow-cyan-400/30 transition-all font-mono flex items-center space-x-2 transform hover:-translate-y-0.5"
+                    className="px-6 py-3.5 rounded-xl font-bold text-sm uppercase tracking-wider text-black bg-red-400 hover:bg-red-300 shadow-xl shadow-red-400/30 transition-all font-mono flex items-center space-x-2 transform hover:-translate-y-0.5"
                   >
                     <Trophy className="w-4 h-4 text-black" />
                     <span>CREAR UN TORNEO (ADMIN)</span>
@@ -97,7 +97,7 @@ export default function HomePage() {
                 ) : !user ? (
                   <button
                     onClick={() => openAuthModal('register')}
-                    className="px-6 py-3.5 rounded-xl font-bold text-sm uppercase tracking-wider text-black bg-cyan-400 hover:bg-cyan-300 shadow-xl shadow-cyan-400/30 transition-all font-mono flex items-center space-x-2 transform hover:-translate-y-0.5 cursor-pointer"
+                    className="px-6 py-3.5 rounded-xl font-bold text-sm uppercase tracking-wider text-black bg-red-400 hover:bg-red-300 shadow-xl shadow-red-400/30 transition-all font-mono flex items-center space-x-2 transform hover:-translate-y-0.5 cursor-pointer"
                   >
                     <Users className="w-4 h-4 text-black" />
                     <span>REGISTRARSE PARA COMPETIR</span>
@@ -108,7 +108,7 @@ export default function HomePage() {
                   href="#torneos"
                   className="px-6 py-3.5 rounded-xl font-semibold text-sm text-slate-200 hover:text-white bg-slate-900/80 hover:bg-slate-800 border border-slate-700/80 transition-all flex items-center space-x-2"
                 >
-                  <Swords className="w-4 h-4 text-cyan-400" />
+                  <Swords className="w-4 h-4 text-red-400" />
                   <span>Explorar Torneos</span>
                 </a>
               </div>
@@ -118,8 +118,8 @@ export default function HomePage() {
             {/* Right Column: Featured Tournament Card or Ready State (5 cols) */}
             <div className="lg:col-span-5">
               {featuredTournament ? (
-                <div className="relative group rounded-3xl p-[1px] bg-gradient-to-b from-cyan-500/40 via-purple-500/20 to-transparent shadow-2xl">
-                  <div className="relative rounded-[23px] bg-[#0d131f] overflow-hidden p-6 space-y-5">
+                <div className="relative group rounded-3xl p-[1px] bg-gradient-to-b from-red-500/40 via-purple-500/20 to-transparent shadow-2xl">
+                  <div className="relative rounded-[23px] bg-[#1c1518] overflow-hidden p-6 space-y-5">
 
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
@@ -128,7 +128,7 @@ export default function HomePage() {
                           TORNEO DESTACADO
                         </span>
                       </div>
-                      <span className="px-2.5 py-0.5 rounded bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 font-mono text-xs">
+                      <span className="px-2.5 py-0.5 rounded bg-red-500/10 border border-red-500/30 text-red-300 font-mono text-xs">
                         {featuredTournament.region}
                       </span>
                     </div>
@@ -142,7 +142,7 @@ export default function HomePage() {
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
                       <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-xs text-white">
                         <span className="font-bold uppercase tracking-wider">{featuredTournament.gameName}</span>
-                        <span className="font-mono text-cyan-300 font-bold">{featuredTournament.prizePool}</span>
+                        <span className="font-mono text-red-300 font-bold">{featuredTournament.prizePool}</span>
                       </div>
                     </div>
 
@@ -157,7 +157,7 @@ export default function HomePage() {
 
                     <Link
                       href={`/tournament/${featuredTournament.slug}`}
-                      className="w-full py-3 rounded-xl font-bold text-xs uppercase tracking-wider text-black bg-cyan-400 hover:bg-cyan-300 flex items-center justify-center space-x-2 transition-all font-mono"
+                      className="w-full py-3 rounded-xl font-bold text-xs uppercase tracking-wider text-black bg-red-400 hover:bg-red-300 flex items-center justify-center space-x-2 transition-all font-mono"
                     >
                       <span>VER LLAVES & PARTIDAS</span>
                       <ArrowRight className="w-4 h-4" />
@@ -166,8 +166,8 @@ export default function HomePage() {
                   </div>
                 </div>
               ) : (
-                <div className="relative rounded-3xl p-8 bg-[#0d131f] border border-slate-800 text-center space-y-4 shadow-xl">
-                  <div className="w-16 h-16 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 mx-auto">
+                <div className="relative rounded-3xl p-8 bg-[#1c1518] border border-slate-800 text-center space-y-4 shadow-xl">
+                  <div className="w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-center justify-center text-red-400 mx-auto">
                     <Trophy className="w-8 h-8" />
                   </div>
                   <h3 className="text-lg font-bold text-white">Próximos Torneos Oficiales</h3>
@@ -177,7 +177,7 @@ export default function HomePage() {
                   {isAdmin && (
                     <button
                       onClick={() => setIsCreateOpen(true)}
-                      className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-cyan-400 hover:bg-cyan-300 text-black text-xs font-bold font-mono uppercase tracking-wider"
+                      className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-red-400 hover:bg-red-300 text-black text-xs font-bold font-mono uppercase tracking-wider"
                     >
                       <span>Publicar Primer Torneo</span>
                       <ArrowRight className="w-4 h-4" />
@@ -192,11 +192,11 @@ export default function HomePage() {
       </section>
 
       {/* GAMES STRIP */}
-      <section id="juegos" className="py-8 bg-[#090d15] border-b border-slate-800/80">
+      <section id="juegos" className="py-8 bg-[#130f11] border-b border-slate-800/80">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center space-x-2">
-              <Gamepad2 className="w-4 h-4 text-cyan-400" />
+              <Gamepad2 className="w-4 h-4 text-red-400" />
               <span>Videojuegos Oficiales</span>
             </h3>
             <span className="text-xs text-slate-500">Filtrar títulos</span>
@@ -213,7 +213,7 @@ export default function HomePage() {
                   key={game.id}
                   onClick={() => setSelectedGame(isSelected ? 'all' : game.id)}
                   className={`p-3 rounded-2xl border text-left transition-all relative overflow-hidden group ${isSelected
-                    ? 'bg-cyan-500/15 border-cyan-400 shadow-lg shadow-cyan-500/20'
+                    ? 'bg-red-500/15 border-red-400 shadow-lg shadow-red-500/20'
                     : 'bg-slate-900/80 border-slate-800 hover:border-slate-700'
                     }`}
                 >
@@ -225,7 +225,7 @@ export default function HomePage() {
                   <h4 className="text-xs font-bold text-white truncate">{game.name}</h4>
                   <div className="flex items-center justify-between text-[10px] text-slate-400 mt-1">
                     <span>{game.genre}</span>
-                    <span className="font-mono text-cyan-300 font-semibold">{count} torneos</span>
+                    <span className="font-mono text-red-300 font-semibold">{count} torneos</span>
                   </div>
                 </button>
               );
@@ -241,7 +241,7 @@ export default function HomePage() {
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <h2 className="text-2xl sm:text-3xl font-black text-white uppercase tracking-tight flex items-center space-x-3">
-                <Trophy className="w-7 h-7 text-cyan-400" />
+                <Trophy className="w-7 h-7 text-red-400" />
                 <span>Directorio de Torneos</span>
               </h2>
               <p className="text-xs text-slate-400 mt-1">
@@ -256,7 +256,7 @@ export default function HomePage() {
                 placeholder="Buscar torneo o juego..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white placeholder-slate-500 text-xs focus:outline-none focus:border-cyan-400 transition-colors"
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white placeholder-slate-500 text-xs focus:outline-none focus:border-red-400 transition-colors"
               />
             </div>
           </div>
@@ -267,7 +267,7 @@ export default function HomePage() {
               <button
                 onClick={() => setSelectedStatus('all')}
                 className={`px-3 py-1.5 rounded-lg transition-all ${selectedStatus === 'all'
-                  ? 'bg-white/10 text-cyan-300 font-bold shadow-sm'
+                  ? 'bg-white/10 text-red-300 font-bold shadow-sm'
                   : 'text-slate-400 hover:text-white'
                   }`}
               >
@@ -310,7 +310,7 @@ export default function HomePage() {
               <select
                 value={selectedFormat}
                 onChange={(e) => setSelectedFormat(e.target.value as any)}
-                className="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-white text-xs focus:outline-none focus:border-cyan-400"
+                className="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-white text-xs focus:outline-none focus:border-red-400"
               >
                 <option value="all">Todos los formatos</option>
                 <option value="single_elimination">Eliminación Simple</option>
@@ -322,7 +322,7 @@ export default function HomePage() {
 
         {/* Tournaments Grid */}
         {filteredTournaments.length === 0 ? (
-          <div className="text-center py-20 bg-[#0c121d] rounded-2xl border border-slate-800 space-y-3">
+          <div className="text-center py-20 bg-[#191213] rounded-2xl border border-slate-800 space-y-3">
             <Trophy className="w-12 h-12 text-slate-600 mx-auto" />
             <h3 className="text-base font-bold text-white">No hay torneos disponibles en este momento</h3>
             <p className="text-xs text-slate-400 max-w-sm mx-auto">
@@ -331,7 +331,7 @@ export default function HomePage() {
             {isAdmin && (
               <button
                 onClick={() => setIsCreateOpen(true)}
-                className="px-4 py-2 rounded-xl bg-cyan-400 text-black text-xs font-bold font-mono uppercase"
+                className="px-4 py-2 rounded-xl bg-red-400 text-black text-xs font-bold font-mono uppercase"
               >
                 + Crear Nuevo Torneo (Admin)
               </button>
@@ -356,7 +356,7 @@ export default function HomePage() {
                       alt={t.title}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#0e131d] via-black/30 to-transparent" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#1b1518] via-black/30 to-transparent" />
 
                     <div className="absolute top-3 left-3">
                       {isLive && (
@@ -398,10 +398,10 @@ export default function HomePage() {
                     </div>
                   </div>
 
-                  <div className="p-5 flex-1 flex flex-col justify-between space-y-4 bg-[#0e131d]">
+                  <div className="p-5 flex-1 flex flex-col justify-between space-y-4 bg-[#1b1518]">
                     <div className="space-y-2">
                       <Link href={`/tournament/${t.slug}`}>
-                        <h3 className="text-base font-bold text-white uppercase leading-snug hover:text-cyan-400 transition-colors line-clamp-2">
+                        <h3 className="text-base font-bold text-white uppercase leading-snug hover:text-red-400 transition-colors line-clamp-2">
                           {t.title}
                         </h3>
                       </Link>
@@ -431,7 +431,7 @@ export default function HomePage() {
                       </div>
                       <div>
                         <span className="text-slate-500 block">Región</span>
-                        <span className="font-semibold text-cyan-300 font-mono">
+                        <span className="font-semibold text-red-300 font-mono">
                           {t.region}
                         </span>
                       </div>
@@ -445,7 +445,7 @@ export default function HomePage() {
 
                     <div className="flex items-center justify-between text-[11px] text-slate-400 font-mono py-1 px-1 border-t border-slate-800/60">
                       <div className="flex items-center space-x-1.5 truncate">
-                        <Calendar className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                        <Calendar className="w-3.5 h-3.5 text-red-400 shrink-0" />
                         <span className="truncate">{formatTournamentDate(t.startDate)}</span>
                       </div>
                     </div>
@@ -459,7 +459,7 @@ export default function HomePage() {
                       </div>
                       <div className="w-full h-1.5 rounded-full bg-slate-800 overflow-hidden">
                         <div
-                          className="h-full bg-cyan-400 rounded-full"
+                          className="h-full bg-red-400 rounded-full"
                           style={{
                             width: `${Math.min(100, (t.participants.length / t.maxParticipants) * 100)}%`
                           }}
@@ -469,7 +469,7 @@ export default function HomePage() {
 
                     <Link
                       href={`/tournament/${t.slug}`}
-                      className="w-full py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider text-white bg-slate-800 hover:bg-cyan-500 hover:text-black border border-slate-700/80 hover:border-cyan-400 flex items-center justify-center space-x-1.5 transition-all font-mono"
+                      className="w-full py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider text-white bg-slate-800 hover:bg-red-500 hover:text-black border border-slate-700/80 hover:border-red-400 flex items-center justify-center space-x-1.5 transition-all font-mono"
                     >
                       <span>VER TORNEO & LLAVES</span>
                       <ArrowRight className="w-3.5 h-3.5" />

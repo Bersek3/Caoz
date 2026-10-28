@@ -1,3 +1,4 @@
+import { getUserAvatar } from './userAvatar';
 import path from 'path';
 import fs from 'fs';
 import { PGlite } from '@electric-sql/pglite';
@@ -199,6 +200,9 @@ async function initializeDatabase() {
   `);
 
   await db.query('ALTER TABLE torneos ADD COLUMN IF NOT EXISTS entry_fee_amount INTEGER NOT NULL DEFAULT 0');
+  // Existing published rules remain custom until an administrator opts into a preset.
+  await db.query("ALTER TABLE torneos ADD COLUMN IF NOT EXISTS rules_mode VARCHAR(16) NOT NULL DEFAULT 'custom'");
+  await db.query('ALTER TABLE torneos ADD COLUMN IF NOT EXISTS rules_template_version VARCHAR(64)');
   await db.query(`CREATE TABLE IF NOT EXISTS tournament_payments (
     id VARCHAR(64) PRIMARY KEY,
     tournament_id VARCHAR(64) NOT NULL REFERENCES torneos(id),
@@ -237,6 +241,13 @@ async function initializeDatabase() {
       created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     );
   `);
+
+  // Identity details stay outside the publicly exposed participants view.
+  await db.query(`CREATE TABLE IF NOT EXISTS tournament_registration_details (
+    participant_id VARCHAR(64) PRIMARY KEY REFERENCES participantes_torneo(id) ON DELETE CASCADE,
+    full_name VARCHAR(150) NOT NULL, birth_date DATE NOT NULL,
+    document_number VARCHAR(80) NOT NULL, phone VARCHAR(30) NOT NULL
+  )`);
 
   // 7. Tabla: rondas_torneo
   await db.query(`
@@ -294,6 +305,15 @@ async function initializeDatabase() {
     );
   `);
 
+  await db.query(`CREATE TABLE IF NOT EXISTS match_chat_reads (
+    user_id VARCHAR(64) REFERENCES usuarios(id) ON DELETE CASCADE,
+    match_id VARCHAR(64) REFERENCES partidas_torneo(id) ON DELETE CASCADE,
+    last_read_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    PRIMARY KEY (user_id, match_id)
+  )`);
+  await db.query(`CREATE INDEX IF NOT EXISTS match_chat_activity_idx ON mensajes_partida(match_id, created_at)
+    WHERE sender_role IN ('team1', 'team2')`);
+
   // Vistas de compatibilidad en PostgreSQL
   const compatibilityViews = `
     CREATE OR REPLACE VIEW users AS SELECT * FROM usuarios;
@@ -312,7 +332,7 @@ async function initializeDatabase() {
   }
 
   // Usuario administrador por defecto
-  const defaultGenericAvatar = 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?q=80&w=200&auto=format&fit=crop';
+  const defaultGenericAvatar = getUserAvatar('bersek');
   const userCheck = await db.query('SELECT id FROM usuarios WHERE email = $1', ['francisco.jm.aguilar1@gmail.com']);
   if (userCheck.rows.length === 0) {
     const passwordHash = await bcrypt.hash('Bersek@1106@3200', 10);

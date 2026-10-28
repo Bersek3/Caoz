@@ -1,4 +1,5 @@
 'use client';
+import { showAlert } from './StyledDialog';
 
 import React, { useState } from 'react';
 import { 
@@ -61,6 +62,7 @@ export const MatchRoomModal: React.FC<MatchRoomModalProps> = ({
         if (data.messages && Array.isArray(data.messages)) {
           setMessages(data.messages);
           setChatError('');
+          if (user?.role === 'admin') window.dispatchEvent(new Event('caoz:match-chat-read'));
         }
       } else {
         setMessages([]);
@@ -70,7 +72,7 @@ export const MatchRoomModal: React.FC<MatchRoomModalProps> = ({
     } catch (e) {
       // ignore
     }
-  }, [isOpen, match?.id, match?.canAccessRoom, user?.id]);
+  }, [isOpen, match?.id, match?.canAccessRoom, user?.id, user?.role]);
 
   // Keep scores and messages in sync when match changes
   React.useEffect(() => {
@@ -101,7 +103,7 @@ export const MatchRoomModal: React.FC<MatchRoomModalProps> = ({
     e.preventDefault();
     if (!isAdmin || savingScore) return;
     if (score1 === score2) {
-      alert('En torneos eliminatorios no puede haber empate. Uno de los dos debe resultar ganador de la serie.');
+      showAlert('En torneos eliminatorios no puede haber empate. Uno de los dos debe resultar ganador de la serie.');
       return;
     }
 
@@ -196,7 +198,7 @@ export const MatchRoomModal: React.FC<MatchRoomModalProps> = ({
 
   const handleReportDispute = () => {
     if (!disputeReason.trim()) {
-      alert('Por favor detalla el motivo de la disputa (ej: no se presentaron, trampa, desconexión sin aviso)');
+      showAlert('Por favor detalla el motivo de la disputa (ej: no se presentaron, trampa, desconexión sin aviso)');
       return;
     }
     reportMatchDispute(tournament.id, match.id, disputeReason.trim());
@@ -209,13 +211,13 @@ export const MatchRoomModal: React.FC<MatchRoomModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-fade-in">
-      <div className="relative w-full max-w-4xl bg-[#0c121d] border border-slate-700/80 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[94vh]">
+      <div className="relative w-full max-w-4xl bg-[#191213] border border-slate-700/80 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[94vh]">
         {chatError && <p role="alert" className="p-3 text-sm text-rose-300">{chatError}</p>}
         
         {/* Match Header */}
-        <div className="px-6 py-4 bg-[#0f1728] border-b border-slate-800 flex items-center justify-between">
+        <div className="px-6 py-4 bg-[#211719] border-b border-slate-800 flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 rounded-lg bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400">
+            <div className="w-8 h-8 rounded-lg bg-red-500/20 border border-red-500/40 flex items-center justify-center text-red-400">
               <Swords className="w-4 h-4" />
             </div>
             <div>
@@ -223,7 +225,7 @@ export const MatchRoomModal: React.FC<MatchRoomModalProps> = ({
                 <h3 className="text-base font-bold text-white">
                   Sala de Partida • {match.roundTitle}
                 </h3>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-cyan-300 border border-slate-700">
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-red-300 border border-slate-700">
                   BO{match.bestOf}
                 </span>
                 {isDisputed && (
@@ -268,7 +270,7 @@ export const MatchRoomModal: React.FC<MatchRoomModalProps> = ({
                   <img
                     src={match.team1.avatar || 'https://images.unsplash.com/photo-1563089145-599997674d42?q=80&w=200&auto=format&fit=crop'}
                     alt={match.team1.name}
-                    className="w-14 h-14 rounded-2xl object-cover border-2 border-cyan-500/40 shadow-lg"
+                    className="w-14 h-14 rounded-2xl object-cover border-2 border-red-500/40 shadow-lg"
                   />
                   {match.team1.isWinner && (
                     <div className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-emerald-400 text-black flex items-center justify-center font-bold text-xs shadow-md">
@@ -283,7 +285,7 @@ export const MatchRoomModal: React.FC<MatchRoomModalProps> = ({
                   {match.team1.name === 'Vacío' || match.team1.name.startsWith('Semilla') ? 'Esperando rival' : `Participante #${match.team1.seed || 1}`}
                 </span>
 
-                <div className="text-3xl font-black font-mono text-cyan-400 mt-2">
+                <div className="text-3xl font-black font-mono text-red-400 mt-2">
                   {match.team1.score ?? 0}
                 </div>
               </div>
@@ -349,7 +351,7 @@ export const MatchRoomModal: React.FC<MatchRoomModalProps> = ({
                       max={match.bestOf}
                       value={score1}
                       onChange={(e) => setScore1(parseInt(e.target.value) || 0)}
-                      className="w-full text-center py-2 px-3 rounded-xl bg-slate-950 border border-slate-700 text-white font-mono text-lg font-bold focus:border-cyan-400 focus:outline-none"
+                      className="w-full text-center py-2 px-3 rounded-xl bg-slate-950 border border-slate-700 text-white font-mono text-lg font-bold focus:border-red-400 focus:outline-none"
                     />
                   </div>
 
@@ -376,19 +378,19 @@ export const MatchRoomModal: React.FC<MatchRoomModalProps> = ({
                   </label>
                   <input
                     type="url"
-                    placeholder="https://imgur.com/tu-captura-o-screenshot.png"
+                    placeholder="Pega el enlace de tu captura de pantalla"
                     value={proofUrl}
                     onChange={(e) => setProofUrl(e.target.value)}
-                    className="w-full text-xs py-2 px-3 rounded-xl bg-slate-950 border border-slate-700 text-white placeholder-slate-600 focus:border-cyan-400 focus:outline-none"
+                    className="w-full text-xs py-2 px-3 rounded-xl bg-slate-950 border border-slate-700 text-white placeholder-slate-600 focus:border-red-400 focus:outline-none"
                   />
                   {match.proofImageUrl && (
-                    <div className="mt-2 flex items-center space-x-2 text-xs text-cyan-400">
+                    <div className="mt-2 flex items-center space-x-2 text-xs text-red-400">
                       <span>Captura adjunta:</span>
                       <a
                         href={match.proofImageUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="underline flex items-center space-x-1 hover:text-cyan-300"
+                        className="underline flex items-center space-x-1 hover:text-red-300"
                       >
                         <span>Ver imagen</span>
                         <ExternalLink className="w-3 h-3" />
@@ -400,7 +402,7 @@ export const MatchRoomModal: React.FC<MatchRoomModalProps> = ({
                 <button
                   type="submit"
                   disabled={savingScore}
-                  className="w-full py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider text-black bg-cyan-400 hover:bg-cyan-300 shadow-lg shadow-cyan-400/20 transition-all font-mono"
+                  className="w-full py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider text-black bg-red-400 hover:bg-red-300 shadow-lg shadow-red-400/20 transition-all font-mono"
                 >
                   {savingScore ? 'GUARDANDO...' : isCompleted ? 'CONFIRMAR NUEVO MARCADOR' : 'ENVIAR RESULTADO OFICIAL'}
                 </button>
@@ -459,7 +461,7 @@ export const MatchRoomModal: React.FC<MatchRoomModalProps> = ({
                   <div className="flex space-x-2 mt-1">
                     <button
                       onClick={() => resolveDispute(tournament.id, match.id, match.team1.participantId || match.team1.name).catch(error => setChatError(error.message))}
-                      className="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-[10px] text-cyan-300 border border-slate-700"
+                      className="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-[10px] text-red-300 border border-slate-700"
                     >
                       Avanzar T1
                     </button>
@@ -477,10 +479,10 @@ export const MatchRoomModal: React.FC<MatchRoomModalProps> = ({
           </div>
 
           {/* RIGHT: Real-time Match Chat (5 cols) */}
-          <div className="lg:col-span-5 flex flex-col h-[480px] lg:h-auto bg-[#0a0e17]">
+          <div className="lg:col-span-5 flex flex-col h-[480px] lg:h-auto bg-[#130f10]">
             
             {/* Chat Header */}
-            <div className="px-4 py-3 border-b border-slate-800/80 bg-[#0c121d] flex items-center justify-between">
+            <div className="px-4 py-3 border-b border-slate-800/80 bg-[#191213] flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 <span className="text-xs font-bold text-white uppercase tracking-wider">
                   Canal de Match & Soporte Staff
@@ -490,7 +492,7 @@ export const MatchRoomModal: React.FC<MatchRoomModalProps> = ({
                     Staff CAOZ
                   </span>
                 ) : (
-                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-500/10 text-cyan-300 border border-cyan-500/30 font-mono">
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-red-500/10 text-red-300 border border-red-500/30 font-mono">
                     Oficial
                   </span>
                 )}
@@ -592,7 +594,7 @@ export const MatchRoomModal: React.FC<MatchRoomModalProps> = ({
                         className="p-2.5 rounded-xl text-xs leading-relaxed bg-slate-900/90 border border-slate-800 text-slate-300"
                       >
                         <div className="flex items-center justify-between text-[10px] font-bold text-slate-400 mb-1">
-                          <span className="text-cyan-400 font-mono">SISTEMA</span>
+                          <span className="text-red-400 font-mono">SISTEMA</span>
                           <span>{msg.timestamp || 'Ahora'}</span>
                         </div>
                         <div>{content}</div>
@@ -637,7 +639,7 @@ export const MatchRoomModal: React.FC<MatchRoomModalProps> = ({
                       <div
                         className={`max-w-[85%] px-3.5 py-2 rounded-2xl text-xs leading-relaxed ${
                           isMe
-                            ? 'bg-cyan-500/20 text-cyan-100 border border-cyan-500/30 rounded-tr-none'
+                            ? 'bg-red-500/20 text-red-100 border border-red-500/30 rounded-tr-none'
                             : 'bg-slate-800 text-slate-200 border border-slate-700 rounded-tl-none'
                         }`}
                       >
@@ -651,8 +653,8 @@ export const MatchRoomModal: React.FC<MatchRoomModalProps> = ({
             </div>
 
             {/* Chat Input */}
-            <form onSubmit={(e) => handleSendMessage(e)} className="p-3 border-t border-slate-800 bg-[#0c121d]">
-              <label className={`mb-2 flex items-center gap-2 text-xs text-cyan-300 ${sendingMsg ? 'opacity-50' : 'cursor-pointer'}`}>
+            <form onSubmit={(e) => handleSendMessage(e)} className="p-3 border-t border-slate-800 bg-[#191213]">
+              <label className={`mb-2 flex items-center gap-2 text-xs text-red-300 ${sendingMsg ? 'opacity-50' : 'cursor-pointer'}`}>
                 <ImageIcon className="w-4 h-4" />
                 {sendingMsg ? 'Enviando...' : 'Adjuntar imagen de prueba (JPG, PNG, WEBP · hasta 2 MB)'}
                 <input type="file" accept="image/jpeg,image/png,image/webp" disabled={sendingMsg} onChange={handleProofUpload} className="sr-only" />
@@ -667,12 +669,12 @@ export const MatchRoomModal: React.FC<MatchRoomModalProps> = ({
                   }
                   value={chatInput}
                   onChange={(e) => setChatInput(e.target.value)}
-                  className="flex-1 px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white placeholder-slate-500 text-xs focus:outline-none focus:border-cyan-400"
+                  className="flex-1 px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white placeholder-slate-500 text-xs focus:outline-none focus:border-red-400"
                 />
                 <button
                   type="submit"
                   disabled={!chatInput.trim() || sendingMsg}
-                  className="p-2 rounded-xl bg-cyan-500 text-black hover:bg-cyan-400 disabled:opacity-40 disabled:cursor-not-allowed transition-all shrink-0 cursor-pointer"
+                  className="p-2 rounded-xl bg-red-500 text-black hover:bg-red-400 disabled:opacity-40 disabled:cursor-not-allowed transition-all shrink-0 cursor-pointer"
                   title="Enviar mensaje"
                 >
                   <Send className="w-4 h-4" />

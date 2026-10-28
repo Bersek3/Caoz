@@ -1,3 +1,4 @@
+import { getUserAvatar } from '@/lib/userAvatar';
 import { NextResponse } from 'next/server';
 import { getDb, initDb } from '@/lib/db';
 import { verifyToken } from '@/lib/auth';
@@ -79,7 +80,7 @@ export async function GET(request: Request) {
         email: userRow.email,
         username: userRow.username,
         fullName: userRow.full_name,
-        avatarUrl: userRow.avatar_url,
+        avatarUrl: getUserAvatar(userRow.username),
         role: userRow.role,
         riotId: userRow.riot_id || '',
         steamId: userRow.steam_id || '',
@@ -197,7 +198,7 @@ export async function PUT(request: Request) {
         email: u.email,
         username: u.username,
         fullName: u.full_name,
-        avatarUrl: u.avatar_url,
+        avatarUrl: getUserAvatar(u.username),
         role: u.role,
         riotId: u.riot_id || '',
         steamId: u.steam_id || '',

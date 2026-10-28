@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getDb, initDb } from '@/lib/db';
 import { getMatchAccess } from '@/lib/matchAccess';
 import { randomUUID } from 'crypto';
+import { markMatchChatRead } from '@/lib/matchChatActivity';
 
 export async function GET(
   request: Request,
@@ -23,11 +24,16 @@ export async function GET(
         message,
         is_proof_image as "isProofImage",
         TO_CHAR(created_at, 'HH24:MI') as timestamp,
-        created_at
+        created_at,
+        created_at::text AS "readCursor"
       FROM match_messages
       WHERE match_id = $1
       ORDER BY created_at ASC
     `, [matchId]);
+
+    if (access.viewer.role === 'admin' && res.rows.length) {
+      await markMatchChatRead(db, matchId, access.viewer.id, res.rows[res.rows.length - 1].readCursor);
+    }
 
     return NextResponse.json({ success: true, messages: res.rows }, { headers: { 'Cache-Control': 'private, no-store' } });
   } catch (error: any) {

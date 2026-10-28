@@ -12,9 +12,11 @@ import {
   Layers,
   ZoomIn,
   ZoomOut,
-  Lock
+  Lock,
+  MessageCircle
 } from 'lucide-react';
 import { Tournament, TournamentRound, TournamentMatch } from '../types/tournament';
+import { useMatchChatActivity } from '../hooks/useMatchChatActivity';
 
 interface BracketVisualizerProps {
   tournament: Tournament;
@@ -27,6 +29,7 @@ export const BracketVisualizer: React.FC<BracketVisualizerProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'winners' | 'losers'>('winners');
   const [zoomLevel, setZoomLevel] = useState<number>(1);
+  const chatActivity = useMatchChatActivity(tournament.id);
 
   const hasLosers = tournament.format === 'double_elimination' && (tournament.losersRounds?.length || 0) > 0;
   const currentRounds = activeTab === 'winners' ? tournament.rounds : (tournament.losersRounds || []);
@@ -47,7 +50,7 @@ export const BracketVisualizer: React.FC<BracketVisualizerProps> = ({
     <div className="space-y-4">
       
       {/* Controls Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#0d131f] p-3 rounded-xl border border-slate-800">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#1c1518] p-3 rounded-xl border border-slate-800">
         
         {/* Double elimination tab switcher */}
         {hasLosers ? (
@@ -56,7 +59,7 @@ export const BracketVisualizer: React.FC<BracketVisualizerProps> = ({
               onClick={() => setActiveTab('winners')}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                 activeTab === 'winners'
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm'
+                  ? 'bg-red-500/20 text-red-300 border border-red-500/40 shadow-sm'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -75,7 +78,7 @@ export const BracketVisualizer: React.FC<BracketVisualizerProps> = ({
           </div>
         ) : (
           <div className="flex items-center space-x-2 text-xs text-slate-400">
-            <Layers className="w-4 h-4 text-cyan-400" />
+            <Layers className="w-4 h-4 text-red-400" />
             <span>Formato: <strong className="text-white capitalize">{tournament.format.replace('_', ' ')}</strong></span>
           </div>
         )}
@@ -121,7 +124,7 @@ export const BracketVisualizer: React.FC<BracketVisualizerProps> = ({
       </div>
 
       {/* Bracket Tree Container */}
-      <div className="relative bg-[#070b12] rounded-2xl border border-slate-800/80 p-4 sm:p-6 overflow-x-auto">
+      <div className="relative bg-[#110e0f] rounded-2xl border border-slate-800/80 p-4 sm:p-6 overflow-x-auto">
         <div 
           className="flex items-stretch space-x-12 min-w-max transition-transform duration-200 origin-top-left"
           style={{ transform: `scale(${zoomLevel})` }}
@@ -153,6 +156,8 @@ export const BracketVisualizer: React.FC<BracketVisualizerProps> = ({
                     const isCompleted = match.status === 'completed';
                     const isInProgress = match.status === 'in_progress';
                     const isDisputed = match.status === 'disputed';
+                    const activity = chatActivity[match.id];
+                    const hasUnread = Boolean(activity?.unreadCount);
 
                     return (
                       <div key={match.id} className="relative group">
@@ -170,15 +175,24 @@ export const BracketVisualizer: React.FC<BracketVisualizerProps> = ({
                           }}
                           title={match.canAccessRoom ? 'Abrir sala privada de la partida' : 'Sala privada: solo participantes de esta partida y administradores'}
                           className={`match-card ${match.canAccessRoom ? 'cursor-pointer' : 'cursor-default'} ${
-                            isInProgress ? 'is-active ring-1 ring-cyan-500/50' : ''
-                          } ${isDisputed ? 'ring-1 ring-red-500/60' : ''}`}
+                            isInProgress ? 'is-active ring-1 ring-red-500/50' : ''
+                          } ${isDisputed ? 'ring-1 ring-red-500/60' : ''} ${hasUnread ? 'ring-2 ring-red-400/70 shadow-lg shadow-red-500/10' : ''}`}
                         >
                           {/* Match Top Bar */}
-                          <div className="px-3 py-1.5 bg-[#0e1422] border-b border-white/5 flex items-center justify-between text-[10px]">
+                          <div className="px-3 py-1.5 bg-[#21191d] border-b border-white/5 flex items-center justify-between text-[10px]">
                             <span className="font-mono text-slate-400">
                               BO{match.bestOf}
                             </span>
                             <div className="flex items-center space-x-1.5">
+                              {(hasUnread || activity?.active) && (
+                                <span role="status" aria-live="polite" title={hasUnread ? `${activity.unreadCount} mensajes nuevos de jugadores. Abre la sala para leerlos.` : 'Los jugadores enviaron mensajes en el último minuto.'}
+                                  className="inline-flex items-center gap-1 rounded-md border border-red-400/40 bg-red-400/15 px-1.5 py-0.5 font-bold text-red-300">
+                                  <MessageCircle aria-hidden="true" className="h-3 w-3" />
+                                  {activity?.active && <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-red-400 motion-safe:animate-pulse" />}
+                                  <span>{hasUnread ? (activity.unreadCount > 99 ? '99+' : activity.unreadCount) : 'Chat activo'}</span>
+                                  {hasUnread && <span className="sr-only">mensajes sin leer</span>}
+                                </span>
+                              )}
                               {isInProgress && (
                                 <span className="flex items-center space-x-1 text-rose-400 font-bold">
                                   <span className="w-1.5 h-1.5 rounded-full bg-rose-500 inline-block animate-ping" />
@@ -195,7 +209,7 @@ export const BracketVisualizer: React.FC<BracketVisualizerProps> = ({
                                 <span className="text-emerald-400 font-medium">Finalizado</span>
                               )}
                               {match.status === 'ready' && (
-                                <span className="text-cyan-400 font-medium">Listo</span>
+                                <span className="text-red-400 font-medium">Listo</span>
                               )}
                               {match.status === 'pending' && (
                                 <span className="text-slate-500 font-mono">Esperando</span>
@@ -298,7 +312,7 @@ export const BracketVisualizer: React.FC<BracketVisualizerProps> = ({
                           })()}
 
                           {/* Hover Action Banner */}
-                          <div className="px-3 py-1 bg-cyan-950/40 text-[10px] text-cyan-300 flex items-center justify-between border-t border-cyan-500/20 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <div className="px-3 py-1 bg-red-950/40 text-[10px] text-red-300 flex items-center justify-between border-t border-red-500/20 opacity-0 group-hover:opacity-100 transition-opacity">
                             <span>{match.canAccessRoom ? 'Abrir sala privada' : 'Chat privado de la partida'}</span>
                             {match.canAccessRoom ? <ChevronRight className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
                           </div>

@@ -1,5 +1,6 @@
 'use client';
 
+import { StyledDialog } from './StyledDialog';
 import React, { useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { AuthProvider, useAuth } from '../context/AuthContext';
@@ -33,7 +34,7 @@ export const Providers: React.FC<{ children: React.ReactNode }> = ({ children })
   return (
     <AuthProvider>
       <TournamentProvider>
-        <div className="flex flex-col min-h-screen">
+        <div className={`flex flex-col min-h-screen ${isArenaRoute ? "arena-theme" : ""}`}>
           {isArenaRoute && (
             <Navbar onOpenCreateModal={() => setIsCreateModalOpen(true)} />
           )}
@@ -46,6 +47,7 @@ export const Providers: React.FC<{ children: React.ReactNode }> = ({ children })
             onClose={() => setIsCreateModalOpen(false)}
           />
           <GlobalAuthModal />
+          <StyledDialog />
         </div>
       </TournamentProvider>
     </AuthProvider>
