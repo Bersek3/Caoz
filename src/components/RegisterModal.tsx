@@ -442,7 +442,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
                     <label className="text-xs text-slate-300">Fecha de nacimiento *
                       <input required type="date" autoComplete="bday" max={new Date().toISOString().slice(0, 10)} value={personalDetails.birthDate} onChange={e => setPersonalDetails({ ...personalDetails, birthDate: e.target.value })} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 p-2 text-white [color-scheme:dark]" />
                     </label>
-                    <label className="text-xs text-slate-300">Número de documento *
+                    <label className="text-xs text-slate-300">N° de documento *
                       <input required maxLength={80} value={personalDetails.documentNumber} onChange={e => setPersonalDetails({ ...personalDetails, documentNumber: e.target.value })} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 p-2 text-white" />
                     </label>
                     <div className="text-xs text-slate-300">Número de teléfono *
@@ -459,7 +459,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {([
                       ['first_name', 'Nombre del pagador'], ['last_name', 'Apellido del pagador'],
-                      ['social_id', 'RUT del pagador'], ['phone', 'Teléfono con código de país (ej. 56912345678)']
+                      ['social_id', 'N° de documento del pagador (RUT para VirtualPOS)'], ['phone', 'Teléfono con código de país (ej. 56912345678)']
                     ] as const).map(([key, label]) => (
                       <label key={key} className="block text-xs text-slate-300">{label}
                         <input required value={payer[key]} onChange={e => setPayer({ ...payer, [key]: e.target.value })} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 p-2 text-white" />

@@ -1446,11 +1446,11 @@ export default function ProfilePage() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[11px] font-semibold text-slate-300 mb-1">RUT del Apoderado *</label>
+                    <label className="block text-[11px] font-semibold text-slate-300 mb-1">N° de documento del apoderado *</label>
                     <input
                       type="text"
                       required
-                      placeholder="11.222.333-4"
+                      placeholder="DNI, cédula o pasaporte"
                       value={guardianRut}
                       onChange={(e) => setGuardianRut(e.target.value)}
                       className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:border-amber-400 focus:outline-none"

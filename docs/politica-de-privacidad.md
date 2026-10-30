@@ -22,7 +22,7 @@ Recopilamos información que proporcionas directamente y datos que se generan al
 
 - Correo electrónico, nombre de usuario y contraseña al registrarte. La contraseña se transforma mediante una función de hash para su almacenamiento; no se guarda como texto legible.
 - Fecha de nacimiento para determinar la edad y el estado de habilitación de la cuenta.
-- Nombre completo, avatar o su dirección web, biografía y RUT, cuando los proporcionas en los formularios correspondientes.
+- Nombre completo, avatar o su dirección web, biografía y N° de documento, cuando los proporcionas en los formularios correspondientes.
 - Identificadores de juego y comunidad que agregues: Riot ID, Steam ID, EA ID, usuario de Epic Games, PlayStation Network ID, Xbox Gamertag y usuario de Discord.
 - Identificador interno, rol, fecha de creación y estado de la cuenta.
 
@@ -38,7 +38,7 @@ Los datos de identidad y teléfono de la inscripción se almacenan separados de 
 
 ### Menores de edad y apoderados
 
-Cuando se presenta una autorización parental, tratamos el nombre del apoderado, RUT, relación con el participante, teléfono, correo y documento de autorización o enlace al documento. También se registra el estado de la solicitud y, cuando corresponda, información sobre su revisión y motivo de rechazo.
+Cuando se presenta una autorización parental, tratamos el nombre del apoderado, N° de documento, relación con el participante, teléfono, correo y documento de autorización o enlace al documento. También se registra el estado de la solicitud y, cuando corresponda, información sobre su revisión y motivo de rechazo.
 
 ### Partidas, comunicaciones y controversias
 
@@ -56,7 +56,7 @@ Los datos de tarjeta y claves bancarias se ingresan en el entorno del proveedor 
 
 ### Datos técnicos y almacenamiento del navegador
 
-Utilizamos un token de autenticación guardado en el almacenamiento local del navegador (`localStorage`, clave `caoz_auth_token`) para mantener la sesión y autenticar solicitudes. Al cerrar sesión se elimina ese token del navegador; cerrar sesión no elimina la cuenta ni los registros de torneos.
+Utilizamos un token de autenticación guardado en el almacenamiento local del navegador para mantener la sesión y autenticar solicitudes. Al cerrar sesión se elimina ese token del navegador; cerrar sesión no elimina la cuenta ni los registros de torneos.
 
 Al conectarte al servicio o cargar recursos externos, los servidores que reciben la solicitud pueden recibir tu dirección IP y datos técnicos de la conexión. El alcance de los registros de infraestructura depende del proveedor y de la configuración del alojamiento. **[Confirmar proveedores, datos registrados y plazos antes de publicar.]**
 
@@ -84,7 +84,7 @@ Elige cuidadosamente el nombre y los identificadores que proporcionas para parti
 
 Las salas de partida tienen acceso restringido conforme a los permisos de la plataforma. Sus mensajes y pruebas pueden ser consultados por participantes habilitados y personal con funciones de administración o arbitraje; no debes tratarlos como comunicaciones confidenciales frente a estas personas.
 
-El correo de acceso, hash de contraseña, fecha de nacimiento, RUT, documento y teléfono de inscripción y antecedentes del apoderado no forman parte de los listados públicos de participantes. Su tratamiento debe limitarse a las funciones que los necesitan.
+El correo de acceso, hash de contraseña, fecha de nacimiento, N° de documento, teléfono de inscripción y antecedentes del apoderado no forman parte de los listados públicos de participantes. Su tratamiento debe limitarse a las funciones que los necesitan.
 
 ## 5. Con quién se comparten los datos
 
