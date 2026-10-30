@@ -189,7 +189,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCreateModal }) => {
               className="relative inline-flex items-center space-x-2 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold text-white bg-gradient-to-r from-red-500 to-red-600 hover:from-red-400 hover:to-red-500 shadow-lg shadow-red-500/25 hover:shadow-red-400/40 transition-all duration-200 transform hover:-translate-y-0.5"
             >
               <PlusCircle className="w-4 h-4" />
-              <span className="hidden sm:inline">Crear Torneo (Admin)</span>
+              <span className="hidden sm:inline">Crear Torneo</span>
               <span className="sm:hidden">Crear</span>
             </button>
           )}

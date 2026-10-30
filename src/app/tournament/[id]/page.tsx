@@ -17,7 +17,6 @@ import {
   Layers,
   ChevronLeft,
   Share2,
-  Sparkles,
   ExternalLink,
   Crown,
   UserCheck,
@@ -453,18 +452,6 @@ export default function TournamentDetailPage() {
         {/* TAB 1: BRACKETS */}
         {activeTab === 'brackets' && (
           <div className="space-y-6 animate-fade-in">
-            <div className="p-4 rounded-xl bg-red-950/20 border border-red-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-              <div className="flex items-center space-x-2 text-red-200">
-                <Sparkles className="w-4 h-4 text-red-400 shrink-0" />
-                <span>
-                  Haz clic en cualquier partida de la llave para abrir la <strong>Sala de Match</strong>, reportar el marcador, adjuntar captura de victoria o chatear con tu rival.
-                </span>
-              </div>
-              <span className="font-mono text-red-400 text-[11px] shrink-0">
-                Motor de Brackets Reactivo
-              </span>
-            </div>
-
             <BracketVisualizer
               tournament={tournament}
               onSelectMatch={(match) => setSelectedMatch(match)}

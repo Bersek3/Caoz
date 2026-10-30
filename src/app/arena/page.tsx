@@ -92,7 +92,7 @@ export default function HomePage() {
                     className="px-6 py-3.5 rounded-xl font-bold text-sm uppercase tracking-wider text-black bg-red-400 hover:bg-red-300 shadow-xl shadow-red-400/30 transition-all font-mono flex items-center space-x-2 transform hover:-translate-y-0.5"
                   >
                     <Trophy className="w-4 h-4 text-black" />
-                    <span>CREAR UN TORNEO (ADMIN)</span>
+                    <span>CREAR UN TORNEO</span>
                   </button>
                 ) : !user ? (
                   <button
@@ -335,7 +335,7 @@ export default function HomePage() {
                 onClick={() => setIsCreateOpen(true)}
                 className="px-4 py-2 rounded-xl bg-red-400 text-black text-xs font-bold font-mono uppercase"
               >
-                + Crear Nuevo Torneo (Admin)
+                + Crear Nuevo Torneo
               </button>
             )}
           </div>
