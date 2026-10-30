@@ -406,7 +406,7 @@ export default function CaozPortalPage() {
 
           <div className="mt-8 pt-8 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between text-xs text-zinc-600">
             <div>© 2026 Caoz. Todos los derechos reservados.</div>
-
+            <Link href="/privacidad" className="mt-4 sm:mt-0 text-zinc-400 hover:text-rose-400 transition-colors focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-rose-400">Política de privacidad</Link>
           </div>
         </div>
       </footer>

@@ -29,7 +29,8 @@ export const Providers: React.FC<{ children: React.ReactNode }> = ({ children })
   const isArenaRoute = pathname.startsWith('/arena') || 
                        pathname.startsWith('/tournament') || 
                        pathname === '/profile' || 
-                       pathname === '/join-team';
+                       pathname === '/join-team' ||
+                       pathname === '/privacidad';
 
   return (
     <AuthProvider>

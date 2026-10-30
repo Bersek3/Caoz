@@ -1,4 +1,5 @@
 import React from 'react';
+import Link from 'next/link';
 import { Swords } from 'lucide-react';
 
 export const Footer: React.FC = () => {
@@ -37,9 +38,9 @@ export const Footer: React.FC = () => {
 
         </div>
 
-        <div className="border-t border-slate-800/80 mt-10 pt-6 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500">
+        <div className="border-t border-slate-800/80 mt-10 pt-6 flex flex-col sm:flex-row gap-4 items-center justify-between text-xs text-slate-500">
           <p>© 2026 CZ ARENA Esports. Todos los derechos reservados.</p>
-
+          <Link href="/privacidad" className="hover:text-red-400 transition-colors focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-red-400">Política de privacidad</Link>
         </div>
       </div>
     </footer>
