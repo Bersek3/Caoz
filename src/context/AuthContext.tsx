@@ -1,6 +1,8 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { accountHref } from '@/lib/accountNavigation';
 
 export interface AuthUser {
   id: string;
@@ -41,10 +43,7 @@ interface AuthContextType {
   user: AuthUser | null;
   token: string | null;
   isLoading: boolean;
-  isAuthModalOpen: boolean;
-  authModalMode: 'login' | 'register';
   openAuthModal: (mode?: 'login' | 'register') => void;
-  closeAuthModal: () => void;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   register: (data: {
     email: string;
@@ -64,19 +63,14 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const router = useRouter();
   const [user, setUser] = useState<AuthUser | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
-  const [authModalMode, setAuthModalMode] = useState<'login' | 'register'>('login');
-
+  // Keep existing entry points while moving account access to its own pages.
   const openAuthModal = (mode: 'login' | 'register' = 'login') => {
-    setAuthModalMode(mode);
-    setIsAuthModalOpen(true);
-  };
-
-  const closeAuthModal = () => {
-    setIsAuthModalOpen(false);
+    const returnTo = window.location.pathname + window.location.search + window.location.hash;
+    router.push(accountHref(mode, returnTo));
   };
 
   const refreshUser = async () => {
@@ -226,10 +220,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         user,
         token,
         isLoading,
-        isAuthModalOpen,
-        authModalMode,
         openAuthModal,
-        closeAuthModal,
         login,
         register,
         logout,

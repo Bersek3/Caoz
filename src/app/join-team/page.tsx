@@ -15,7 +15,6 @@ import {
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useAuth } from '../../context/AuthContext';
-import { AuthModal } from '../../components/AuthModal';
 
 function JoinTeamContent() {
   const router = useRouter();
