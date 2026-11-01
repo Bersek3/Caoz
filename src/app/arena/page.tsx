@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { Suspense, useState, useSyncExternalStore } from 'react';
 import Link from 'next/link';
@@ -36,8 +36,8 @@ function StatusBadge({ tournament }: { tournament: Tournament }) {
 }
 
 function LoadingCards() {
-  return <div role="status" aria-label="Cargando torneos" className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-    {[0, 1, 2].map(i => <div key={i} aria-hidden="true" className="animate-pulse overflow-hidden rounded-2xl border border-slate-800 bg-slate-900"><div className="h-40 bg-slate-800" /><div className="space-y-4 p-5"><div className="h-5 w-3/4 rounded bg-slate-800" /><div className="h-16 rounded bg-slate-800" /><div className="h-10 rounded bg-slate-800" /></div></div>)}
+  return <div role="status" aria-label="Cargando torneos" className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+    {[0, 1, 2].map(i => <div key={i} aria-hidden="true" className="animate-pulse overflow-hidden rounded-2xl border border-slate-800 bg-slate-900"><div className="h-52 bg-slate-800 sm:h-56" /><div className="space-y-4 p-5 sm:p-6"><div className="h-5 w-3/4 rounded bg-slate-800" /><div className="h-16 rounded bg-slate-800" /><div className="h-10 rounded bg-slate-800" /></div></div>)}
     <span className="sr-only">Cargando torneos…</span>
   </div>;
 }
@@ -65,7 +65,8 @@ function TournamentDirectory() {
   const selectedEntry = params.get('entry') || 'all';
   const selectedMode = params.get('mode') || 'all';
   const selectedRegion = params.get('region') || 'all';
-  const selectedView = params.get('view') || 'all';
+  const requestedView = params.get('view') || 'all';
+  const selectedView = requestedView === 'mine' && !user ? 'all' : requestedView;
   const searchQuery = params.get('q') || '';
   const query = searchQuery.trim().toLocaleLowerCase('es');
 
@@ -195,11 +196,16 @@ function TournamentDirectory() {
           <button aria-pressed={selectedView === 'favorites'} onClick={() => updateFilters({ view: 'favorites' })} className={`arena-filter-button ${selectedView === 'favorites' ? 'is-selected' : ''}`}><Heart className="h-4 w-4" />Favoritos ({visible.filter(t => favorites.includes(t.id)).length})</button>
         </div>
 
-        <OfficialGamesEditor><div className="mb-5 flex gap-2 overflow-x-auto pb-2" aria-label="Filtrar por videojuego">
-          <button onClick={() => updateFilters({ game: 'all' })} aria-pressed={selectedGame === 'all'} className={`arena-filter-button shrink-0 ${selectedGame === 'all' ? 'is-selected' : ''}`}><Gamepad2 className="h-4 w-4" />Todos los juegos</button>
-          {games.map(game => <button key={game.id} data-official-game-id={game.id} onClick={() => updateFilters({ game: selectedGame === game.id ? 'all' : game.id })} aria-pressed={selectedGame === game.id} className={`arena-filter-button shrink-0 ${selectedGame === game.id ? 'is-selected' : ''}`}>
-            <img src={game.coverImage} alt="" loading="lazy" className="h-7 w-7 rounded object-cover" /><span>{game.name}</span><span className="text-xs opacity-70">{searchedTournaments.filter(t => matchesStatus(t) && t.gameId === game.id).length}</span>
-          </button>)}
+        <OfficialGamesEditor><div className="mb-6 space-y-4" aria-label="Filtrar por videojuego">
+          <button onClick={() => updateFilters({ game: 'all' })} aria-pressed={selectedGame === 'all'} className={`arena-filter-button ${selectedGame === 'all' ? 'is-selected' : ''}`}><Gamepad2 className="h-4 w-4" />Todos los juegos</button>
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 xl:grid-cols-4">
+            {games.map(game => {
+              const count = searchedTournaments.filter(t => matchesStatus(t) && t.gameId === game.id).length;
+              return <button key={game.id} data-official-game-id={game.id} onClick={() => updateFilters({ game: selectedGame === game.id ? 'all' : game.id })} aria-pressed={selectedGame === game.id} className={`group min-w-0 overflow-hidden rounded-2xl border text-left transition-colors ${selectedGame === game.id ? 'border-red-400 bg-red-950/40 ring-1 ring-red-400/30' : 'border-slate-700 bg-slate-900/80 hover:border-red-400/60'}`}>
+              <div className="h-28 overflow-hidden sm:h-32"><img src={game.coverImage} alt="" loading="lazy" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" /></div>
+              <div className="space-y-2 p-3 sm:p-4"><span className="block break-words text-base font-bold text-white">{game.name}</span><span className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-xs"><span className="text-slate-400">{game.genre}</span><span className="font-semibold text-red-300">{count} {count === 1 ? 'torneo' : 'torneos'}</span></span></div>
+            </button>;})}
+          </div>
         </div></OfficialGamesEditor>
 
         <div className="mb-5 space-y-4 rounded-2xl border border-slate-800 bg-slate-900/65 p-4">
@@ -221,15 +227,15 @@ function TournamentDirectory() {
         {error && <div role="alert" className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-400/30 bg-amber-950/30 p-4 text-sm text-amber-100"><p>{error}{visible.length > 0 && ' Se muestra la última información disponible.'}</p><button onClick={() => void refreshTournaments()} disabled={isLoading} className="arena-secondary-button">Reintentar</button></div>}
 
         {isLoading && !tournaments.length ? <LoadingCards /> : !error || visible.length > 0 ? filtered.length === 0 ? <div className="rounded-2xl border border-slate-800 bg-slate-900/50 px-5 py-12 text-center"><Trophy className="mx-auto mb-3 h-10 w-10 text-slate-500" /><h3 className="text-lg font-bold text-white">{selectedView === 'mine' ? 'Aquí estarán tus torneos' : selectedView === 'favorites' ? 'Guarda tus próximos desafíos' : hasFilters ? 'No encontramos torneos con estos filtros' : 'Pronto habrá nuevas competencias'}</h3><p className="mx-auto mt-2 max-w-lg text-sm leading-relaxed text-slate-400">{selectedView === 'mine' ? 'Inscríbete en un torneo para seguir tu asistencia, partidas y resultados.' : selectedView === 'favorites' ? 'Toca el corazón de un torneo para guardarlo en este navegador.' : hasFilters ? 'Prueba otro juego, estado o búsqueda, o restablece el catálogo.' : visible.some(t => t.status === 'completed') ? 'Puedes revisar el historial mientras se anuncian los próximos torneos.' : 'Publicaremos aquí fechas, premios y cupos para la comunidad.'}</p><div className="mt-5 flex flex-wrap justify-center gap-2">{hasFilters && <button onClick={clearFilters} className="arena-secondary-button">Ver torneos activos</button>}{!hasFilters && visible.some(t => t.status === 'completed') && <button onClick={() => updateFilters({ status: 'completed' })} className="arena-secondary-button">Ver historial</button>}{isAdmin && !hasFilters && <button onClick={() => setIsCreateOpen(true)} className="arena-primary-button">Crear torneo</button>}</div></div> : <>
-          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
             {pageItems.map(t => {
               const action = getTournamentAction(t, user);
               const registration = findMyRegistration(t, user);
               const remaining = Math.max(0, t.maxParticipants - t.participants.length);
               return <article key={t.id} className="glass-card group flex min-w-0 flex-col overflow-hidden rounded-2xl">
-                <div className="relative h-40 overflow-hidden"><img src={t.bannerUrl} alt="" loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" /><div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-black/20" /><div className="absolute left-3 top-3"><StatusBadge tournament={t} /></div><button aria-label={`${favorites.includes(t.id) ? 'Quitar de' : 'Guardar en'} favoritos: ${t.title}`} aria-pressed={favorites.includes(t.id)} onClick={() => toggleFavorite(t.id)} className="absolute right-3 top-3 flex h-11 w-11 items-center justify-center rounded-full border border-white/20 bg-black/70 text-white hover:bg-red-950"><Heart className={`h-5 w-5 ${favorites.includes(t.id) ? 'fill-red-400 text-red-400' : ''}`} /></button><div className="absolute bottom-3 left-4 right-4 flex items-end justify-between gap-3"><span className="text-sm font-bold text-white">{t.gameName}</span><span className="text-right text-base font-bold text-amber-300">{t.prizePool}</span></div></div>
-                <div className="flex flex-1 flex-col p-5"><div className="mb-3 flex flex-wrap gap-2">{t.isHidden && <span className="rounded bg-amber-500/10 px-2 py-1 text-xs font-semibold text-amber-300">Oculto · admin</span>}{t.isFeatured && <span className="flex items-center gap-1 rounded bg-red-500/10 px-2 py-1 text-xs font-semibold text-red-300"><Star className="h-3 w-3" />Destacado</span>}{registration && <span className="flex items-center gap-1 rounded bg-emerald-500/10 px-2 py-1 text-xs font-semibold text-emerald-300"><CheckCircle2 className="h-3.5 w-3.5" />{registration.checkedIn ? 'Asistencia confirmada' : 'Estás inscrito'}</span>}</div>
-                  <h3 className="text-lg font-bold leading-snug text-white"><Link href={`/tournament/${t.slug}`} className="hover:text-red-300">{t.title}</Link></h3><p className="mt-1 text-xs text-slate-400">Organiza {t.organizer.name}</p>
+                <div className="relative h-52 overflow-hidden sm:h-56"><img src={t.bannerUrl} alt="" loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" /><div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-black/20" /><div className="absolute left-3 top-3"><StatusBadge tournament={t} /></div><button aria-label={`${favorites.includes(t.id) ? 'Quitar de' : 'Guardar en'} favoritos: ${t.title}`} aria-pressed={favorites.includes(t.id)} onClick={() => toggleFavorite(t.id)} className="absolute right-3 top-3 flex h-11 w-11 items-center justify-center rounded-full border border-white/20 bg-black/70 text-white hover:bg-red-950"><Heart className={`h-5 w-5 ${favorites.includes(t.id) ? 'fill-red-400 text-red-400' : ''}`} /></button><div className="absolute bottom-3 left-4 right-4 flex items-end justify-between gap-3"><span className="text-sm font-bold text-white">{t.gameName}</span><span className="text-right text-base font-bold text-amber-300">{t.prizePool}</span></div></div>
+                <div className="flex flex-1 flex-col p-5 sm:p-6"><div className="mb-3 flex flex-wrap gap-2">{t.isHidden && <span className="rounded bg-amber-500/10 px-2 py-1 text-xs font-semibold text-amber-300">Oculto · admin</span>}{t.isFeatured && <span className="flex items-center gap-1 rounded bg-red-500/10 px-2 py-1 text-xs font-semibold text-red-300"><Star className="h-3 w-3" />Destacado</span>}{registration && <span className="flex items-center gap-1 rounded bg-emerald-500/10 px-2 py-1 text-xs font-semibold text-emerald-300"><CheckCircle2 className="h-3.5 w-3.5" />{registration.checkedIn ? 'Asistencia confirmada' : 'Estás inscrito'}</span>}</div>
+                  <h3 className="text-lg font-bold leading-snug text-white sm:text-xl"><Link href={`/tournament/${t.slug}`} className="hover:text-red-300">{t.title}</Link></h3><p className="mt-1 text-xs text-slate-400">Organiza {t.organizer.name}</p>
                   <dl className="my-4 grid grid-cols-2 gap-x-4 gap-y-3 rounded-xl border border-slate-800 bg-slate-900/60 p-3 text-sm"><div><dt className="mb-1 text-xs text-slate-400">Modalidad</dt><dd className="font-semibold text-slate-100">{formatTournamentMode(t)}</dd></div><div><dt className="mb-1 text-xs text-slate-400">Entrada</dt><dd className="font-semibold text-emerald-300">{t.entryFee}</dd></div><div><dt className="mb-1 text-xs text-slate-400">Formato</dt><dd className="text-slate-200">{formatTournamentFormat(t.format)}</dd></div><div><dt className="mb-1 text-xs text-slate-400">Región</dt><dd className="text-slate-200">{t.region}</dd></div></dl>
                   <p className="mb-4 flex items-start gap-2 text-sm leading-relaxed text-slate-300"><Calendar className="mt-0.5 h-4 w-4 shrink-0 text-red-300" /><span>{formatTournamentDate(t.startDate)}</span></p>
                   <div className="mt-auto"><div className="mb-2 flex justify-between gap-2 text-xs"><span className="text-slate-300">{t.participants.length} / {t.maxParticipants} {t.teamType === 'team' ? 'equipos' : 'jugadores'}</span><span className={`font-semibold ${remaining === 0 ? 'text-amber-300' : 'text-slate-300'}`}>{t.status === 'completed' ? 'Finalizado' : remaining === 0 ? 'Cupos completos' : `${remaining} cupos libres`}</span></div><div role="progressbar" aria-label={`Cupos de ${t.title}`} aria-valuemin={0} aria-valuemax={t.maxParticipants} aria-valuenow={t.participants.length} className="mb-4 h-1.5 overflow-hidden rounded-full bg-slate-800"><div className="h-full rounded-full bg-red-400" style={{ width: `${t.maxParticipants > 0 ? Math.min(100, t.participants.length / t.maxParticipants * 100) : 0}%` }} /></div><Link href={action.href} className={`flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-bold transition-colors ${['register', 'check_in', 'match'].includes(action.kind) ? 'bg-red-400 text-black hover:bg-red-300' : 'border border-slate-700 bg-slate-800 text-white hover:border-red-400'}`}>{action.label}<ArrowRight className="h-4 w-4" /></Link></div>
