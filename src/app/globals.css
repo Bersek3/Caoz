@@ -213,13 +213,47 @@
 
 /* Muted crimson palette for the tournament platform. */
 .arena-theme {
+  --arena-grid-size: 80px;
+  --arena-grid-opacity: .032;
   --color-red-300: #e7a6a9; --color-red-400: #d78086; --color-red-500: #ba6169;
   --color-red-600: #a44e58; --color-red-700: #843d47; --color-red-950: #32191e;
   --color-slate-950: #100d0e; --color-slate-900: #1b1618;
   --color-slate-800: #30272b; --color-slate-700: #483b41;
   --primary-cyan: #d78086; --primary-cyan-glow: rgba(186,97,105,.2);
   --border-accent: rgba(186,97,105,.35);
-  background: radial-gradient(ellipse at top, #321c22 0%, #110e0f 65%);
+  background-color: #110e0f;
+  background-image:
+    radial-gradient(ellipse 1000px 650px at 100% 80px, rgb(132 61 71 / 24%), transparent 75%),
+    radial-gradient(ellipse 750px 700px at -15% 1000px, rgb(186 97 105 / 13%), transparent 75%),
+    linear-gradient(132deg, transparent 44%, rgb(186 97 105 / 3.5%) 44%, rgb(186 97 105 / 3.5%) 58%, transparent 58%),
+    linear-gradient(rgb(215 128 134 / var(--arena-grid-opacity)) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(215 128 134 / var(--arena-grid-opacity)) 1px, transparent 1px);
+  background-size: auto, auto, 100% 1200px, var(--arena-grid-size) var(--arena-grid-size), var(--arena-grid-size) var(--arena-grid-size);
+  background-repeat: no-repeat, no-repeat, repeat-y, repeat, repeat;
+}
+
+/* Static arena lighting and angular panels keep the current crimson palette. */
+.arena-directory-hero {
+  background-image:
+    linear-gradient(90deg, rgb(17 14 15 / 92%), rgb(17 14 15 / 35%) 55%, transparent),
+    linear-gradient(128deg, transparent 56%, rgb(215 128 134 / 24%) 56%, rgb(215 128 134 / 24%) calc(56% + 1px), transparent calc(56% + 1px)),
+    linear-gradient(128deg, transparent 56%, rgb(186 97 105 / 12%) 56%, rgb(186 97 105 / 12%) 74%, transparent 74%),
+    linear-gradient(128deg, transparent 82%, rgb(215 128 134 / 12%) 82%, rgb(215 128 134 / 12%) calc(82% + 1px), transparent calc(82% + 1px)),
+    radial-gradient(ellipse at 90% 0%, rgb(164 78 88 / 40%), transparent 70%);
+  box-shadow: inset 0 -1px rgb(215 128 134 / 5%);
+}
+
+@media (max-width: 639px) {
+  .arena-theme {
+    --arena-grid-size: 96px;
+    --arena-grid-opacity: .022;
+  }
+  .arena-directory-hero {
+    background-image:
+      linear-gradient(180deg, rgb(17 14 15 / 60%), transparent 70%),
+      linear-gradient(128deg, transparent 54%, rgb(215 128 134 / 9%) 54%, rgb(186 97 105 / 5%) 78%, transparent 78%),
+      radial-gradient(ellipse at 100% 10%, rgb(132 61 71 / 35%), transparent 75%);
+  }
 }
 .arena-theme .glass-panel, .arena-theme .glass-card { background-color: rgb(28 21 24 / 85%); }
 .arena-theme .glass-card:hover { border-color: #ba616966; box-shadow: 0 12px 30px -10px #0008; }

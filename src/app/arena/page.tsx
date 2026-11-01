@@ -147,7 +147,7 @@ function TournamentDirectory() {
   ] as const;
 
   return <div className="arena-directory min-h-screen">
-    <section className="border-b border-slate-800 bg-gradient-to-br from-red-950/35 to-transparent">
+    <section className="arena-directory-hero border-b border-slate-800">
       <div className="mx-auto grid max-w-7xl gap-6 px-4 py-7 sm:px-6 sm:py-10 lg:grid-cols-[1.15fr_1fr] lg:items-center lg:px-8">
         <div>
           <p className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-red-300"><Gamepad2 className="h-4 w-4" />CZ Arena · Torneos oficiales</p>
