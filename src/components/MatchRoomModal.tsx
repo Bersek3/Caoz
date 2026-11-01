@@ -1,5 +1,5 @@
 'use client';
-import { showAlert } from './StyledDialog';
+import { showAlert, showConfirm } from './StyledDialog';
 
 import React, { useState } from 'react';
 import { 
@@ -11,14 +11,13 @@ import {
   Image as ImageIcon, 
   Trophy, 
   AlertTriangle,
-  Clock,
-  Sparkles,
   ExternalLink
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useTournament } from '../context/TournamentContext';
 import { useAuth } from '../context/AuthContext';
 import { TournamentMatch, Tournament } from '../types/tournament';
+import { useModalAccessibility } from '@/hooks/useModalAccessibility';
 
 interface MatchRoomModalProps {
   tournament: Tournament;
@@ -33,12 +32,17 @@ export const MatchRoomModal: React.FC<MatchRoomModalProps> = ({
   isOpen,
   onClose
 }) => {
-  const { updateMatchScore, sendMatchChatMessage, reportMatchDispute, resolveDispute, currentUser } = useTournament();
+  const { updateMatchScore, reportMatchDispute, resolveDispute, currentUser } = useTournament();
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
+  const modalRef = useModalAccessibility(Boolean(isOpen && match?.canAccessRoom), onClose);
+  const titleId = React.useId();
 
   const [score1, setScore1] = useState<number>(match?.team1.score ?? 0);
   const [score2, setScore2] = useState<number>(match?.team2.score ?? 0);
+  const scoreDirty = React.useRef(false);
+  const serverScore1 = match?.team1.score ?? 0;
+  const serverScore2 = match?.team2.score ?? 0;
   const [chatInput, setChatInput] = useState('');
   const [messages, setMessages] = useState(match?.chatMessages || []);
   const [sendingMsg, setSendingMsg] = useState(false);
@@ -47,13 +51,21 @@ export const MatchRoomModal: React.FC<MatchRoomModalProps> = ({
   const [showDisputeInput, setShowDisputeInput] = useState(false);
   const [disputeReason, setDisputeReason] = useState('');
   const [proofUrl, setProofUrl] = useState('');
+  const [disputeBusy, setDisputeBusy] = useState(false);
+  const [disputeNotice, setDisputeNotice] = useState('');
+  const [mobileTab, setMobileTab] = useState<'match' | 'chat'>(isAdmin ? 'match' : 'chat');
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
+  const followMessages = React.useRef(true);
+  const latestMessageId = messages.at(-1)?.id;
+  const matchId = match?.id;
+  const canAccessRoom = match?.canAccessRoom;
+  const viewerRole = user?.role;
 
   const fetchLatestMessages = React.useCallback(async () => {
-    if (!isOpen || !match?.id || !match.canAccessRoom) return;
+    if (!isOpen || !matchId || !canAccessRoom) return;
     try {
       const token = localStorage.getItem('caoz_auth_token');
-      const res = await fetch(`/api/matches/${match.id}/chat`, {
+      const res = await fetch(`/api/matches/${matchId}/chat`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         cache: 'no-store'
       });
@@ -62,28 +74,26 @@ export const MatchRoomModal: React.FC<MatchRoomModalProps> = ({
         if (data.messages && Array.isArray(data.messages)) {
           setMessages(data.messages);
           setChatError('');
-          if (user?.role === 'admin') window.dispatchEvent(new Event('caoz:match-chat-read'));
+          if (viewerRole === 'admin') window.dispatchEvent(new Event('caoz:match-chat-read'));
         }
       } else {
         setMessages([]);
         const data = await res.json();
         setChatError(data.error || 'No se pudo acceder al chat privado.');
       }
-    } catch (e) {
-      // ignore
+    } catch {
+      setChatError('No pudimos actualizar el chat. Volveremos a intentar automáticamente.');
     }
-  }, [isOpen, match?.id, match?.canAccessRoom, user?.id, user?.role]);
+  }, [isOpen, matchId, canAccessRoom, viewerRole]);
 
-  // Keep scores and messages in sync when match changes
+  // Server refreshes must not discard a score that the administrator is editing.
   React.useEffect(() => {
-    if (match) {
-      setScore1(match.team1.score ?? 0);
-      setScore2(match.team2.score ?? 0);
-      setMessages([]);
-      setChatError('');
-      fetchLatestMessages();
-    }
-  }, [match, fetchLatestMessages]);
+    if (!scoreDirty.current) { setScore1(serverScore1); setScore2(serverScore2); }
+  }, [serverScore1, serverScore2]);
+  React.useEffect(() => {
+    const initialFetch = setTimeout(() => { void fetchLatestMessages(); }, 0);
+    return () => clearTimeout(initialFetch);
+  }, [fetchLatestMessages]);
 
   // Real-time polling while matchroom modal is open
   React.useEffect(() => {
@@ -94,23 +104,26 @@ export const MatchRoomModal: React.FC<MatchRoomModalProps> = ({
   }, [isOpen, match?.id, fetchLatestMessages]);
 
   React.useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    if (followMessages.current) messagesEndRef.current?.scrollIntoView({ behavior: 'instant', block: 'nearest' });
+  }, [latestMessageId]);
 
   if (!isOpen || !match || !match.canAccessRoom) return null;
 
   const handleScoreSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isAdmin || savingScore) return;
-    if (score1 === score2) {
-      showAlert('En torneos eliminatorios no puede haber empate. Uno de los dos debe resultar ganador de la serie.');
+    const requiredWins = Math.floor(match.bestOf / 2) + 1;
+    if (!((score1 === requiredWins && score2 >= 0 && score2 < requiredWins) || (score2 === requiredWins && score1 >= 0 && score1 < requiredWins))) {
+      showAlert(`En una serie al mejor de ${match.bestOf}, el ganador necesita ${requiredWins} victorias y el rival debe tener menos. Revisa el marcador.`);
       return;
     }
+    if (match.status === 'completed' && !await showConfirm('¿Modificar el resultado oficial? El servidor comprobará si hay rondas posteriores que impiden la corrección.')) return;
 
     try {
       setSavingScore(true);
       setChatError('');
       await updateMatchScore(tournament.id, match.id, score1, score2, proofUrl || undefined);
+      scoreDirty.current = false;
     } catch (error) {
       setChatError(error instanceof Error ? error.message : 'No se pudo guardar el marcador.');
       return;
@@ -125,7 +138,7 @@ export const MatchRoomModal: React.FC<MatchRoomModalProps> = ({
         spread: 70,
         origin: { y: 0.6 }
       });
-    } catch (e) {
+    } catch {
       // ignore
     }
   };
@@ -196,23 +209,37 @@ export const MatchRoomModal: React.FC<MatchRoomModalProps> = ({
     }
   };
 
-  const handleReportDispute = () => {
+  const handleReportDispute = async () => {
+    if (disputeBusy) return;
     if (!disputeReason.trim()) {
       showAlert('Por favor detalla el motivo de la disputa (ej: no se presentaron, trampa, desconexión sin aviso)');
       return;
     }
-    reportMatchDispute(tournament.id, match.id, disputeReason.trim());
-    setShowDisputeInput(false);
-    setDisputeReason('');
+    setDisputeBusy(true); setChatError(''); setDisputeNotice('');
+    try {
+      await reportMatchDispute(tournament.id, match.id, disputeReason.trim());
+      setShowDisputeInput(false); setDisputeReason('');
+      setDisputeNotice('Problema reportado. La organización revisará las pruebas de esta sala.');
+    } catch (cause) { setChatError(cause instanceof Error ? cause.message : 'No se pudo notificar a la organización.'); }
+    finally { setDisputeBusy(false); }
+  };
+  const handleResolveDispute = async (winnerId: string, winnerName: string) => {
+    if (disputeBusy || !await showConfirm(`¿Dar la victoria de esta serie a ${winnerName}? Revisa las pruebas antes de confirmar.`)) return;
+    setDisputeBusy(true); setChatError(''); setDisputeNotice('');
+    try { await resolveDispute(tournament.id, match.id, winnerId); setDisputeNotice('Disputa resuelta y resultado registrado.'); }
+    catch (cause) { setChatError(cause instanceof Error ? cause.message : 'No se pudo resolver la disputa.'); }
+    finally { setDisputeBusy(false); }
   };
 
   const isCompleted = match.status === 'completed';
   const isDisputed = match.status === 'disputed';
+  const hasTwoParticipants = Boolean(match.team1.participantId && match.team2.participantId);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-fade-in">
-      <div className="relative w-full max-w-4xl bg-[#191213] border border-slate-700/80 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[94vh]">
+      <div ref={modalRef} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1} className="relative w-full max-w-4xl bg-[#191213] border border-slate-700/80 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[94vh]">
         {chatError && <p role="alert" className="p-3 text-sm text-rose-300">{chatError}</p>}
+        {disputeNotice && <p role="status" className="p-3 text-sm text-emerald-300">{disputeNotice}</p>}
         
         {/* Match Header */}
         <div className="px-6 py-4 bg-[#211719] border-b border-slate-800 flex items-center justify-between">
@@ -221,8 +248,8 @@ export const MatchRoomModal: React.FC<MatchRoomModalProps> = ({
               <Swords className="w-4 h-4" />
             </div>
             <div>
-              <div className="flex items-center space-x-2">
-                <h3 className="text-base font-bold text-white">
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 id={titleId} className="text-base font-bold text-white">
                   Sala de Partida • {match.roundTitle}
                 </h3>
                 <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-red-300 border border-slate-700">
@@ -247,17 +274,19 @@ export const MatchRoomModal: React.FC<MatchRoomModalProps> = ({
 
           <button
             onClick={onClose}
+            aria-label="Cerrar sala de partida"
             className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
+        <div className="flex gap-2 border-b border-slate-800 px-4 py-2 lg:hidden" aria-label="Contenido de la sala"><button className={`min-h-10 flex-1 rounded-lg text-sm font-semibold ${mobileTab === 'chat' ? 'bg-red-400/15 text-red-300' : 'text-slate-400'}`} aria-pressed={mobileTab === 'chat'} onClick={() => setMobileTab('chat')}>Chat y pruebas</button><button className={`min-h-10 flex-1 rounded-lg text-sm font-semibold ${mobileTab === 'match' ? 'bg-red-400/15 text-red-300' : 'text-slate-400'}`} aria-pressed={mobileTab === 'match'} onClick={() => setMobileTab('match')}>Partida y resultado</button></div>
         {/* Content Body: Split into Match Board & Live Chat */}
         <div className="flex-1 overflow-y-auto grid grid-cols-1 lg:grid-cols-12 divide-y lg:divide-y-0 lg:divide-x divide-slate-800">
           
           {/* LEFT: Teams Faceoff & Scoring Controls (7 cols) */}
-          <div className="lg:col-span-7 p-6 space-y-6">
+          <div className={`lg:col-span-7 p-4 sm:p-6 space-y-6 ${mobileTab === 'match' ? '' : 'hidden lg:block'}`}>
             
             {/* Versus Cards */}
             <div className="grid grid-cols-11 items-center gap-2 bg-[#090e17] p-5 rounded-2xl border border-slate-800/80">
@@ -286,7 +315,7 @@ export const MatchRoomModal: React.FC<MatchRoomModalProps> = ({
                 </span>
 
                 <div className="text-3xl font-black font-mono text-red-400 mt-2">
-                  {match.team1.score ?? 0}
+                  {hasTwoParticipants ? match.team1.score ?? 0 : '—'}
                 </div>
               </div>
 
@@ -321,14 +350,14 @@ export const MatchRoomModal: React.FC<MatchRoomModalProps> = ({
                 </span>
 
                 <div className="text-3xl font-black font-mono text-purple-400 mt-2">
-                  {match.team2.score ?? 0}
+                  {hasTwoParticipants ? match.team2.score ?? 0 : '—'}
                 </div>
               </div>
 
             </div>
 
             {/* Score Reporting Form */}
-            {isAdmin ? (
+            {!hasTwoParticipants ? <div className="space-y-2 rounded-2xl border border-slate-800 bg-slate-900/60 p-5 text-sm text-slate-300"><h4 className="font-bold text-white">{isCompleted ? 'Pase libre confirmado' : 'Esperando el enfrentamiento'}</h4><p>{isCompleted ? 'El participante avanza automáticamente por pase libre. No se necesita registrar un marcador.' : 'El resultado se podrá registrar cuando se conozcan ambos participantes.'}</p></div> : isAdmin ? (
             <div className="p-5 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-4">
               <div className="flex items-center justify-between">
                 <h4 className="text-xs font-bold uppercase tracking-wider text-slate-300">
@@ -348,9 +377,9 @@ export const MatchRoomModal: React.FC<MatchRoomModalProps> = ({
                     <input
                       type="number"
                       min={0}
-                      max={match.bestOf}
+                      max={Math.floor(match.bestOf / 2) + 1}
                       value={score1}
-                      onChange={(e) => setScore1(parseInt(e.target.value) || 0)}
+                      onChange={(e) => { scoreDirty.current = true; setScore1(parseInt(e.target.value) || 0); }}
                       className="w-full text-center py-2 px-3 rounded-xl bg-slate-950 border border-slate-700 text-white font-mono text-lg font-bold focus:border-red-400 focus:outline-none"
                     />
                   </div>
@@ -362,9 +391,9 @@ export const MatchRoomModal: React.FC<MatchRoomModalProps> = ({
                     <input
                       type="number"
                       min={0}
-                      max={match.bestOf}
+                      max={Math.floor(match.bestOf / 2) + 1}
                       value={score2}
-                      onChange={(e) => setScore2(parseInt(e.target.value) || 0)}
+                      onChange={(e) => { scoreDirty.current = true; setScore2(parseInt(e.target.value) || 0); }}
                       className="w-full text-center py-2 px-3 rounded-xl bg-slate-950 border border-slate-700 text-white font-mono text-lg font-bold focus:border-purple-400 focus:outline-none"
                     />
                   </div>
@@ -419,11 +448,12 @@ export const MatchRoomModal: React.FC<MatchRoomModalProps> = ({
             <div className="pt-2 border-t border-slate-800 flex items-center justify-between">
               {!showDisputeInput ? (
                 <button
-                  onClick={() => setShowDisputeInput(true)}
+                    onClick={() => setShowDisputeInput(true)}
+                    disabled={disputeBusy || isDisputed || !hasTwoParticipants}
                   className="text-xs text-rose-400 hover:text-rose-300 flex items-center space-x-1.5 transition-colors font-medium"
                 >
                   <ShieldAlert className="w-4 h-4" />
-                  <span>Reportar problema / Llamar a un árbitro</span>
+                    <span>{!hasTwoParticipants ? 'No hay un resultado para disputar' : isDisputed ? 'El problema está en revisión' : 'Reportar problema / Llamar a un árbitro'}</span>
                 </button>
               ) : (
                 <div className="w-full space-y-2 p-3 rounded-xl bg-red-950/20 border border-red-500/30 animate-fade-in">
@@ -438,6 +468,8 @@ export const MatchRoomModal: React.FC<MatchRoomModalProps> = ({
                   </div>
                   <input
                     type="text"
+                    aria-label="Motivo de la disputa"
+                    maxLength={2000}
                     placeholder="Describe el motivo (ej: El rival no se conecta, uso de trampas, toxicidad)"
                     value={disputeReason}
                     onChange={(e) => setDisputeReason(e.target.value)}
@@ -445,31 +477,34 @@ export const MatchRoomModal: React.FC<MatchRoomModalProps> = ({
                   />
                   <button
                     onClick={handleReportDispute}
+                    disabled={disputeBusy}
                     className="px-4 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-white text-xs font-bold shadow-md"
                   >
-                    Notificar a los Organizadores
+                    {disputeBusy ? 'Notificando…' : 'Notificar a la organización'}
                   </button>
                 </div>
               )}
 
               {/* Admin quick force resolve */}
-              {isAdmin && (
+              {isAdmin && isDisputed && (
                 <div className="text-right">
                   <span className="text-[10px] text-purple-400 block font-mono">
                     Acción de Organizador:
                   </span>
                   <div className="flex space-x-2 mt-1">
                     <button
-                      onClick={() => resolveDispute(tournament.id, match.id, match.team1.participantId || match.team1.name).catch(error => setChatError(error.message))}
+                      onClick={() => handleResolveDispute(match.team1.participantId || match.team1.name, match.team1.name)}
+                      disabled={disputeBusy}
                       className="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-[10px] text-red-300 border border-slate-700"
                     >
-                      Avanzar T1
+                      Victoria: {match.team1.name}
                     </button>
                     <button
-                      onClick={() => resolveDispute(tournament.id, match.id, match.team2.participantId || match.team2.name).catch(error => setChatError(error.message))}
+                      onClick={() => handleResolveDispute(match.team2.participantId || match.team2.name, match.team2.name)}
+                      disabled={disputeBusy}
                       className="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-[10px] text-purple-300 border border-slate-700"
                     >
-                      Avanzar T2
+                      Victoria: {match.team2.name}
                     </button>
                   </div>
                 </div>
@@ -479,7 +514,7 @@ export const MatchRoomModal: React.FC<MatchRoomModalProps> = ({
           </div>
 
           {/* RIGHT: Real-time Match Chat (5 cols) */}
-          <div className="lg:col-span-5 flex flex-col h-[480px] lg:h-auto bg-[#130f10]">
+          <div className={`lg:col-span-5 flex-col min-h-0 h-[min(65vh,540px)] lg:h-auto bg-[#130f10] ${mobileTab === 'chat' ? 'flex' : 'hidden lg:flex'}`}>
             
             {/* Chat Header */}
             <div className="px-4 py-3 border-b border-slate-800/80 bg-[#191213] flex items-center justify-between">
@@ -571,7 +606,7 @@ export const MatchRoomModal: React.FC<MatchRoomModalProps> = ({
             </div>
 
             {/* Chat Messages Log */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-[260px] max-h-[380px]">
+            <div role="log" aria-label="Mensajes de la partida" aria-live="polite" onScroll={event => { const element = event.currentTarget; followMessages.current = element.scrollHeight - element.scrollTop - element.clientHeight < 80; }} className="flex-1 overflow-y-auto p-4 space-y-3 min-h-32 lg:min-h-[260px] max-h-[380px]">
               {messages.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-center p-6 text-slate-500 space-y-2">
                   <p className="text-xs">No hay mensajes aún en esta sala de match.</p>
@@ -580,7 +615,7 @@ export const MatchRoomModal: React.FC<MatchRoomModalProps> = ({
                   </p>
                 </div>
               ) : (
-                messages.map((msg: any) => {
+                messages.map((msg) => {
                   const isSystem = msg.senderRole === 'system';
                   const isStaff = msg.senderRole === 'admin';
                   const content = msg.isProofImage && /^data:image\/(png|jpeg|webp);base64,/.test(msg.message)
@@ -662,6 +697,8 @@ export const MatchRoomModal: React.FC<MatchRoomModalProps> = ({
               <div className="flex items-center space-x-2">
                 <input
                   type="text"
+                  aria-label="Mensaje al chat de la partida"
+                  maxLength={4000}
                   placeholder={
                     isAdmin
                       ? 'Escribe un mensaje oficial del Staff a los jugadores...'
@@ -676,6 +713,7 @@ export const MatchRoomModal: React.FC<MatchRoomModalProps> = ({
                   disabled={!chatInput.trim() || sendingMsg}
                   className="p-2 rounded-xl bg-red-500 text-black hover:bg-red-400 disabled:opacity-40 disabled:cursor-not-allowed transition-all shrink-0 cursor-pointer"
                   title="Enviar mensaje"
+                  aria-label="Enviar mensaje"
                 >
                   <Send className="w-4 h-4" />
                 </button>

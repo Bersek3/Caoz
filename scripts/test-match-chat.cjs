@@ -50,7 +50,7 @@ async function main() {
     const params = {params:Promise.resolve({id:'match'})};
     const oversized = await tournaments.POST(request('admin', 'POST', {title:'Oversized',bannerUrl:'A'.repeat(1_500_001)}));
     assert.equal(oversized.status, 413, 'Oversized tournament requests return an explicit 413');
-    const created = await tournaments.POST(request('admin', 'POST', {title:'Compressed Banner',gameId:'fortnite',bannerUrl:'data:image/jpeg;base64,'+'A'.repeat(400_000)}));
+    const created = await tournaments.POST(request('admin', 'POST', {title:'Compressed Banner',gameId:'fortnite',prizePool:'100 CLP',startDate:new Date(Date.now()+86400000).toISOString(),bannerUrl:'data:image/jpeg;base64,'+'A'.repeat(400_000)}));
     assert.equal(created.status, 200);
     const createdId = (await created.json()).tournamentId;
     const stored = (await memory.query('SELECT banner_url,thumbnail_url FROM torneos WHERE id=$1', [createdId])).rows[0];
@@ -102,6 +102,7 @@ async function main() {
     assert.equal((await score.POST(request('solo', 'POST', {score1:2,score2:0}, 'admin'), params)).status, 403);
     assert.equal((await chat.POST(request('solo', 'POST', {message:'javascript:alert(1)',isProofImage:true}), params)).status, 400);
     assert.equal((await chat.POST(request('solo', 'POST', {message:'data:image/png;base64,'+'A'.repeat(2_800_000),isProofImage:true}), params)).status, 400);
+    await memory.query("UPDATE tournaments SET status='in_progress' WHERE id='test'");
     assert.equal((await score.POST(request('admin', 'POST', {score1:-1,score2:0}), params)).status, 400);
     assert.equal((await score.POST(request('admin', 'POST', {score1:2,score2:0}), params)).status, 200);
     const official = (await memory.query("SELECT team1_score, team2_score, winner_id, status FROM partidas_torneo WHERE id = 'match'")).rows[0];

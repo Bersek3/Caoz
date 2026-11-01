@@ -1,808 +1,180 @@
 'use client';
-import { showAlert, showConfirm } from '../../../components/StyledDialog';
 
-import React, { useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import React, { Suspense, useState } from 'react';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import {
-  Trophy,
-  Users,
-  Calendar,
-  Clock,
-  Shield,
-  ShieldCheck,
-  Gamepad2,
-  CheckCircle2,
-  AlertTriangle,
-  Layers,
-  ChevronLeft,
-  Share2,
-  ExternalLink,
-  Crown,
-  UserCheck,
-  Check,
-  LogOut,
-  Eye,
-  EyeOff,
-  Trash2
-} from 'lucide-react';
-import { useTournament } from '../../../context/TournamentContext';
-import { useAuth } from '../../../context/AuthContext';
-import { BracketVisualizer } from '../../../components/BracketVisualizer';
-import { MatchRoomModal } from '../../../components/MatchRoomModal';
-import { EditTournamentModal } from '../../../components/EditTournamentModal';
-import { RegisterModal } from '../../../components/RegisterModal';
-import { TournamentCountdown } from '../../../components/TournamentCountdown';
-import { TournamentMatch } from '../../../types/tournament';
-import { formatTournamentDate } from '../../../lib/dateUtils';
-import { downloadTournamentRules } from '../../../components/TournamentRulesEditor';
+import { CalendarPlus, CheckCircle2, ChevronLeft, Eye, EyeOff, Layers, LogOut, RefreshCw, Share2, Shield, Trophy } from 'lucide-react';
+import { useTournament } from '@/context/TournamentContext';
+import { useAuth } from '@/context/AuthContext';
+import { BracketVisualizer } from '@/components/BracketVisualizer';
+import { MatchRoomModal } from '@/components/MatchRoomModal';
+import { EditTournamentModal } from '@/components/EditTournamentModal';
+import { RegisterModal } from '@/components/RegisterModal';
+import { TournamentCountdown } from '@/components/TournamentCountdown';
+import { TournamentSupport } from '@/components/TournamentSupport';
+import { TournamentWaitlist } from '@/components/TournamentWaitlist';
+import { TournamentResults } from '@/components/TournamentResults';
+import { TournamentMatches } from '@/components/TournamentMatches';
+import { showConfirm } from '@/components/StyledDialog';
+import { downloadTournamentRules } from '@/components/TournamentRulesEditor';
+import { Tournament } from '@/types/tournament';
+import { formatTournamentDate, getCheckInWindow } from '@/lib/dateUtils';
+import { downloadTournamentCalendar, findMyRegistration, formatTournamentFormat, formatTournamentMode, getMyMatches, shareTournament } from '@/lib/tournamentPresentation';
+
+const panel = 'rounded-2xl border border-slate-800 bg-[#191213] p-4 sm:p-6';
+const primary = 'inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-red-400 px-5 py-3 text-sm font-bold text-black transition-colors hover:bg-red-300 disabled:cursor-not-allowed disabled:opacity-50';
+const secondary = 'inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-900/70 px-4 py-2 text-sm font-semibold text-slate-200 transition-colors hover:border-red-400/50 hover:text-white disabled:opacity-50';
+const statusNames = { registration_open: 'Inscripciones abiertas', check_in: 'Check-in', in_progress: 'En juego', completed: 'Finalizado' };
+type DetailTab = 'overview' | 'brackets' | 'matches' | 'participants' | 'rules' | 'results';
 
 export default function TournamentDetailPage() {
-  const params = useParams();
-  const router = useRouter();
-  const id = params?.id as string;
+  return <Suspense fallback={<p className="px-4 py-16 text-center text-slate-400">Cargando torneo…</p>}><TournamentDetailLoader /></Suspense>;
+}
 
-  const { user } = useAuth();
-  const isAdmin = user?.role === 'admin';
-
-  const {
-    getTournament,
-    currentUser,
-    checkInParticipant,
-    generateBracketFromParticipants,
-    withdrawFromTournament,
-    toggleHideTournament,
-    deleteTournament
-  } = useTournament();
-
+function TournamentDetailLoader() {
+  const { id } = useParams<{ id: string }>();
+  const { getTournament, isLoading, error, refreshTournaments } = useTournament();
+  const { user, isLoading: authLoading } = useAuth();
   const tournament = getTournament(id);
+  if (authLoading || (!tournament && isLoading)) return <div className="mx-auto max-w-7xl space-y-6 px-4 py-16" role="status"><div className="h-64 motion-safe:animate-pulse rounded-2xl bg-slate-800/50" /><p className="text-slate-400">Cargando torneo…</p></div>;
+  if (!tournament || (tournament.isHidden && user?.role !== 'admin')) return <div className="mx-auto max-w-xl space-y-4 px-4 py-24 text-center">
+    <h1 className="text-2xl font-bold text-white">{error ? 'No pudimos cargar el torneo' : 'Torneo no disponible'}</h1>
+    <p className="text-sm text-slate-400">{error || 'El torneo no existe o actualmente no está publicado.'}</p>
+    {error && <button className={secondary} onClick={() => refreshTournaments()}>Reintentar</button>}
+    <Link href="/torneos" className="block text-red-300 underline">Volver a torneos</Link>
+  </div>;
+  return <TournamentDetail key={tournament.id} tournament={tournament} />;
+}
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'brackets' | 'participants' | 'rules'>('brackets');
-  const [selectedMatch, setSelectedMatch] = useState<TournamentMatch | null>(null);
+function TournamentDetail({ tournament }: { tournament: Tournament }) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { user, openAuthModal } = useAuth();
+  const { checkInParticipant, generateBracketFromParticipants, withdrawFromTournament, toggleHideTournament, deleteTournament, setCheckInPhase, refreshTournaments, error, lastUpdated } = useTournament();
+  const queryKey = searchParams.toString();
+  const requestedTab = (): DetailTab => {
+    const requested = searchParams.get('tab');
+    return requested && ['overview', 'brackets', 'matches', 'participants', 'rules', 'results'].includes(requested) ? requested as DetailTab : tournament.status === 'completed' ? 'results' : tournament.status === 'in_progress' ? 'brackets' : 'overview';
+  };
+  const [tabChoice, chooseTab] = useState(() => ({ query: queryKey, value: requestedTab() }));
+  const activeTab = tabChoice.query === queryKey ? tabChoice.value : requestedTab();
+  const setActiveTab = (value: DetailTab) => chooseTab({ query: queryKey, value });
+  const [matchChoice, chooseMatch] = useState(() => ({ query: queryKey, value: searchParams.get('match') }));
+  const selectedMatchId = matchChoice.query === queryKey ? matchChoice.value : searchParams.get('match');
+  const setSelectedMatchId = (value: string | null) => chooseMatch({ query: queryKey, value });
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [participantSearch, setParticipantSearch] = useState('');
-  const [isWithdrawing, setIsWithdrawing] = useState(false);
-
-  if (!tournament) {
-    return (
-      <div className="max-w-7xl mx-auto px-4 py-24 text-center space-y-4">
-        <h2 className="text-2xl font-bold text-white">Torneo no encontrado</h2>
-        <p className="text-slate-400 text-sm">El torneo que buscas no existe o ha sido movido.</p>
-        <Link
-          href="/arena"
-          className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-red-500 text-black font-bold text-sm"
-        >
-          <ChevronLeft className="w-4 h-4" />
-          <span>Volver al Directorio</span>
-        </Link>
-      </div>
-    );
-  }
-
-  // If tournament is hidden and user is not admin, hide completely
-  if (tournament.isHidden && !isAdmin) {
-    return (
-      <div className="max-w-7xl mx-auto px-4 py-24 text-center space-y-4">
-        <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 mx-auto">
-          <EyeOff className="w-6 h-6" />
-        </div>
-        <h2 className="text-2xl font-bold text-white">Torneo Oculto o Archivado</h2>
-        <p className="text-slate-400 text-sm max-w-md mx-auto">
-          Esta competencia se encuentra actualmente archivada o en mantenimiento y no está visible para el público.
-        </p>
-        <Link
-          href="/arena"
-          className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-red-500 text-black font-bold text-sm"
-        >
-          <ChevronLeft className="w-4 h-4" />
-          <span>Volver al Directorio de Torneos</span>
-        </Link>
-      </div>
-    );
-  }
-
+  const [busy, setBusy] = useState('');
+  const [notice, setNotice] = useState('');
+  const [actionError, setActionError] = useState('');
+  const isAdmin = user?.role === 'admin';
   const isSolo = tournament.teamType === 'solo' || tournament.teamSize === 1;
+  const myRegistration = findMyRegistration(tournament, user);
+  const myMatches = getMyMatches(tournament, user);
+  const nextMatch = myMatches.find(match => match.status !== 'completed' && match.canAccessRoom);
+  const selectedMatch = [...tournament.rounds, ...(tournament.losersRounds || [])].flatMap(round => round.matches).find(match => match.id === selectedMatchId) || (tournament.grandFinal?.id === selectedMatchId ? tournament.grandFinal : null);
+  const checkIn = getCheckInWindow(tournament);
+  const checkedInCount = tournament.participants.filter(participant => participant.checkedIn).length;
+  const isFull = tournament.participants.length >= tournament.maxParticipants;
+  const isCaptainOrSolo = Boolean(myRegistration && user && (isSolo || user.team?.is_captain || user.team?.captain_id === user.id || myRegistration.userId === user.id || myRegistration.captain.name === user.username));
+  const canCheckIn = Boolean(myRegistration && !myRegistration.checkedIn && isCaptainOrSolo && checkIn.isOpen);
+  const filteredParticipants = tournament.participants.filter(participant => `${participant.name} ${participant.captain.name} ${participant.tag}`.toLowerCase().includes(participantSearch.toLowerCase().trim()));
 
-  // Check if current user or team is registered
-  const myRegistration = tournament.participants.find(
-    (p) =>
-      (user && (p.name === user.username || p.userId === user.id)) ||
-      (user?.teamName && p.name === user.teamName) ||
-      (user?.team?.id && p.teamId === user.team.id) ||
-      (user && p.captain?.name === user.username) ||
-      (user && p.roster?.some((r: any) => r.userId === user.id || (r.username && r.username.toLowerCase() === user.username.toLowerCase()))) ||
-      p.name === currentUser.teamName ||
-      p.captain?.name === currentUser.name
-  );
-
-  const isCaptainOrSolo = Boolean(
-    myRegistration && user && (
-      isSolo
-        ? (myRegistration.userId === user.id || myRegistration.name === user.username)
-        : (user.team?.is_captain || user.team?.captain_id === user.id || myRegistration.captain?.name === user.username || myRegistration.userId === user.id)
-    )
-  );
-
-  const handleWithdrawTournament = async () => {
-    if (!myRegistration) return;
-    const confirmMsg = isSolo
-      ? '¿Estás seguro de que deseas salirte de este torneo individual? Tu puesto en las llaves volverá a quedar "Vacío".'
-      : `¿Estás seguro de que deseas retirar a tu equipo "${myRegistration.name}" de este torneo? Como capitán, esta acción dará de baja la participación del equipo completo y liberará el cupo en las llaves.`;
-
-    if (!await showConfirm(confirmMsg)) return;
-
-    try {
-      setIsWithdrawing(true);
-      const res = await withdrawFromTournament(tournament.id);
-      if (res.success) {
-        showAlert(res.message || 'Has bajado la participación del torneo exitosamente.');
-      } else {
-        showAlert(res.message || 'Error al intentar retirarse del torneo.');
-      }
-    } catch (err: any) {
-      showAlert(err.message || 'Error al procesar la solicitud.');
-    } finally {
-      setIsWithdrawing(false);
-    }
-  };
-
-  const handleToggleHide = async () => {
-    if (!isAdmin) return;
-    const action = tournament.isHidden ? 'desocultar y publicar' : 'ocultar y archivar';
-    if (!await showConfirm(`¿Estás seguro de que deseas ${action} el torneo "${tournament.title}"? ${tournament.isHidden ? 'Volverá a ser visible para todos los usuarios.' : 'Quedará invisible para los usuarios regulares y se archivará en tu perfil de administrador.'}`)) {
-      return;
-    }
-
-    const res = await toggleHideTournament(tournament.id, !tournament.isHidden);
-    showAlert(res.message);
-  };
-
-  const handleDeleteTournament = async () => {
-    if (!isAdmin) return;
-    if (!await showConfirm(`¿Estás SEGURO de eliminar definitivamente el torneo "${tournament.title}"? Esta acción borrará permanentemente las llaves, partidas y participantes.`)) {
-      return;
-    }
-
-    const res = await deleteTournament(tournament.id);
-    if (res.success) {
-      showAlert(res.message);
-      router.push('/profile');
-    } else {
-      showAlert(res.message || 'Error al eliminar el torneo');
-    }
-  };
-
-  const checkedInCount = tournament.participants.filter((p) => p.checkedIn).length;
-
-  const handleDoCheckIn = () => {
+  async function perform(action: string, operation: () => Promise<unknown>, success?: string) {
+    if (busy) return;
+    setBusy(action); setActionError(''); setNotice('');
+    try { await operation(); if (success) setNotice(success); }
+    catch (cause) { setActionError(cause instanceof Error ? cause.message : 'No pudimos completar la acción. Inténtalo nuevamente.'); }
+    finally { setBusy(''); }
+  }
+  async function doCheckIn() {
+    if (!myRegistration || !canCheckIn) return;
+    await perform('checkin', () => checkInParticipant(tournament.id, myRegistration.id), 'Check-in confirmado. Tu participación está lista para el sorteo.');
+  }
+  async function withdraw() {
+    if (!await showConfirm(isSolo ? '¿Cancelar tu inscripción? Tu cupo quedará disponible.' : `¿Retirar al equipo ${myRegistration?.name}? Se cancelará la inscripción de todos sus integrantes.`)) return;
+    await perform('withdraw', async () => { const response = await withdrawFromTournament(tournament.id); if (!response.success) throw new Error(response.message); }, 'La inscripción se canceló correctamente.');
+  }
+  async function changeCheckIn(phase: 'open' | 'close') {
+    if (!await showConfirm(phase === 'open' ? '¿Abrir el check-in? Los participantes podrán confirmar su asistencia.' : `¿Cerrar el check-in? Hay ${checkedInCount} confirmados de ${tournament.participants.length} inscritos. El sorteo incluirá solo a los confirmados.`)) return;
+    await perform('phase', () => setCheckInPhase(tournament.id, phase), phase === 'open' ? 'Check-in abierto.' : 'Check-in cerrado. Revisa los confirmados antes de sortear.');
+  }
+  async function draw() {
+    if (!await showConfirm(`Se sortearán las llaves con ${checkedInCount} participantes confirmados. Quienes no hicieron check-in no participarán. ¿Continuar?`)) return;
+    await perform('draw', () => generateBracketFromParticipants(tournament.id), 'Llaves sorteadas. Ya puedes revisar los enfrentamientos.');
+  }
+  function renderAction() {
+    if (tournament.status === 'completed') return <button className={primary} onClick={() => setActiveTab('results')}>Ver resultados</button>;
     if (myRegistration) {
-      checkInParticipant(tournament.id, myRegistration.id);
-      showAlert('¡Check-in confirmado con éxito!');
+      if (canCheckIn) return <button className={primary} disabled={Boolean(busy)} onClick={doCheckIn}>{busy === 'checkin' ? 'Confirmando…' : 'Confirmar check-in'}</button>;
+      if (nextMatch && tournament.status === 'in_progress') return <button className={primary} onClick={() => setSelectedMatchId(nextMatch.id)}>Ir a mi partida</button>;
+      return <span className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-4 py-2 text-sm font-semibold text-emerald-300"><CheckCircle2 className="h-4 w-4" />{myRegistration.checkedIn ? 'Asistencia confirmada' : 'Inscripción confirmada'}</span>;
     }
-  };
+    if (tournament.status !== 'registration_open') return <span className="rounded-xl border border-slate-700 px-4 py-3 text-sm text-slate-300">Inscripciones cerradas</span>;
+    if (isFull) return <a href="#lista-espera" className={secondary}>Unirme a la lista de espera</a>;
+    return <button className={primary} onClick={() => user ? setIsRegisterOpen(true) : openAuthModal('login')}>{user ? (isSolo ? 'Inscribirme' : 'Inscribir equipo') : 'Iniciar sesión para inscribirme'}</button>;
+  }
+  const tabs: { id: DetailTab; label: string }[] = [
+    { id: 'overview', label: 'Información' }, { id: 'brackets', label: 'Llaves' },
+    ...(myRegistration ? [{ id: 'matches' as const, label: 'Mis partidos' }] : []),
+    { id: 'participants', label: `Participantes (${tournament.participants.length})` },
+    { id: 'rules', label: 'Reglas y ayuda' }, { id: 'results', label: 'Resultados' }
+  ];
 
-  const filteredParticipants = tournament.participants.filter((p) =>
-    p.name.toLowerCase().includes(participantSearch.toLowerCase()) ||
-    p.captain.name.toLowerCase().includes(participantSearch.toLowerCase()) ||
-    p.tag.toLowerCase().includes(participantSearch.toLowerCase())
-  );
-
-  return (
-    <div className="min-h-screen pb-24">
-
-      {/* Top Banner Hero */}
-      <div className="relative w-full h-72 sm:h-96 overflow-hidden">
-        <img
-          src={tournament.bannerUrl}
-          alt={tournament.title}
-          className="w-full h-full object-cover object-center filter brightness-60"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#07090e] via-[#07090e]/60 to-transparent" />
-
-        {/* Back Button */}
-        <div className="absolute top-6 left-4 sm:left-8 z-10">
-          <Link
-            href="/arena"
-            className="flex items-center space-x-2 px-3 py-1.5 rounded-xl bg-black/60 hover:bg-black/80 border border-white/10 text-white text-xs font-semibold backdrop-blur-md transition-all"
-          >
-            <ChevronLeft className="w-4 h-4" />
-            <span>Volver a Torneos</span>
-          </Link>
+  return <div className="min-h-screen pb-16">
+    <header className="relative isolate overflow-hidden border-b border-slate-800 bg-[#160f12]">
+      <img src={tournament.bannerUrl} alt="" className="absolute inset-0 -z-20 h-full w-full object-cover opacity-35" />
+      <div className="absolute inset-0 -z-10 bg-gradient-to-t from-[#07090e] via-[#07090e]/75 to-[#07090e]/20" />
+      <div className="mx-auto max-w-7xl space-y-8 px-4 py-6 sm:px-6 sm:py-10 lg:px-8">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <Link href="/torneos" className="inline-flex min-h-10 items-center gap-1 text-sm font-semibold text-slate-200 hover:text-red-300"><ChevronLeft className="h-4 w-4" /> Torneos</Link>
+          <div className="flex gap-2"><button className={secondary} onClick={() => perform('share', async () => { await shareTournament(tournament); })}><Share2 className="h-4 w-4" /><span className="hidden sm:inline">Compartir</span><span className="sr-only sm:hidden">Compartir torneo</span></button><button className={secondary} onClick={() => perform('calendar', async () => { downloadTournamentCalendar(tournament); }, 'Evento descargado. Ábrelo para añadirlo a tu calendario.')}><CalendarPlus className="h-4 w-4" /><span className="hidden sm:inline">Añadir al calendario</span><span className="sr-only sm:hidden">Añadir al calendario</span></button></div>
         </div>
-
-        {/* Hero Content */}
-        <div className="absolute bottom-6 left-4 right-4 max-w-7xl mx-auto sm:px-6 lg:px-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
-          <div className="space-y-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="px-2.5 py-1 rounded-md bg-red-500/20 text-red-300 border border-red-500/40 text-xs font-mono font-bold uppercase">
-                {tournament.gameName}
-              </span>
-              <span className="px-2.5 py-1 rounded-md bg-purple-500/20 text-purple-300 border border-purple-500/40 text-xs font-mono font-bold uppercase">
-                {tournament.format.replace('_', ' ')}
-              </span>
-              {tournament.status === 'in_progress' && (
-                <span className="badge-live px-2.5 py-1 rounded-md text-xs font-bold flex items-center space-x-1.5">
-                  <span className="w-2 h-2 rounded-full bg-rose-500 beacon-dot" />
-                  <span>EN JUEGO</span>
-                </span>
-              )}
-              {tournament.status === 'check_in' && (
-                <span className="badge-checkin px-2.5 py-1 rounded-md text-xs font-bold flex items-center space-x-1.5">
-                  <Clock className="w-3.5 h-3.5" />
-                  <span>FASE DE CHECK-IN</span>
-                </span>
-              )}
-              {tournament.status === 'registration_open' && (
-                <span className="badge-open px-2.5 py-1 rounded-md text-xs font-bold flex items-center space-x-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  <span>REGISTRO ABIERTO</span>
-                </span>
-              )}
-            </div>
-
-            <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-white uppercase tracking-tight">
-              {tournament.title}
-            </h1>
-
-            <div className="flex flex-wrap items-center gap-4 text-xs text-slate-300">
-              <div className="flex items-center space-x-2">
-                <img
-                  src={tournament.organizer.avatar}
-                  alt={tournament.organizer.name}
-                  className="w-5 h-5 rounded-full object-cover border border-red-400"
-                />
-                <span>Organizado por <strong className="text-white">{tournament.organizer.name}</strong></span>
-              </div>
-              <span>•</span>
-              <div className="flex items-center space-x-1 text-slate-300">
-                <Calendar className="w-3.5 h-3.5 text-red-400" />
-                <span>{formatTournamentDate(tournament.startDate)}</span>
-              </div>
-              <span>•</span>
-              <div className="flex items-center space-x-1 text-slate-300">
-                <Users className="w-3.5 h-3.5 text-red-400" />
-                <span>{tournament.teamType === 'solo' ? 'Individual 1v1' : `Equipos ${tournament.teamSize}v${tournament.teamSize}`}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Action CTAs */}
-          <div className="flex flex-wrap items-center gap-3">
-            {/* Check-in CTA */}
-            {tournament.status === 'check_in' && (
-              <button
-                onClick={handleDoCheckIn}
-                className="px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm uppercase tracking-wider text-black bg-amber-400 hover:bg-amber-300 shadow-lg shadow-amber-400/25 transition-all flex items-center space-x-2 font-mono"
-              >
-                <UserCheck className="w-4 h-4 text-black" />
-                <span>Hacer Check-In</span>
-              </button>
-            )}
-
-            {/* Register or Withdraw CTA */}
-            {tournament.status !== 'completed' && (
-              myRegistration ? (
-                <div className="flex flex-wrap items-center gap-2">
-                  <div className="px-4 py-2.5 rounded-xl bg-red-950/70 border border-red-500/40 text-red-300 text-xs sm:text-sm font-semibold flex items-center space-x-2">
-                    <CheckCircle2 className="w-4 h-4 text-red-400 shrink-0" />
-                    <span>Inscrito: <strong className="text-white ml-1">{myRegistration.name}</strong></span>
-                  </div>
-
-                  {isCaptainOrSolo ? (
-                    <button
-                      onClick={handleWithdrawTournament}
-                      disabled={isWithdrawing}
-                      className="px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider text-rose-300 bg-rose-950/50 border border-rose-500/40 hover:bg-rose-900/70 hover:border-rose-500/80 transition-all flex items-center space-x-1.5 disabled:opacity-50 font-mono shadow-lg shadow-rose-950/30"
-                      title={isSolo ? 'Salir del torneo' : 'Retirar al equipo completo del torneo (solo capitán)'}
-                    >
-                      <LogOut className="w-3.5 h-3.5 text-rose-400" />
-                      <span>{isWithdrawing ? 'Retirando...' : isSolo ? 'Salir del Torneo' : 'Retirar Equipo'}</span>
-                    </button>
-                  ) : (
-                    <span className="text-[11px] text-slate-400 italic px-2">
-                      (Solo el capitán puede retirar al equipo)
-                    </span>
-                  )}
-                </div>
-              ) : (
-                <button
-                  onClick={() => setIsRegisterOpen(true)}
-                  className="px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm uppercase tracking-wider text-black bg-red-400 hover:bg-red-300 shadow-lg shadow-red-400/30 transition-all flex items-center space-x-2 font-mono"
-                >
-                  <Trophy className="w-4 h-4 text-black" />
-                  <span>{isSolo ? 'Inscribirme (Individual)' : 'Inscribir Equipo'}</span>
-                </button>
-              )
-            )}
-
-            {/* Admin Controls */}
-            {isAdmin && (
-              <div className="flex flex-wrap items-center gap-2 border-t sm:border-t-0 sm:border-l border-slate-700/80 pt-2 sm:pt-0 sm:pl-3">
-                <button type="button" onClick={() => setIsEditOpen(true)} className="rounded-xl border border-red-400/40 bg-red-400/15 px-4 py-2.5 text-xs font-bold text-red-300 hover:bg-red-400/25">Editar torneo</button>
-                {/* Admin Generate Bracket CTA */}
-                {tournament.rounds.length > 0 && ['registration_open', 'check_in', 'upcoming'].includes(tournament.status) && (
-                  <button
-                    onClick={async () => {
-                      try {
-                        await generateBracketFromParticipants(tournament.id);
-                        showAlert('Llaves sorteadas correctamente.');
-                      } catch (error) { showAlert((error as Error).message); }
-                    }}
-                    className="px-3.5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider text-white bg-purple-600 hover:bg-purple-500 shadow-lg shadow-purple-600/30 transition-all flex items-center space-x-1.5 font-mono"
-                  >
-                    <Shield className="w-3.5 h-3.5" />
-                    <span>Sortear Llaves</span>
-                  </button>
-                )}
-
-                {/* Hide / Unhide CTA */}
-                <button
-                  onClick={handleToggleHide}
-                  className={`px-3 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all flex items-center space-x-1.5 font-mono ${tournament.isHidden
-                      ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30'
-                      : 'bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 border border-slate-700'
-                    }`}
-                  title={tournament.isHidden ? 'Hacer visible al público' : 'Ocultar a los usuarios y archivar en perfil'}
-                >
-                  {tournament.isHidden ? <Eye className="w-3.5 h-3.5 text-amber-400" /> : <EyeOff className="w-3.5 h-3.5 text-slate-400" />}
-                  <span>{tournament.isHidden ? 'Desocultar' : 'Ocultar'}</span>
-                </button>
-
-                {/* Delete CTA */}
-                <button
-                  onClick={handleDeleteTournament}
-                  className="px-3 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider text-rose-300 bg-rose-950/40 border border-rose-500/30 hover:bg-rose-900/60 hover:border-rose-500/60 transition-all flex items-center space-x-1.5 font-mono"
-                  title="Eliminar torneo permanentemente (Admin)"
-                >
-                  <Trash2 className="w-3.5 h-3.5 text-rose-400" />
-                  <span>Eliminar</span>
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
+        <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-end"><div className="min-w-0 space-y-4">
+          <div className="flex flex-wrap gap-2 text-xs font-bold"><span className="rounded-lg border border-red-400/40 bg-red-400/10 px-3 py-1.5 text-red-300">{tournament.gameName}</span><span className="rounded-lg border border-slate-600 px-3 py-1.5 text-slate-200">{statusNames[tournament.status]}</span>{tournament.isHidden && <span className="rounded-lg bg-amber-400/15 px-3 py-1.5 text-amber-300">Oculto</span>}</div>
+          <h1 className="break-words text-3xl font-black tracking-tight text-white sm:text-4xl">{tournament.title}</h1>
+          <p className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-slate-300"><span>{formatTournamentMode(tournament)}</span><span>{formatTournamentFormat(tournament.format)}</span><span>{tournament.region}</span></p>
+          <p className="text-sm text-slate-300">{formatTournamentDate(tournament.startDate)}</p>
+          <p className="text-xs text-slate-400">Organizado por <strong className="text-slate-200">{tournament.organizer.name}</strong></p>
+        </div><div id="inscripcion" className="shrink-0 scroll-mt-36">{renderAction()}</div></div>
+        <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">{[['Inscripción', `${tournament.entryFee}${(tournament.entryFeeAmount || 0) > 0 ? isSolo ? ' por jugador' : ' por equipo' : ''}`], ['Premios', tournament.prizePool], ['Cupos', `${tournament.participants.length} / ${tournament.maxParticipants} ${isSolo ? 'jugadores' : 'equipos'}`], ['Asistencia', `${checkedInCount} confirmados`]].map(([label, value]) => <div key={label} className="rounded-xl border border-white/10 bg-black/30 p-3"><dt className="text-xs text-slate-400">{label}</dt><dd className="mt-1 break-words text-sm font-bold text-white">{value}</dd></div>)}</dl>
       </div>
-
-      {/* Main Tabs Navigation */}
-      <div className="border-b border-slate-800 bg-[#130f10] sticky top-16 z-30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex space-x-8 text-xs sm:text-sm font-semibold">
-          <button
-            onClick={() => setActiveTab('brackets')}
-            className={`py-4 border-b-2 flex items-center space-x-2 transition-all ${activeTab === 'brackets'
-                ? 'border-red-400 text-red-300'
-                : 'border-transparent text-slate-400 hover:text-white'
-              }`}
-          >
-            <Layers className="w-4 h-4" />
-            <span>Llaves (Brackets)</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('overview')}
-            className={`py-4 border-b-2 flex items-center space-x-2 transition-all ${activeTab === 'overview'
-                ? 'border-red-400 text-red-300'
-                : 'border-transparent text-slate-400 hover:text-white'
-              }`}
-          >
-            <Trophy className="w-4 h-4" />
-            <span>Información General</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('participants')}
-            className={`py-4 border-b-2 flex items-center space-x-2 transition-all ${activeTab === 'participants'
-                ? 'border-red-400 text-red-300'
-                : 'border-transparent text-slate-400 hover:text-white'
-              }`}
-          >
-            <Users className="w-4 h-4" />
-            <span>Participantes ({tournament.participants.length}/{tournament.maxParticipants})</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('rules')}
-            className={`py-4 border-b-2 flex items-center space-x-2 transition-all ${activeTab === 'rules'
-                ? 'border-red-400 text-red-300'
-                : 'border-transparent text-slate-400 hover:text-white'
-              }`}
-          >
-            <Shield className="w-4 h-4" />
-            <span>Reglas y Soporte</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Tab Contents */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-2">
-        {/* Admin Hidden Tournament Notice Banner */}
-        {isAdmin && tournament.isHidden && (
-          <div className="mb-4 p-4 rounded-2xl bg-amber-500/15 border border-amber-500/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-amber-200 animate-fade-in shadow-xl shadow-amber-950/20">
-            <div className="flex items-center space-x-3">
-              <div className="w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
-                <EyeOff className="w-5 h-5" />
-              </div>
-              <div>
-                <h4 className="font-bold text-amber-300 uppercase tracking-wider">Torneo Oculto / Archivado</h4>
-                <p className="text-[11px] text-amber-200/80 mt-0.5">
-                  Este torneo está invisible para los usuarios normales y se encuentra archivado en tu perfil de administrador.
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={handleToggleHide}
-              className="px-4 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-black font-bold text-xs uppercase tracking-wider font-mono shrink-0 transition-colors cursor-pointer"
-            >
-              Publicar / Desocultar
-            </button>
-          </div>
-        )}
-
-        {/* Live Countdown & Check-In Widget */}
-        <div className="mb-6">
-          <TournamentCountdown
-            startDate={tournament.startDate}
-            status={tournament.status}
-            onCheckInClick={handleDoCheckIn}
-            canCheckIn={Boolean(myRegistration && !myRegistration.checkedIn)}
-            isCheckedIn={Boolean(myRegistration?.checkedIn)}
-          />
-        </div>
-
-        {/* TAB 1: BRACKETS */}
-        {activeTab === 'brackets' && (
-          <div className="space-y-6 animate-fade-in">
-            <BracketVisualizer
-              tournament={tournament}
-              onSelectMatch={(match) => setSelectedMatch(match)}
-            />
-          </div>
-        )}
-
-        {/* TAB 2: OVERVIEW */}
-        {activeTab === 'overview' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-fade-in">
-
-            {/* Left 2 Cols: Details & Prizes */}
-            <div className="lg:col-span-2 space-y-8">
-
-              {/* Description */}
-              <div className="p-6 rounded-2xl bg-[#191213] border border-slate-800 space-y-3">
-                <h3 className="text-base font-bold text-white uppercase tracking-wider">
-                  Acerca de este Torneo
-                </h3>
-                <p className="text-sm text-slate-300 leading-relaxed">
-                  {tournament.description}
-                </p>
-              </div>
-
-              {/* Prize Pool Breakdown */}
-              <div className="p-6 rounded-2xl bg-[#191213] border border-slate-800 space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-base font-bold text-white uppercase tracking-wider flex items-center space-x-2">
-                    <Trophy className="w-5 h-5 text-amber-400" />
-                    <span>Premios y Distribución</span>
-                  </h3>
-                  <span className="text-sm font-mono font-bold text-amber-400">
-                    {tournament.prizePool}
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {tournament.prizeDistribution.map((p, idx) => (
-                    <div
-                      key={idx}
-                      className="p-4 rounded-xl bg-slate-900/80 border border-slate-800 flex items-center space-x-3.5"
-                    >
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm ${idx === 0
-                          ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                          : idx === 1
-                            ? 'bg-slate-300/20 text-slate-200 border border-slate-300/40'
-                            : 'bg-amber-900/30 text-amber-600 border border-amber-800/40'
-                        }`}>
-                        #{idx + 1}
-                      </div>
-                      <div>
-                        <h4 className="text-xs font-bold text-white">{p.place}</h4>
-                        <p className="text-xs font-mono font-semibold text-red-400">{p.prize}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Schedule */}
-              <div className="p-6 rounded-2xl bg-[#191213] border border-slate-800 space-y-4">
-                <h3 className="text-base font-bold text-white uppercase tracking-wider flex items-center space-x-2">
-                  <Clock className="w-5 h-5 text-red-400" />
-                  <span>Cronograma Oficial</span>
-                </h3>
-                <div className="divide-y divide-slate-800">
-                  {tournament.schedule.map((item, idx) => (
-                    <div key={idx} className="py-3 flex items-center justify-between text-xs">
-                      <div>
-                        <span className="font-semibold text-white block">{item.stage}</span>
-                        <span className="text-slate-400 text-[11px]">{item.format}</span>
-                      </div>
-                      <span className="font-mono text-red-400">{item.time}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-            </div>
-
-            {/* Right 1 Col: Quick Info Sidebar */}
-            <div className="space-y-6">
-
-              <div className="p-6 rounded-2xl bg-[#191213] border border-slate-800 space-y-4">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                  Ficha del Torneo
-                </h3>
-
-                <div className="space-y-3 text-xs">
-                  <div className="flex justify-between py-1.5 border-b border-slate-800/80">
-                    <span className="text-slate-400">Juego:</span>
-                    <span className="font-semibold text-white">{tournament.gameName}</span>
-                  </div>
-                  <div className="flex justify-between py-1.5 border-b border-slate-800/80">
-                    <span className="text-slate-400">Formato:</span>
-                    <span className="font-semibold text-red-300 capitalize">{tournament.format.replace('_', ' ')}</span>
-                  </div>
-                  <div className="flex justify-between py-1.5 border-b border-slate-800/80">
-                    <span className="text-slate-400">Región:</span>
-                    <span className="font-semibold text-white">{tournament.region}</span>
-                  </div>
-                  <div className="flex justify-between py-1.5 border-b border-slate-800/80">
-                    <span className="text-slate-400">Inscripción:</span>
-                    <span className="font-semibold text-emerald-400">{tournament.entryFee}</span>
-                  </div>
-                  <div className="flex justify-between py-1.5 border-b border-slate-800/80">
-                    <span className="text-slate-400">Cupos Ocupados:</span>
-                    <span className="font-mono font-bold text-white">{tournament.participants.length} / {tournament.maxParticipants}</span>
-                  </div>
-                  <div className="flex justify-between py-1.5">
-                    <span className="text-slate-400">Check-in Confirmados:</span>
-                    <span className="font-mono font-bold text-amber-400">{checkedInCount} equipos</span>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => setIsRegisterOpen(true)}
-                  className="w-full py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider text-black bg-red-400 hover:bg-red-300 shadow-md transition-all font-mono"
-                >
-                  REGISTRARSE AL EVENTO
-                </button>
-              </div>
-
-              {/* Organizer Info Card */}
-              <div className="p-6 rounded-2xl bg-[#191213] border border-slate-800 space-y-4">
-                <div className="flex items-center space-x-3">
-                  <img
-                    src={tournament.organizer.avatar}
-                    alt={tournament.organizer.name}
-                    className="w-12 h-12 rounded-xl object-cover border border-red-500/40"
-                  />
-                  <div>
-                    <div className="flex items-center space-x-1.5">
-                      <h4 className="text-sm font-bold text-white">{tournament.organizer.name}</h4>
-                      {tournament.organizer.verified && (
-                        <ShieldCheck className="w-4 h-4 text-red-400" />
-                      )}
-                    </div>
-                    <p className="text-xs text-slate-400 font-mono">
-                      {tournament.organizer.followers.toLocaleString()} Seguidores
-                    </p>
-                  </div>
-                </div>
-
-                <p className="text-xs text-slate-400">
-                  Organización verificada en CZ ARENA. Garantía de pago de premios y moderación oficial.
-                </p>
-              </div>
-
-            </div>
-
-          </div>
-        )}
-
-        {/* TAB 3: PARTICIPANTS */}
-        {activeTab === 'participants' && (
-          <div className="space-y-6 animate-fade-in">
-
-            {/* Search and stats bar */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#191213] p-4 rounded-xl border border-slate-800">
-              <div className="flex items-center space-x-3 text-xs text-slate-400">
-                <span>Inscritos: <strong className="text-white font-mono">{tournament.participants.length}</strong></span>
-                <span>•</span>
-                <span>Check-in: <strong className="text-amber-400 font-mono">{checkedInCount}</strong></span>
-                <span>•</span>
-                <span>Cupos restantes: <strong className="text-red-400 font-mono">{tournament.maxParticipants - tournament.participants.length}</strong></span>
-              </div>
-
-              <div className="flex items-center space-x-3">
-                <input
-                  type="text"
-                  placeholder="Buscar equipo o capitán..."
-                  value={participantSearch}
-                  onChange={(e) => setParticipantSearch(e.target.value)}
-                  className="px-3.5 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-red-400"
-                />
-
-                <button
-                  onClick={() => setIsRegisterOpen(true)}
-                  className="px-3.5 py-1.5 rounded-lg bg-red-400 text-black text-xs font-bold font-mono hover:bg-red-300"
-                >
-                  + Inscribir
-                </button>
-              </div>
-            </div>
-
-            {/* Participants Grid */}
-            {filteredParticipants.length === 0 ? (
-              <div className="text-center py-16 bg-[#191213] rounded-2xl border border-slate-800">
-                <Users className="w-10 h-10 text-slate-600 mx-auto mb-2" />
-                <p className="text-sm text-slate-400">No se encontraron participantes registrados.</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredParticipants.map((p) => (
-                  <div
-                    key={p.id}
-                    className="p-5 rounded-2xl bg-[#191213] border border-slate-800 hover:border-slate-700 transition-all space-y-4"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center space-x-3">
-                        <img
-                          src={p.avatar}
-                          alt={p.name}
-                          className="w-12 h-12 rounded-xl object-cover border border-slate-700"
-                        />
-                        <div>
-                          <div className="flex items-center space-x-2">
-                            <h4 className="text-sm font-bold text-white line-clamp-1">{p.name}</h4>
-                            <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-800 text-red-400 border border-slate-700">
-                              {p.tag}
-                            </span>
-                          </div>
-                          <span className="text-[11px] text-slate-400 font-mono">
-                            Semilla #{p.seed} • {p.registeredAt}
-                          </span>
-                        </div>
-                      </div>
-
-                      {p.checkedIn ? (
-                        <span className="badge-open px-2 py-0.5 rounded text-[10px] font-bold flex items-center space-x-1">
-                          <Check className="w-3 h-3" />
-                          <span>CHECK-IN</span>
-                        </span>
-                      ) : (
-                        <span className="badge-checkin px-2 py-0.5 rounded text-[10px] font-bold">
-                          PENDIENTE
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Captain & In-Game Tag */}
-                    <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800/80 text-xs space-y-1">
-                      <div className="flex justify-between text-slate-400">
-                        <span>Capitán:</span>
-                        <span className="font-semibold text-white">{p.captain.name}</span>
-                      </div>
-                      <div className="flex justify-between text-slate-400">
-                        <span>Tag de Juego:</span>
-                        <span className="font-mono text-red-300">{p.captain.inGameId}</span>
-                      </div>
-                      {p.captain.discord && (
-                        <div className="flex justify-between text-slate-400">
-                          <span>Discord:</span>
-                          <span className="font-mono text-slate-300">{p.captain.discord}</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Roster chips if available */}
-                    {p.roster && p.roster.length > 0 && (
-                      <div>
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1.5">
-                          Roster ({p.roster.length} miembros)
-                        </span>
-                        <div className="flex flex-wrap gap-1.5">
-                          {p.roster.map((m) => (
-                            <span
-                              key={m.id}
-                              className="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700 font-mono"
-                            >
-                              {m.name}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Captain or Solo Quick Withdraw Action in list */}
-                    {myRegistration?.id === p.id && isCaptainOrSolo && tournament.status !== 'completed' && (
-                      <div className="pt-2 border-t border-slate-800/80 flex justify-end">
-                        <button
-                          onClick={handleWithdrawTournament}
-                          disabled={isWithdrawing}
-                          className="px-3 py-1.5 rounded-lg text-[11px] font-bold text-rose-300 bg-rose-950/40 border border-rose-500/30 hover:bg-rose-900/60 transition-colors flex items-center space-x-1.5"
-                        >
-                          <LogOut className="w-3 h-3 text-rose-400" />
-                          <span>{isSolo ? 'Salir del Torneo' : 'Retirar Equipo'}</span>
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-
-          </div>
-        )}
-
-        {/* TAB 4: RULES & SUPPORT */}
-        {activeTab === 'rules' && (
-          <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
-            <div className="p-6 rounded-2xl bg-[#191213] border border-slate-800 space-y-4">
-              <div className="flex flex-wrap items-center gap-2 text-base font-bold text-white uppercase tracking-wider">
-                <Shield className="w-5 h-5 text-red-400" />
-                <span>Bases y reglamento del torneo</span>
-                <button type="button" onClick={() => downloadTournamentRules(tournament.title, tournament.rules)} className="ml-auto rounded-lg border border-red-400/30 bg-red-400/10 px-3 py-2 text-xs font-semibold normal-case text-red-300 hover:bg-red-400/20">Descargar bases</button>
-              </div>
-
-              <div className="space-y-3">
-                {tournament.rules.map((rule, idx) => (
-                  <div
-                    key={idx}
-                    className="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800 flex items-start space-x-3 text-xs sm:text-sm text-slate-300"
-                  >
-                    <span className="font-mono font-bold text-red-400 shrink-0">
-                      #{idx + 1}
-                    </span>
-                    <p>{rule}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="p-6 rounded-2xl bg-gradient-to-r from-purple-950/30 to-red-950/30 border border-purple-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <h4 className="text-sm font-bold text-white">¿Tienes dudas o necesitas un árbitro?</h4>
-                <p className="text-xs text-slate-400 mt-1">
-                  Los árbitros de CZ ARENA están disponibles durante todo el transcurso del torneo.
-                </p>
-              </div>
-
-              <button
-                onClick={() => showAlert('Para soporte o dudas durante una partida, abre la Sala del Match y haz clic en "Llamar a un árbitro".')}
-                className="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold whitespace-nowrap shadow-md"
-              >
-                Centro de Ayuda & Discord
-              </button>
-            </div>
-          </div>
-        )}
-
-      </div>
-
-      {isAdmin && isEditOpen && <EditTournamentModal key={tournament.id} tournament={tournament} onClose={() => { setIsEditOpen(false); setSelectedMatch(null); }} />}
-      {/* Match Room Modal */}
-      <MatchRoomModal
-        key={`${user?.id || 'guest'}:${selectedMatch?.id || 'closed'}`}
-        tournament={tournament}
-        match={[...tournament.rounds, ...(tournament.losersRounds || [])].flatMap(round => round.matches).find(match => match.id === selectedMatch?.id) || null}
-        isOpen={!!selectedMatch}
-        onClose={() => setSelectedMatch(null)}
-      />
-
-      {/* Register Modal */}
-      <RegisterModal
-        tournament={tournament}
-        isOpen={isRegisterOpen}
-        onClose={() => setIsRegisterOpen(false)}
-      />
-
+    </header>
+    <div className="sticky top-28 lg:top-16 z-20 border-b border-slate-800 bg-[#130f10]/95 backdrop-blur"><nav className="mx-auto flex max-w-7xl gap-5 overflow-x-auto px-4 sm:px-6 lg:px-8" aria-label="Secciones del torneo">{tabs.map(tab => <button key={tab.id} type="button" aria-current={activeTab === tab.id ? 'page' : undefined} aria-controls="tournament-section" className={`min-h-14 shrink-0 border-b-2 py-4 text-sm font-semibold transition-colors ${activeTab === tab.id ? 'border-red-400 text-red-300' : 'border-transparent text-slate-400 hover:text-white'}`} onClick={() => setActiveTab(tab.id)}>{tab.label}</button>)}</nav></div>
+    <div className="mx-auto max-w-7xl space-y-6 px-4 pt-6 sm:px-6 lg:px-8">
+      {(notice || actionError || error) && <div role={actionError || error ? 'alert' : 'status'} className={`rounded-xl border p-4 text-sm ${actionError || error ? 'border-amber-500/40 bg-amber-950/30 text-amber-200' : 'border-emerald-400/30 bg-emerald-950/30 text-emerald-200'}`}>{actionError || error || notice}{error && <button className="ml-3 underline" onClick={() => refreshTournaments()}>Reintentar</button>}</div>}
+      <TournamentCountdown tournament={tournament} onCheckInClick={doCheckIn} canCheckIn={canCheckIn} isCheckedIn={Boolean(myRegistration?.checkedIn)} isSubmitting={busy === 'checkin'} />
+      {myRegistration && <section className={`${panel} space-y-4 border-red-400/25`} id="mi-participacion" aria-labelledby="my-participation">
+        <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start"><div><h2 id="my-participation" className="text-lg font-bold text-white">Tu participación</h2><p className="mt-1 text-sm text-slate-300">{myRegistration.name} · {isSolo ? 'Individual' : isCaptainOrSolo ? 'Capitán del equipo' : 'Integrante del equipo'}</p></div><span className="inline-flex items-center gap-1.5 text-sm text-emerald-300"><CheckCircle2 className="h-4 w-4" /> Inscripción confirmada</span></div>
+        <div className="grid gap-3 text-sm sm:grid-cols-3"><div className="rounded-xl bg-black/20 p-3"><p className="text-xs text-slate-400">Check-in</p><p className="mt-1 font-semibold text-white">{myRegistration.checkedIn ? 'Asistencia confirmada' : checkIn.hasClosed ? 'No confirmado · check-in cerrado' : 'Pendiente de confirmar'}</p>{!isSolo && !isCaptainOrSolo && !myRegistration.checkedIn && <p className="mt-1 text-xs text-slate-400">El capitán debe confirmar al equipo.</p>}</div><div className="rounded-xl bg-black/20 p-3"><p className="text-xs text-slate-400">Próxima partida</p><p className="mt-1 font-semibold text-white">{nextMatch ? nextMatch.roundTitle : tournament.status === 'completed' ? 'Competencia finalizada' : 'Pendiente de asignación'}</p>{nextMatch && <p className="mt-1 text-xs text-slate-400">{nextMatch.team1.name} vs {nextMatch.team2.name}</p>}</div><div className="rounded-xl bg-black/20 p-3"><p className="text-xs text-slate-400">Inscripción</p><p className="mt-1 font-semibold text-white">{tournament.entryFee}</p>{(tournament.entryFeeAmount || 0) > 0 && <Link href="/arena/pagos" className="mt-1 inline-block text-xs text-red-300 underline">Consultar pago y referencia</Link>}</div></div>
+        {myRegistration.roster?.length > 0 && <p className="text-xs leading-relaxed text-slate-400">Integrantes inscritos: <span className="text-slate-200">{myRegistration.roster.map(member => member.name).join(' · ')}</span></p>}
+        <div className="flex flex-wrap gap-2">{canCheckIn && renderAction()}{nextMatch && <button className={secondary} onClick={() => setSelectedMatchId(nextMatch.id)}>Abrir mi sala</button>}<button className={secondary} onClick={() => setActiveTab('matches')}>Ver mis partidos</button>{['registration_open', 'check_in'].includes(tournament.status) && isCaptainOrSolo && ((tournament.entryFeeAmount || 0) > 0 ? <a href="#tournament-support" className="inline-flex items-center px-3 text-xs text-slate-400 underline">Solicitar retiro o devolución</a> : <button className="inline-flex min-h-10 items-center gap-1 px-3 text-xs text-rose-300 hover:text-rose-200 disabled:opacity-50" disabled={Boolean(busy)} onClick={withdraw}><LogOut className="h-3.5 w-3.5" />{isSolo ? 'Cancelar inscripción' : 'Retirar equipo'}</button>)}</div>
+      </section>}
+      {!myRegistration && tournament.status === 'registration_open' && <TournamentWaitlist tournament={tournament} />}
+      {isAdmin && <section className={`${panel} space-y-4`}><h2 className="flex items-center gap-2 font-bold text-white"><Shield className="h-4 w-4 text-red-300" /> Organización del torneo</h2><p className="text-sm text-slate-400">{tournament.participants.length} inscritos · {checkedInCount} confirmados · {tournament.participants.length - checkedInCount} pendientes</p><div className="flex flex-wrap gap-2">
+        <button className={secondary} onClick={() => setIsEditOpen(true)}>Editar torneo</button>
+        {['registration_open', 'check_in'].includes(tournament.status) && <><button className={secondary} disabled={Boolean(busy)} onClick={() => changeCheckIn(tournament.checkInActive ? 'close' : 'open')}>{tournament.checkInActive ? 'Cerrar check-in' : 'Abrir check-in'}</button><button className={secondary} disabled={Boolean(busy) || tournament.checkInActive || checkedInCount < 2} title={tournament.checkInActive ? 'Cierra el check-in antes de sortear' : checkedInCount < 2 ? 'Se necesitan al menos dos participantes confirmados' : 'Sortear solo participantes confirmados'} onClick={draw}><Layers className="h-4 w-4" /> Sortear confirmados</button></>}
+        <button className={secondary} disabled={Boolean(busy)} onClick={async () => { if (!await showConfirm(tournament.isHidden ? '¿Publicar este torneo para todos los jugadores?' : '¿Ocultar este torneo del directorio público?')) return; await perform('hide', async () => { const result = await toggleHideTournament(tournament.id, !tournament.isHidden); if (!result.success) throw new Error(result.message); }); }}>{tournament.isHidden ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}{tournament.isHidden ? 'Publicar' : 'Ocultar'}</button>
+        <button className="min-h-11 rounded-xl px-4 text-sm text-rose-300 hover:bg-rose-950/30 disabled:opacity-50" disabled={Boolean(busy)} onClick={async () => { if (!await showConfirm(`¿Eliminar definitivamente ${tournament.title}? Se borrarán participantes, partidas y llaves. Esta acción no se puede deshacer.`)) return; await perform('delete', async () => { const result = await deleteTournament(tournament.id); if (!result.success) throw new Error(result.message); router.push('/torneos'); }); }}>Eliminar torneo</button>
+      </div>{checkIn.isOpen && <p className="text-xs text-amber-300">Cierra el check-in para sortear. Los ausentes no se incluirán.</p>}</section>}
+      <section id="tournament-section" className="scroll-mt-36">
+        {activeTab === 'overview' && <div className="grid gap-6 lg:grid-cols-3"><div className="space-y-6 lg:col-span-2">
+          <section className={`${panel} space-y-3`}><h2 className="text-lg font-bold text-white">Acerca del torneo</h2><p className="whitespace-pre-line text-sm leading-relaxed text-slate-300">{tournament.description || 'El organizador publicará los detalles del torneo próximamente.'}</p></section>
+          <section className={`${panel} space-y-4`}><h2 className="flex items-center gap-2 text-lg font-bold text-white"><Trophy className="h-5 w-5 text-amber-400" /> Premios y distribución</h2><p className="text-xl font-black text-amber-300">{tournament.prizePool}</p>{tournament.prizeDistribution.length ? <div className="grid gap-3 sm:grid-cols-2">{tournament.prizeDistribution.map((prize, index) => <div key={`${prize.place}-${index}`} className="rounded-xl border border-slate-800 bg-black/20 p-4"><p className="text-sm font-bold text-white">{prize.place}</p><p className="mt-1 text-sm text-red-300">{prize.prize}</p></div>)}</div> : <p className="text-sm text-slate-400">Consulta la distribución de premios en las bases del torneo.</p>}<button onClick={() => setActiveTab('rules')} className="text-sm text-red-300 underline">Ver condiciones y reglamento</button></section>
+          <section className={`${panel} space-y-4`}><h2 className="text-lg font-bold text-white">Cronograma</h2><p className="text-xs text-slate-400">Inicio: {formatTournamentDate(tournament.startDate)}</p>{tournament.schedule.length ? <ol className="divide-y divide-slate-800">{tournament.schedule.map((stage, index) => <li key={`${stage.stage}-${index}`} className="flex flex-wrap items-start justify-between gap-3 py-3 text-sm"><div><p className="font-semibold text-white">{stage.stage}</p><p className="mt-1 text-xs text-slate-400">{stage.format}</p></div><span className="text-red-300">{stage.time}</span></li>)}</ol> : <p className="text-sm text-slate-400">Los horarios de cada ronda se publicarán antes del inicio.</p>}<button className={secondary} onClick={() => perform('calendar', async () => { downloadTournamentCalendar(tournament); }, 'Evento descargado para tu calendario.')}><CalendarPlus className="h-4 w-4" /> Guardar fecha</button></section>
+        </div><aside className="space-y-6"><section className={`${panel} space-y-4`}><h2 className="font-bold text-white">Antes de inscribirte</h2><dl className="space-y-3 text-sm">{[['Modalidad', formatTournamentMode(tournament)], ['Formato', formatTournamentFormat(tournament.format)], ['Región', tournament.region], ['Inscripción', tournament.entryFee], ['Cupos restantes', String(Math.max(0, tournament.maxParticipants - tournament.participants.length))]].map(([label, value]) => <div key={label} className="flex justify-between gap-3 border-b border-slate-800 pb-2"><dt className="text-slate-400">{label}</dt><dd className="text-right text-white">{value}</dd></div>)}</dl><p className="text-xs leading-relaxed text-slate-400">{isSolo ? 'Necesitas una cuenta y tu ID del juego.' : `Necesitas un equipo con al menos ${tournament.teamSize} integrantes y sus IDs de juego.`} Confirma tu asistencia durante el check-in para entrar al sorteo.</p>{renderAction()}{(tournament.entryFeeAmount || 0) > 0 && <Link href="/arena/pagos" className="block text-xs text-red-300 underline">Consultar una inscripción o pago anterior</Link>}</section><section className={`${panel} space-y-3`}><div className="flex items-center gap-3"><img src={tournament.organizer.avatar} alt="" className="h-11 w-11 rounded-xl object-cover" /><div><p className="font-bold text-white">{tournament.organizer.name}</p><p className="text-xs text-slate-400">Organizador del torneo</p></div></div><p className="text-xs leading-relaxed text-slate-400">Las condiciones de participación y entrega de premios se detallan en las bases. Contacta a la organización si necesitas ayuda.</p><a href="#tournament-support" className="inline-block text-sm text-red-300 underline">Contactar soporte</a></section></aside></div>}
+        {activeTab === 'brackets' && <BracketVisualizer tournament={tournament} onSelectMatch={match => setSelectedMatchId(match.id)} />}
+        {activeTab === 'matches' && <TournamentMatches matches={myMatches} onSelectMatch={match => setSelectedMatchId(match.id)} />}
+        {activeTab === 'participants' && <section className="space-y-4"><div className={`${panel} flex flex-col justify-between gap-4 sm:flex-row sm:items-center`}><div><h2 className="text-lg font-bold text-white">Participantes</h2><p className="mt-1 text-sm text-slate-400">{tournament.participants.length} inscritos · {checkedInCount} confirmados · {Math.max(0, tournament.maxParticipants - tournament.participants.length)} cupos disponibles</p></div><label className="text-xs text-slate-400">Buscar participante<input type="search" value={participantSearch} onChange={event => setParticipantSearch(event.target.value)} placeholder={isSolo ? 'Usuario…' : 'Equipo o capitán…'} className="mt-1 block min-h-11 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 text-sm text-white sm:w-64" /></label></div>{filteredParticipants.length ? <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{filteredParticipants.map(participant => <article key={participant.id} className={`${panel} space-y-4 ${myRegistration?.id === participant.id ? 'border-red-400/50' : ''}`}><div className="flex items-start gap-3"><img src={participant.avatar} alt="" className="h-10 w-10 shrink-0 rounded-xl object-cover" /><div className="min-w-0 flex-1"><h3 className="break-words font-bold text-white">{participant.name}{myRegistration?.id === participant.id && <span className="ml-2 text-xs text-red-300">Tu participación</span>}</h3><p className="text-xs text-slate-400">{participant.tag}{participant.seed ? ` · Posición ${participant.seed}` : ''}</p></div></div><p className={`text-xs font-semibold ${participant.checkedIn ? 'text-emerald-300' : 'text-amber-300'}`}>{participant.checkedIn ? '✓ Check-in confirmado' : 'Check-in pendiente'}</p><dl className="space-y-2 text-xs"><div className="flex justify-between gap-2"><dt className="text-slate-400">{isSolo ? 'Jugador' : 'Capitán'}</dt><dd className="break-all text-white">{participant.captain.name}</dd></div><div className="flex justify-between gap-2"><dt className="text-slate-400">ID de juego</dt><dd className="break-all text-red-300">{participant.captain.inGameId || 'Por confirmar'}</dd></div></dl>{!isSolo && participant.roster.length > 0 && <p className="text-xs leading-relaxed text-slate-400">{participant.roster.map(member => member.name).join(' · ')}</p>}</article>)}</div> : <div className={`${panel} py-12 text-center text-sm text-slate-400`}>{participantSearch ? 'No hay coincidencias con tu búsqueda.' : 'Aún no hay participantes inscritos.'}</div>}</section>}
+        {activeTab === 'rules' && <section className={`${panel} space-y-5`}><div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-lg font-bold text-white">Bases y reglamento</h2><button className={secondary} onClick={() => downloadTournamentRules(tournament.title, tournament.rules)}>Descargar bases</button></div><ol className="space-y-3">{tournament.rules.map((rule, index) => <li key={index} className="flex gap-3 rounded-xl bg-black/20 p-4 text-sm leading-relaxed text-slate-300"><span className="shrink-0 font-mono font-bold text-red-300">{index + 1}.</span><p className="whitespace-pre-line">{rule}</p></li>)}</ol>{!tournament.rules.length && <p className="text-sm text-slate-400">El organizador publicará las bases antes de abrir la competencia.</p>}</section>}
+        {activeTab === 'results' && <TournamentResults tournament={tournament} />}
+      </section>
+      <div id="tournament-support" className="scroll-mt-36"><TournamentSupport tournament={tournament} /></div>
+      <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500"><span>{lastUpdated ? `Última actualización: ${new Date(lastUpdated).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}` : 'Consulta el estado actualizado del torneo.'}</span><button className="inline-flex min-h-10 items-center gap-1.5 text-slate-400 hover:text-white" onClick={() => perform('refresh', () => refreshTournaments({ silent: true }), 'Información actualizada.')} disabled={Boolean(busy)}><RefreshCw className={`h-3.5 w-3.5 ${busy === 'refresh' ? 'animate-spin' : ''}`} /> Actualizar</button></div>
     </div>
-  );
+    {isAdmin && isEditOpen && <EditTournamentModal key={tournament.id} tournament={tournament} onClose={() => { setIsEditOpen(false); setSelectedMatchId(null); }} />}
+    <MatchRoomModal key={`${user?.id || 'guest'}:${selectedMatchId || 'closed'}`} tournament={tournament} match={selectedMatch} isOpen={Boolean(selectedMatchId)} onClose={() => setSelectedMatchId(null)} />
+    <RegisterModal tournament={tournament} isOpen={isRegisterOpen} onClose={() => setIsRegisterOpen(false)} />
+  </div>;
 }

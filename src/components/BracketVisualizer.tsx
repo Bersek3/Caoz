@@ -3,20 +3,19 @@
 import React, { useState } from 'react';
 import { 
   Trophy, 
-  Swords, 
-  Clock, 
-  CheckCircle2, 
   AlertTriangle,
   ChevronRight,
-  Sparkles,
   Layers,
   ZoomIn,
   ZoomOut,
   Lock,
   MessageCircle
 } from 'lucide-react';
-import { Tournament, TournamentRound, TournamentMatch } from '../types/tournament';
+import { Tournament, TournamentMatch } from '../types/tournament';
 import { useMatchChatActivity } from '../hooks/useMatchChatActivity';
+import { useAuth } from '@/context/AuthContext';
+import { findMyRegistration, formatTournamentFormat } from '@/lib/tournamentPresentation';
+import { TournamentMatches } from './TournamentMatches';
 
 interface BracketVisualizerProps {
   tournament: Tournament;
@@ -29,10 +28,21 @@ export const BracketVisualizer: React.FC<BracketVisualizerProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'winners' | 'losers'>('winners');
   const [zoomLevel, setZoomLevel] = useState<number>(1);
+  const [view, setView] = useState<'tree' | 'list'>('tree');
+  const [search, setSearch] = useState('');
+  const [onlyMine, setOnlyMine] = useState(false);
+  const [selectedRound, setSelectedRound] = useState('all');
+  const { user } = useAuth();
+  const myRegistration = findMyRegistration(tournament, user);
   const chatActivity = useMatchChatActivity(tournament.id);
 
   const hasLosers = tournament.format === 'double_elimination' && (tournament.losersRounds?.length || 0) > 0;
   const currentRounds = activeTab === 'winners' ? tournament.rounds : (tournament.losersRounds || []);
+  const query = search.toLowerCase().trim();
+  const isMine = (match: TournamentMatch) => Boolean(myRegistration && [match.team1, match.team2].some(team => team.participantId === myRegistration.id));
+  const matchesFilter = (match: TournamentMatch) => (!onlyMine || isMine(match)) && (!query || `${match.team1.name} ${match.team2.name}`.toLowerCase().includes(query));
+  const visibleRounds = currentRounds.filter(round => selectedRound === 'all' || String(round.roundIndex) === selectedRound);
+  const visibleMatches = visibleRounds.flatMap(round => round.matches).filter(matchesFilter);
 
   if (!currentRounds || currentRounds.length === 0) {
     return (
@@ -48,6 +58,13 @@ export const BracketVisualizer: React.FC<BracketVisualizerProps> = ({
 
   return (
     <div className="space-y-4">
+      {['registration_open', 'check_in'].includes(tournament.status) && <p className="rounded-xl border border-slate-700 bg-slate-900/50 p-3 text-sm text-slate-400">Vista previa de las llaves. Los cruces definitivos se asignan al cerrar el check-in y sortear a los participantes confirmados.</p>}
+      <div className="flex flex-wrap items-end gap-3 rounded-xl border border-slate-800 bg-[#1c1518] p-3">
+        <div className="flex gap-1 rounded-lg bg-black/30 p-1" aria-label="Vista de enfrentamientos"><button type="button" aria-pressed={view === 'tree'} onClick={() => setView('tree')} className={`min-h-10 rounded-md px-3 text-sm font-semibold ${view === 'tree' ? 'bg-red-400/15 text-red-300' : 'text-slate-400'}`}>Árbol</button><button type="button" aria-pressed={view === 'list'} onClick={() => setView('list')} className={`min-h-10 rounded-md px-3 text-sm font-semibold ${view === 'list' ? 'bg-red-400/15 text-red-300' : 'text-slate-400'}`}>Lista de partidos</button></div>
+        <label className="min-w-0 flex-1 text-xs text-slate-400">Buscar participante<input className="mt-1 block min-h-10 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 text-sm text-white" type="search" value={search} onChange={event => setSearch(event.target.value)} placeholder="Nombre de jugador o equipo…" /></label>
+        <label className="text-xs text-slate-400">Ronda<select value={selectedRound} onChange={event => setSelectedRound(event.target.value)} className="mt-1 block min-h-10 max-w-52 rounded-lg border border-slate-700 bg-slate-950 px-3 text-sm text-white"><option value="all">Todas las rondas</option>{currentRounds.map(round => <option key={round.roundIndex} value={round.roundIndex}>{round.title}</option>)}</select></label>
+        {myRegistration && <label className="flex min-h-10 items-center gap-2 text-sm text-slate-300"><input type="checkbox" checked={onlyMine} onChange={event => setOnlyMine(event.target.checked)} className="accent-red-400" /> Mis partidos</label>}
+      </div>
       
       {/* Controls Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#1c1518] p-3 rounded-xl border border-slate-800">
@@ -56,30 +73,32 @@ export const BracketVisualizer: React.FC<BracketVisualizerProps> = ({
         {hasLosers ? (
           <div className="flex items-center space-x-2">
             <button
-              onClick={() => setActiveTab('winners')}
+              onClick={() => { setActiveTab('winners'); setSelectedRound('all'); }}
+              aria-pressed={activeTab === 'winners'}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                 activeTab === 'winners'
                   ? 'bg-red-500/20 text-red-300 border border-red-500/40 shadow-sm'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
-              Winners Bracket (Cuadro Superior)
+              Cuadro superior
             </button>
             <button
-              onClick={() => setActiveTab('losers')}
+              onClick={() => { setActiveTab('losers'); setSelectedRound('all'); }}
+              aria-pressed={activeTab === 'losers'}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                 activeTab === 'losers'
                   ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40 shadow-sm'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
-              Losers Bracket (Cuadro Inferior)
+              Cuadro inferior
             </button>
           </div>
         ) : (
           <div className="flex items-center space-x-2 text-xs text-slate-400">
             <Layers className="w-4 h-4 text-red-400" />
-            <span>Formato: <strong className="text-white capitalize">{tournament.format.replace('_', ' ')}</strong></span>
+            <span>Formato: <strong className="text-white">{formatTournamentFormat(tournament.format)}</strong></span>
           </div>
         )}
 
@@ -100,11 +119,13 @@ export const BracketVisualizer: React.FC<BracketVisualizerProps> = ({
             </span>
           </div>
 
-          <div className="flex items-center space-x-1 border-l border-slate-800 pl-3">
+          <div className={`items-center gap-1 border-l border-slate-800 pl-3 ${view === 'tree' ? 'flex' : 'hidden'}`}>
             <button
               onClick={() => setZoomLevel(Math.max(0.8, zoomLevel - 0.1))}
-              className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300"
+              className="min-h-10 min-w-10 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center"
               title="Alejar"
+              aria-label="Alejar llaves"
+              disabled={zoomLevel <= 0.8}
             >
               <ZoomOut className="w-3.5 h-3.5" />
             </button>
@@ -113,8 +134,10 @@ export const BracketVisualizer: React.FC<BracketVisualizerProps> = ({
             </span>
             <button
               onClick={() => setZoomLevel(Math.min(1.2, zoomLevel + 0.1))}
-              className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300"
+              className="min-h-10 min-w-10 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center"
               title="Acercar"
+              aria-label="Acercar llaves"
+              disabled={zoomLevel >= 1.2}
             >
               <ZoomIn className="w-3.5 h-3.5" />
             </button>
@@ -124,13 +147,15 @@ export const BracketVisualizer: React.FC<BracketVisualizerProps> = ({
       </div>
 
       {/* Bracket Tree Container */}
-      <div className="relative bg-[#110e0f] rounded-2xl border border-slate-800/80 p-4 sm:p-6 overflow-x-auto">
+      {view === 'list' ? <TournamentMatches matches={visibleMatches} onSelectMatch={onSelectMatch} title="Partidos por ronda" /> : <>
+      <p className="text-xs text-slate-400">Desliza para recorrer las rondas. {query || onlyMine ? `${visibleMatches.length} coincidencias resaltadas.` : myRegistration ? 'Tu participación aparece resaltada en rojo.' : 'Cambia a Lista de partidos para una vista más compacta.'}</p>
+      <div className="relative bg-[#110e0f] rounded-2xl border border-slate-800/80 p-4 sm:p-6 overflow-x-auto" tabIndex={0} role="region" aria-label="Árbol de enfrentamientos; desplázate horizontalmente para ver las rondas">
         <div 
           className="flex items-stretch space-x-12 min-w-max transition-transform duration-200 origin-top-left"
-          style={{ transform: `scale(${zoomLevel})` }}
+          style={{ zoom: zoomLevel }}
         >
-          {currentRounds.map((round, rIdx) => {
-            const isLastRound = rIdx === currentRounds.length - 1;
+          {visibleRounds.map((round, rIdx) => {
+            const isLastRound = rIdx === visibleRounds.length - 1;
 
             return (
               <div key={rIdx} className="bracket-round-column">
@@ -152,7 +177,7 @@ export const BracketVisualizer: React.FC<BracketVisualizerProps> = ({
 
                 {/* Match Cards List */}
                 <div className="flex-1 flex flex-col justify-around space-y-8">
-                  {round.matches.map((match, mIdx) => {
+                  {round.matches.map((match) => {
                     const isCompleted = match.status === 'completed';
                     const isInProgress = match.status === 'in_progress';
                     const isDisputed = match.status === 'disputed';
@@ -176,12 +201,12 @@ export const BracketVisualizer: React.FC<BracketVisualizerProps> = ({
                           title={match.canAccessRoom ? 'Abrir sala privada de la partida' : 'Sala privada: solo participantes de esta partida y administradores'}
                           className={`match-card ${match.canAccessRoom ? 'cursor-pointer' : 'cursor-default'} ${
                             isInProgress ? 'is-active ring-1 ring-red-500/50' : ''
-                          } ${isDisputed ? 'ring-1 ring-red-500/60' : ''} ${hasUnread ? 'ring-2 ring-red-400/70 shadow-lg shadow-red-500/10' : ''}`}
+                          } ${isDisputed ? 'ring-1 ring-red-500/60' : ''} ${hasUnread || isMine(match) ? 'ring-2 ring-red-400/70 shadow-lg shadow-red-500/10' : ''} ${!matchesFilter(match) ? 'opacity-30' : ''} focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-red-300`}
                         >
                           {/* Match Top Bar */}
                           <div className="px-3 py-1.5 bg-[#21191d] border-b border-white/5 flex items-center justify-between text-[10px]">
                             <span className="font-mono text-slate-400">
-                              BO{match.bestOf}
+                              BO{match.bestOf}{isMine(match) ? ' · Tu partida' : ''}
                             </span>
                             <div className="flex items-center space-x-1.5">
                               {(hasUnread || activity?.active) && (
@@ -312,7 +337,7 @@ export const BracketVisualizer: React.FC<BracketVisualizerProps> = ({
                           })()}
 
                           {/* Hover Action Banner */}
-                          <div className="px-3 py-1 bg-red-950/40 text-[10px] text-red-300 flex items-center justify-between border-t border-red-500/20 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <div className="px-3 py-1 bg-red-950/40 text-[10px] text-red-300 flex items-center justify-between border-t border-red-500/20 sm:opacity-0 sm:group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
                             <span>{match.canAccessRoom ? 'Abrir sala privada' : 'Chat privado de la partida'}</span>
                             {match.canAccessRoom ? <ChevronRight className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
                           </div>
@@ -336,7 +361,7 @@ export const BracketVisualizer: React.FC<BracketVisualizerProps> = ({
             );
           })}
         </div>
-      </div>
+      </div></>}
 
     </div>
   );

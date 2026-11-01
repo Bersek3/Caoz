@@ -1,7 +1,7 @@
 ﻿'use client';
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Plus, Pencil, Trash2, X } from 'lucide-react';
+import { Plus, Pencil, Settings2, Trash2, X } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useTournament } from '@/context/TournamentContext';
 import { GameInfo } from '@/types/tournament';
@@ -23,6 +23,7 @@ export function OfficialGamesEditor({ children }: { children: ReactNode }) {
   const [originalId, setOriginalId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [isManaging, setIsManaging] = useState(false);
   const dialog = useRef<HTMLDialogElement>(null);
   const menuPanel = useRef<HTMLDivElement>(null);
   const isAdmin = user?.role === 'admin';
@@ -76,7 +77,7 @@ export function OfficialGamesEditor({ children }: { children: ReactNode }) {
     }
   }
 
-  return <div className="min-h-24" onContextMenu={event => {
+  return <div onContextMenu={event => {
     event.preventDefault();
     if (!isAdmin || busy || draft) return;
     const card = (event.target as HTMLElement).closest<HTMLElement>('[data-official-game-id]');
@@ -85,6 +86,13 @@ export function OfficialGamesEditor({ children }: { children: ReactNode }) {
     const y = event.clientY || bounds?.bottom || 16;
     setMenu({ x: Math.max(8, Math.min(x, window.innerWidth - 248)), y: Math.max(8, Math.min(y, window.innerHeight - 200)), game: games.find(game => game.id === card?.dataset.officialGameId) });
   }}>
+    {isAdmin && <div className="mb-3 flex justify-end">
+      <button type="button" aria-expanded={isManaging} aria-controls="official-games-management" onClick={() => setIsManaging(!isManaging)} className="arena-secondary-button"><Settings2 size={16} />{isManaging ? 'Cerrar administración' : 'Administrar juegos'}</button>
+    </div>}
+    {isAdmin && isManaging && <section id="official-games-management" aria-label="Administrar videojuegos oficiales" className="mb-4 space-y-3 rounded-xl border border-red-400/25 bg-slate-900/70 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3"><p className="text-sm font-semibold text-white">Videojuegos oficiales</p><button type="button" disabled={busy} onClick={() => openEditor()} className="arena-primary-button"><Plus size={16} />Añadir juego</button></div>
+      <ul className="divide-y divide-slate-800">{games.map(game => <li key={game.id} className="flex flex-wrap items-center justify-between gap-2 py-2"><span className="text-sm text-slate-200">{game.name}</span><div className="flex gap-2"><button type="button" disabled={busy} onClick={() => openEditor(game)} aria-label={`Editar ${game.name}`} className="arena-secondary-button"><Pencil size={14} />Editar</button><button type="button" disabled={busy} onClick={() => void remove(game)} aria-label={`Eliminar ${game.name}`} className="arena-secondary-button text-red-300"><Trash2 size={14} />Eliminar</button></div></li>)}</ul>
+    </section>}
     {children}
     {isAdmin && games.length === 0 && <button onClick={() => openEditor()} className="rounded-xl border border-red-400/30 px-4 py-3 text-sm text-red-300">Crear videojuego oficial</button>}
     {isAdmin && error && !draft && <p role="alert" className="mt-3 text-sm text-rose-300">{error}</p>}

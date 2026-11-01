@@ -1,497 +1,253 @@
 ﻿'use client';
 
-import React, { useState } from 'react';
+import { Suspense, useState, useSyncExternalStore } from 'react';
 import Link from 'next/link';
-import {
-  Trophy,
-  Swords,
-  Search,
-  Filter,
-  Calendar,
-  Users,
-  ShieldCheck,
-  Clock,
-  CheckCircle2,
-  ArrowRight,
-  Gamepad2,
-  Sparkles,
-  Award
-} from 'lucide-react';
+import { usePathname, useSearchParams } from 'next/navigation';
+import { ArrowRight, Calendar, CheckCircle2, Gamepad2, Heart, RefreshCw, Search, Star, Trophy, Users, X } from 'lucide-react';
 import { useTournament } from '@/context/TournamentContext';
 import { useAuth } from '@/context/AuthContext';
-import { GameId, TournamentFormat, TournamentStatus } from '@/types/tournament';
+import { Tournament, TournamentStatus } from '@/types/tournament';
 import { CreateTournamentModal } from '@/components/CreateTournamentModal';
-import { AuthModal } from '@/components/AuthModal';
 import { OfficialGamesEditor } from '@/components/OfficialGamesEditor';
 import { formatTournamentDate } from '@/lib/dateUtils';
+import { findMyRegistration, formatTournamentFormat, formatTournamentMode, getFeaturedTournament, getTournamentAction, sortTournaments } from '@/lib/tournamentPresentation';
 
-export default function HomePage() {
-  const { tournaments, games } = useTournament();
-  const { user, openAuthModal } = useAuth();
+const PAGE_SIZE = 9;
+const filterKeys = ['q', 'game', 'status', 'format', 'entry', 'mode', 'region', 'view', 'page'];
+const statusLabels: Record<TournamentStatus, string> = { registration_open: 'Inscripciones abiertas', check_in: 'Confirmación de asistencia', in_progress: 'En juego', completed: 'Finalizado' };
+const favoritesEvent = 'caoz-favorites-updated';
 
-  const [selectedGame, setSelectedGame] = useState<GameId | 'all'>('all');
-  const [selectedStatus, setSelectedStatus] = useState<TournamentStatus | 'all'>('all');
-  const [selectedFormat, setSelectedFormat] = useState<TournamentFormat | 'all'>('all');
-  const [searchQuery, setSearchQuery] = useState('');
+function subscribeFavorites(listener: () => void) {
+  window.addEventListener('storage', listener);
+  window.addEventListener(favoritesEvent, listener);
+  return () => { window.removeEventListener('storage', listener); window.removeEventListener(favoritesEvent, listener); };
+}
+
+function isPaid(t: Tournament) {
+  return Number(t.entryFeeAmount) > 0 || !/^(gratis|free|free to play|0)$/i.test(t.entryFee.trim());
+}
+
+function StatusBadge({ tournament }: { tournament: Tournament }) {
+  const colors = { registration_open: 'border-emerald-400/30 bg-emerald-950/90 text-emerald-300', check_in: 'border-amber-400/30 bg-amber-950/90 text-amber-300', in_progress: 'border-rose-400/30 bg-rose-950/90 text-rose-300', completed: 'border-slate-600 bg-slate-900/90 text-slate-300' };
+  return <span className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-semibold ${colors[tournament.status]}`}>
+    {tournament.status === 'in_progress' && <span className="h-1.5 w-1.5 rounded-full bg-rose-400 beacon-dot" />}
+    {statusLabels[tournament.status]}
+  </span>;
+}
+
+function LoadingCards() {
+  return <div role="status" aria-label="Cargando torneos" className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+    {[0, 1, 2].map(i => <div key={i} aria-hidden="true" className="animate-pulse overflow-hidden rounded-2xl border border-slate-800 bg-slate-900"><div className="h-40 bg-slate-800" /><div className="space-y-4 p-5"><div className="h-5 w-3/4 rounded bg-slate-800" /><div className="h-16 rounded bg-slate-800" /><div className="h-10 rounded bg-slate-800" /></div></div>)}
+    <span className="sr-only">Cargando torneos…</span>
+  </div>;
+}
+
+function TournamentDirectory() {
+  const { tournaments, games, isLoading, error, lastUpdated, refreshTournaments } = useTournament();
+  const { user, token, openAuthModal } = useAuth();
+  const pathname = usePathname();
+  const params = useSearchParams();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-
+  const [pinning, setPinning] = useState<string | null>(null);
+  const [pinError, setPinError] = useState('');
+  const [favoriteError, setFavoriteError] = useState('');
   const isAdmin = user?.role === 'admin';
+  const favoritesKey = `caoz_favorite_tournaments_${user?.id || 'guest'}`;
+  const favoriteSnapshot = useSyncExternalStore(subscribeFavorites, () => {
+    try { return localStorage.getItem(favoritesKey) || '[]'; } catch { return '[]'; }
+  }, () => '[]');
+  let favorites: string[] = [];
+  try { const saved: unknown = JSON.parse(favoriteSnapshot); if (Array.isArray(saved)) favorites = saved.filter((id): id is string => typeof id === 'string'); } catch { /* Ignore invalid browser preferences. */ }
 
-  // Filter tournaments
-  const filteredTournaments = tournaments.filter((t) => {
-    // Hidden tournaments are invisible for regular users
-    if (t.isHidden && !isAdmin) return false;
-    if (selectedGame !== 'all' && t.gameId !== selectedGame) return false;
-    if (selectedStatus !== 'all' && t.status !== selectedStatus) return false;
-    if (selectedFormat !== 'all' && t.format !== selectedFormat) return false;
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      const matchTitle = t.title.toLowerCase().includes(q);
-      const matchGame = t.gameName.toLowerCase().includes(q);
-      const matchOrg = t.organizer.name.toLowerCase().includes(q);
-      if (!matchTitle && !matchGame && !matchOrg) return false;
-    }
-    return true;
-  });
+  const selectedGame = params.get('game') || 'all';
+  const selectedStatus = params.get('status') || 'active';
+  const selectedFormat = params.get('format') || 'all';
+  const selectedEntry = params.get('entry') || 'all';
+  const selectedMode = params.get('mode') || 'all';
+  const selectedRegion = params.get('region') || 'all';
+  const selectedView = params.get('view') || 'all';
+  const searchQuery = params.get('q') || '';
+  const query = searchQuery.trim().toLocaleLowerCase('es');
 
-  const featuredTournament = tournaments.find((t) => !t.isHidden) || (isAdmin ? tournaments[0] : undefined);
+  function updateFilters(patch: Record<string, string>, replace = false) {
+    const next = new URLSearchParams(params.toString());
+    next.delete('page');
+    Object.entries(patch).forEach(([key, value]) => {
+      if (!value || value === 'all' && key !== 'status' || value === 'active' && key === 'status') next.delete(key);
+      else next.set(key, value);
+    });
+    const url = `${pathname}${next.size ? `?${next}` : ''}${window.location.hash}`;
+    if (replace) window.history.replaceState(null, '', url); else window.history.pushState(null, '', url);
+  }
 
-  return (
-    <div className="min-h-screen">
+  function clearFilters() {
+    const next = new URLSearchParams(params.toString());
+    filterKeys.forEach(key => next.delete(key));
+    window.history.pushState(null, '', `${pathname}${next.size ? `?${next}` : ''}#torneos`);
+  }
 
-      {/* HERO SECTION */}
-      <section className="relative overflow-hidden pt-12 pb-20 border-b border-slate-800/80">
+  function toggleFavorite(id: string) {
+    setFavoriteError('');
+    try {
+      localStorage.setItem(favoritesKey, JSON.stringify(favorites.includes(id) ? favorites.filter(item => item !== id) : [...favorites, id]));
+      window.dispatchEvent(new Event(favoritesEvent));
+    } catch { setFavoriteError('No se pudo guardar el favorito en este navegador.'); }
+  }
 
-        {/* Glow ambient background lights */}
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[350px] bg-gradient-to-r from-red-500/10 via-purple-500/10 to-red-500/10 blur-[130px] -z-10 pointer-events-none" />
+  async function toggleFeatured(t: Tournament) {
+    setPinning(t.id); setPinError('');
+    try {
+      const response = await fetch(`/api/tournaments/${t.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ isFeatured: !t.isFeatured }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'No se pudo actualizar el destacado.');
+      await refreshTournaments({ silent: true });
+    } catch (cause) { setPinError(cause instanceof Error ? cause.message : 'No se pudo actualizar el destacado.'); }
+    finally { setPinning(null); }
+  }
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
+  const visible = sortTournaments(tournaments.filter(t => !t.isHidden || isAdmin));
+  const mine = visible.filter(t => findMyRegistration(t, user));
+  const nextTournament = mine.filter(t => t.status !== 'completed').sort((a, b) => {
+    const priority = (t: Tournament) => ({ check_in: 0, match: 1, registered: 2, register: 3, full: 4, view: 5, results: 6 })[getTournamentAction(t, user).kind];
+    return priority(a) - priority(b);
+  })[0];
+  const nextAction = nextTournament ? getTournamentAction(nextTournament, user) : null;
+  const featured = getFeaturedTournament(visible.filter(t => !t.isHidden));
+  const featuredAction = featured ? getTournamentAction(featured, user) : null;
+  const viewTournaments = visible.filter(t => selectedView === 'mine' ? !!findMyRegistration(t, user) : selectedView === 'favorites' ? favorites.includes(t.id) : true);
+  const matchesStatus = (t: Tournament) => selectedStatus === 'all' || selectedStatus === 'active' ? selectedStatus === 'all' || t.status !== 'completed' : t.status === selectedStatus;
+  const searchedTournaments = viewTournaments.filter(t => (selectedFormat === 'all' || t.format === selectedFormat)
+    && (selectedEntry === 'all' || (selectedEntry === 'paid' ? isPaid(t) : !isPaid(t)))
+    && (selectedMode === 'all' || t.teamType === selectedMode)
+    && (selectedRegion === 'all' || t.region === selectedRegion)
+    && (!query || [t.title, t.gameName, t.organizer.name].some(text => text.toLocaleLowerCase('es').includes(query))));
+  const statusTournaments = searchedTournaments.filter(t => selectedGame === 'all' || t.gameId === selectedGame);
+  const filtered = statusTournaments.filter(matchesStatus);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const requestedPage = Number(params.get('page') || 1);
+  const page = Math.min(totalPages, Math.max(1, Number.isFinite(requestedPage) ? Math.floor(requestedPage) : 1));
+  const pageItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const availableFormats = [...new Set(visible.map(t => t.format))];
+  const filterTags = [
+    { key: 'q', value: searchQuery.trim(), label: `Búsqueda: ${searchQuery.trim()}` },
+    { key: 'game', value: selectedGame === 'all' ? '' : selectedGame, label: games.find(game => game.id === selectedGame)?.name || selectedGame },
+    { key: 'entry', value: selectedEntry === 'all' ? '' : selectedEntry, label: selectedEntry === 'paid' ? 'De pago' : 'Gratis' },
+    { key: 'mode', value: selectedMode === 'all' ? '' : selectedMode, label: selectedMode === 'solo' ? 'Individual' : 'Equipos' },
+    { key: 'region', value: selectedRegion === 'all' ? '' : selectedRegion, label: selectedRegion },
+    { key: 'format', value: selectedFormat === 'all' ? '' : selectedFormat, label: formatTournamentFormat(selectedFormat) },
+  ].filter(tag => tag.value);
+  const hasFilters = searchQuery.trim() || selectedGame !== 'all' || selectedStatus !== 'active' || selectedFormat !== 'all' || selectedEntry !== 'all' || selectedMode !== 'all' || selectedRegion !== 'all' || selectedView !== 'all';
+  const tabs = [
+    ['active', 'Activos', statusTournaments.filter(t => t.status !== 'completed').length],
+    ['registration_open', 'Inscripciones', statusTournaments.filter(t => t.status === 'registration_open').length],
+    ['check_in', 'Check-in', statusTournaments.filter(t => t.status === 'check_in').length],
+    ['in_progress', 'En juego', statusTournaments.filter(t => t.status === 'in_progress').length],
+    ['completed', 'Historial', statusTournaments.filter(t => t.status === 'completed').length],
+    ['all', 'Todos', statusTournaments.length],
+  ] as const;
 
-            {/* Left Column: Heading & CTAs (7 cols) */}
-            <div className="lg:col-span-7 space-y-6">
-
-
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-white tracking-tight uppercase leading-none">
-                CREA. COMPITE. <br />
-                <span className="bg-clip-text text-transparent bg-gradient-to-r from-red-400 via-red-400 to-purple-400">
-                  CONQUISTA.
-                </span>
-              </h1>
-
-              <p className="text-base sm:text-lg text-slate-300 max-w-xl font-normal leading-relaxed">
-                Inscribe tu equipo o compite en solitario en torneos oficiales. Brackets interactivos, confirmación de asistencia por check-in y salas de partida en directo.
-              </p>
-
-              {/* Action Buttons */}
-              <div className="flex flex-wrap items-center gap-4 pt-2">
-                {/* Admin-only creation button */}
-                {isAdmin ? (
-                  <button
-                    onClick={() => setIsCreateOpen(true)}
-                    className="px-6 py-3.5 rounded-xl font-bold text-sm uppercase tracking-wider text-black bg-red-400 hover:bg-red-300 shadow-xl shadow-red-400/30 transition-all font-mono flex items-center space-x-2 transform hover:-translate-y-0.5"
-                  >
-                    <Trophy className="w-4 h-4 text-black" />
-                    <span>CREAR UN TORNEO</span>
-                  </button>
-                ) : !user ? (
-                  <button
-                    onClick={() => openAuthModal('register')}
-                    className="px-6 py-3.5 rounded-xl font-bold text-sm uppercase tracking-wider text-black bg-red-400 hover:bg-red-300 shadow-xl shadow-red-400/30 transition-all font-mono flex items-center space-x-2 transform hover:-translate-y-0.5 cursor-pointer"
-                  >
-                    <Users className="w-4 h-4 text-black" />
-                    <span>REGISTRARSE PARA COMPETIR</span>
-                  </button>
-                ) : null}
-
-                <a
-                  href="#torneos"
-                  className="px-6 py-3.5 rounded-xl font-semibold text-sm text-slate-200 hover:text-white bg-slate-900/80 hover:bg-slate-800 border border-slate-700/80 transition-all flex items-center space-x-2"
-                >
-                  <Swords className="w-4 h-4 text-red-400" />
-                  <span>Explorar Torneos</span>
-                </a>
-              </div>
-
-            </div>
-
-            {/* Right Column: Featured Tournament Card or Ready State (5 cols) */}
-            <div className="lg:col-span-5">
-              {featuredTournament ? (
-                <div className="relative group rounded-3xl p-[1px] bg-gradient-to-b from-red-500/40 via-purple-500/20 to-transparent shadow-2xl">
-                  <div className="relative rounded-[23px] bg-[#1c1518] overflow-hidden p-6 space-y-5">
-
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <span className="w-2.5 h-2.5 rounded-full bg-rose-500 beacon-dot" />
-                        <span className="text-xs font-bold text-rose-400 uppercase tracking-wider">
-                          TORNEO DESTACADO
-                        </span>
-                      </div>
-                      <span className="px-2.5 py-0.5 rounded bg-red-500/10 border border-red-500/30 text-red-300 font-mono text-xs">
-                        {featuredTournament.region}
-                      </span>
-                    </div>
-
-                    <div className="relative h-44 rounded-2xl overflow-hidden border border-white/10">
-                      <img
-                        src={featuredTournament.bannerUrl}
-                        alt={featuredTournament.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                      <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-xs text-white">
-                        <span className="font-bold uppercase tracking-wider">{featuredTournament.gameName}</span>
-                        <span className="font-mono text-red-300 font-bold">{featuredTournament.prizePool}</span>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <h3 className="text-lg font-bold text-white uppercase leading-snug line-clamp-2">
-                        {featuredTournament.title}
-                      </h3>
-                      <p className="text-xs text-slate-400 line-clamp-2">
-                        {featuredTournament.description}
-                      </p>
-                    </div>
-
-                    <Link
-                      href={`/tournament/${featuredTournament.slug}`}
-                      className="w-full py-3 rounded-xl font-bold text-xs uppercase tracking-wider text-black bg-red-400 hover:bg-red-300 flex items-center justify-center space-x-2 transition-all font-mono"
-                    >
-                      <span>VER LLAVES & PARTIDAS</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </Link>
-
-                  </div>
-                </div>
-              ) : (
-                <div className="relative rounded-3xl p-8 bg-[#1c1518] border border-slate-800 text-center space-y-4 shadow-xl">
-                  <div className="w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-center justify-center text-red-400 mx-auto">
-                    <Trophy className="w-8 h-8" />
-                  </div>
-                  <h3 className="text-lg font-bold text-white">Próximos Torneos Oficiales</h3>
-                  <p className="text-xs text-slate-400 max-w-sm mx-auto leading-relaxed">
-                    Los administradores publicarán las próximas competencias de la temporada en breve. Inicia sesión o registra tu equipo para estar listo al abrirse las inscripciones.
-                  </p>
-                  {isAdmin && (
-                    <button
-                      onClick={() => setIsCreateOpen(true)}
-                      className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-red-400 hover:bg-red-300 text-black text-xs font-bold font-mono uppercase tracking-wider"
-                    >
-                      <span>Publicar Primer Torneo</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-
+  return <div className="arena-directory min-h-screen">
+    <section className="border-b border-slate-800 bg-gradient-to-br from-red-950/35 to-transparent">
+      <div className="mx-auto grid max-w-7xl gap-6 px-4 py-7 sm:px-6 sm:py-10 lg:grid-cols-[1.15fr_1fr] lg:items-center lg:px-8">
+        <div>
+          <p className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-red-300"><Gamepad2 className="h-4 w-4" />CZ Arena · Torneos oficiales</p>
+          <h1 className="text-3xl font-black tracking-tight text-white sm:text-4xl">Tu próxima competencia<br className="hidden sm:block" /> empieza aquí.</h1>
+          <p className="mt-3 max-w-xl text-sm leading-relaxed text-slate-300">Encuentra tu juego, asegura tu cupo y sigue cada partida en un solo lugar.</p>
+          <div className="mt-5 flex flex-wrap items-center gap-3">
+            {isAdmin ? <button onClick={() => setIsCreateOpen(true)} className="arena-primary-button"><Trophy className="h-4 w-4" />Crear torneo</button>
+              : !user && <button onClick={() => openAuthModal('register')} className="arena-primary-button"><Users className="h-4 w-4" />Crear mi cuenta</button>}
+            <a href="#torneos" className="arena-secondary-button">Explorar torneos<ArrowRight className="h-4 w-4" /></a>
           </div>
         </div>
-      </section>
-
-      {/* GAMES STRIP */}
-      <section id="juegos" className="py-8 bg-[#130f11] border-b border-slate-800/80">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center space-x-2">
-              <Gamepad2 className="w-4 h-4 text-red-400" />
-              <span>Videojuegos Oficiales</span>
-            </h3>
-            <span className="text-xs text-slate-500">Filtrar títulos</span>
+        {featured && featuredAction && <article className="overflow-hidden rounded-2xl border border-red-400/25 bg-slate-900/70">
+          <div className="flex gap-4 p-4 sm:p-5">
+            <img src={featured.bannerUrl} alt="" className="h-24 w-24 shrink-0 rounded-xl object-cover sm:h-32 sm:w-32" />
+            <div className="min-w-0 flex-1">
+              <p className="mb-1 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-red-300"><Star className="h-3.5 w-3.5" />Destacado · {featured.gameName}</p>
+              <h2 className="line-clamp-2 text-base font-bold text-white sm:text-lg">{featured.title}</h2>
+              <p className="mt-1 text-sm font-semibold text-amber-300">{featured.prizePool}</p>
+              <p className="mt-1 text-xs leading-relaxed text-slate-300">{formatTournamentDate(featured.startDate)}</p>
+            </div>
           </div>
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-800 px-4 py-3 sm:px-5"><StatusBadge tournament={featured} /><Link href={featuredAction.href} className="inline-flex min-h-10 items-center gap-2 text-sm font-bold text-red-300 hover:text-white">{featuredAction.label}<ArrowRight className="h-4 w-4" /></Link></div>
+        </article>}
+      </div>
+    </section>
 
-          <OfficialGamesEditor>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-            {games.map((game) => {
-              const count = tournaments.filter((t) => t.gameId === game.id).length;
-              const isSelected = selectedGame === game.id;
+    <div className="mx-auto max-w-7xl px-4 pb-12 pt-6 sm:px-6 lg:px-8">
+      {user && <section aria-labelledby="my-tournaments-heading" className="mb-6 rounded-2xl border border-red-400/25 bg-red-950/15 p-4 sm:p-5">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="min-w-0"><h2 id="my-tournaments-heading" className="flex items-center gap-2 text-sm font-bold text-white"><Users className="h-4 w-4 text-red-300" />Mis torneos <span className="rounded-full bg-white/10 px-2 py-0.5 text-xs">{mine.filter(t => t.status !== 'completed').length} activos</span></h2>
+            {nextTournament ? <><p className="mt-2 font-semibold text-slate-100">{nextTournament.title}</p><p className="mt-1 text-xs leading-relaxed text-slate-300">{formatTournamentDate(nextTournament.startDate)}</p></> : <p className="mt-2 text-sm text-slate-300">{isLoading ? 'Buscando tus inscripciones…' : 'Tus próximas inscripciones y partidas aparecerán aquí.'}</p>}
+          </div>
+          <div className="flex flex-wrap gap-2">{nextAction && <Link href={nextAction.href} className="arena-primary-button">{nextAction.label}<ArrowRight className="h-4 w-4" /></Link>}<button onClick={() => updateFilters({ view: 'mine', status: 'all' })} className="arena-secondary-button">Ver mis torneos</button></div>
+        </div>
+      </section>}
 
-              return (
-                <button
-                  key={game.id}
-                  data-official-game-id={game.id}
-                  onClick={() => setSelectedGame(isSelected ? 'all' : game.id)}
-                  className={`p-3 rounded-2xl border text-left transition-all relative overflow-hidden group ${isSelected
-                    ? 'bg-red-500/15 border-red-400 shadow-lg shadow-red-500/20'
-                    : 'bg-slate-900/80 border-slate-800 hover:border-slate-700'
-                    }`}
-                >
-                  <img
-                    src={game.coverImage}
-                    alt={game.name}
-                    className="w-full h-20 rounded-xl object-cover mb-2 border border-white/5 group-hover:scale-105 transition-transform"
-                  />
-                  <h4 className="text-xs font-bold text-white truncate">{game.name}</h4>
-                  <div className="flex items-center justify-between text-[10px] text-slate-400 mt-1">
-                    <span>{game.genre}</span>
-                    <span className="font-mono text-red-300 font-semibold">{count} torneos</span>
-                  </div>
-                </button>
-              );
+      <section id="torneos" aria-labelledby="directory-heading" className="scroll-mt-24">
+        <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
+          <div><h2 id="directory-heading" className="text-2xl font-black text-white">Encuentra tu torneo</h2><p className="mt-1 text-sm text-slate-400">Inscripciones, partidas en curso y resultados de la comunidad.</p></div>
+          <div className="flex items-center gap-2 text-xs text-slate-400">{lastUpdated && <span className="hidden sm:inline">Actualizado {new Date(lastUpdated).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}</span>}<button disabled={isLoading} onClick={() => void refreshTournaments()} className="arena-secondary-button" aria-label="Actualizar torneos"><RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} /><span>Actualizar</span></button></div>
+        </div>
+        <div className="mb-5 flex flex-wrap items-center gap-2" aria-label="Vista de torneos">
+          <button aria-pressed={selectedView === 'all'} onClick={() => updateFilters({ view: 'all' })} className={`arena-filter-button ${selectedView === 'all' ? 'is-selected' : ''}`}>Explorar</button>
+          {user && <button aria-pressed={selectedView === 'mine'} onClick={() => updateFilters({ view: 'mine' })} className={`arena-filter-button ${selectedView === 'mine' ? 'is-selected' : ''}`}><Users className="h-4 w-4" />Mis torneos ({mine.length})</button>}
+          <button aria-pressed={selectedView === 'favorites'} onClick={() => updateFilters({ view: 'favorites' })} className={`arena-filter-button ${selectedView === 'favorites' ? 'is-selected' : ''}`}><Heart className="h-4 w-4" />Favoritos ({visible.filter(t => favorites.includes(t.id)).length})</button>
+        </div>
+
+        <OfficialGamesEditor><div className="mb-5 flex gap-2 overflow-x-auto pb-2" aria-label="Filtrar por videojuego">
+          <button onClick={() => updateFilters({ game: 'all' })} aria-pressed={selectedGame === 'all'} className={`arena-filter-button shrink-0 ${selectedGame === 'all' ? 'is-selected' : ''}`}><Gamepad2 className="h-4 w-4" />Todos los juegos</button>
+          {games.map(game => <button key={game.id} data-official-game-id={game.id} onClick={() => updateFilters({ game: selectedGame === game.id ? 'all' : game.id })} aria-pressed={selectedGame === game.id} className={`arena-filter-button shrink-0 ${selectedGame === game.id ? 'is-selected' : ''}`}>
+            <img src={game.coverImage} alt="" loading="lazy" className="h-7 w-7 rounded object-cover" /><span>{game.name}</span><span className="text-xs opacity-70">{searchedTournaments.filter(t => matchesStatus(t) && t.gameId === game.id).length}</span>
+          </button>)}
+        </div></OfficialGamesEditor>
+
+        <div className="mb-5 space-y-4 rounded-2xl border border-slate-800 bg-slate-900/65 p-4">
+          <label className="relative block"><span className="sr-only">Buscar torneo, juego u organizador</span><Search className="pointer-events-none absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" /><input type="search" value={searchQuery} onChange={event => updateFilters({ q: event.target.value }, true)} placeholder="Buscar torneo, juego u organizador…" className="min-h-11 w-full rounded-xl border border-slate-700 bg-slate-950 py-2.5 pl-10 pr-4 text-sm text-white placeholder:text-slate-400" /></label>
+          <div className="flex gap-2 overflow-x-auto pb-1" aria-label="Estado del torneo">{tabs.map(([value, label, count]) => <button key={value} aria-pressed={selectedStatus === value} onClick={() => updateFilters({ status: value })} className={`arena-filter-button shrink-0 ${selectedStatus === value ? 'is-selected' : ''}`}>{label}<span className="text-xs opacity-70">{count}</span></button>)}</div>
+          <details><summary className="w-fit cursor-pointer rounded-lg py-1 text-sm font-semibold text-slate-300">Más filtros{[selectedFormat, selectedEntry, selectedMode, selectedRegion].filter(value => value !== 'all').length > 0 && ' · activos'}</summary>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <label className="text-xs font-semibold text-slate-300">Entrada<select value={selectedEntry} onChange={event => updateFilters({ entry: event.target.value })} className="arena-select"><option value="all">Gratis y de pago</option><option value="free">Gratis</option><option value="paid">De pago</option></select></label>
+              <label className="text-xs font-semibold text-slate-300">Modalidad<select value={selectedMode} onChange={event => updateFilters({ mode: event.target.value })} className="arena-select"><option value="all">Individual y equipos</option><option value="solo">Individual</option><option value="team">Equipos</option></select></label>
+              <label className="text-xs font-semibold text-slate-300">Región<select value={selectedRegion} onChange={event => updateFilters({ region: event.target.value })} className="arena-select"><option value="all">Todas las regiones</option>{['LATAM', 'NA', 'EU', 'GLOBAL'].map(region => <option key={region} value={region}>{region === 'GLOBAL' ? 'Global' : region}</option>)}</select></label>
+              <label className="text-xs font-semibold text-slate-300">Formato<select value={selectedFormat} onChange={event => updateFilters({ format: event.target.value })} className="arena-select"><option value="all">Todos los formatos</option>{availableFormats.map(format => <option key={format} value={format}>{formatTournamentFormat(format)}</option>)}</select></label>
+            </div>
+          </details>
+          {filterTags.length > 0 && <div className="flex flex-wrap gap-2" aria-label="Filtros activos">{filterTags.map(tag => <button key={tag.key} onClick={() => updateFilters({ [tag.key]: tag.key === 'q' ? '' : 'all' })} aria-label={`Quitar filtro: ${tag.label}`} className="flex min-h-10 max-w-full items-center gap-2 rounded-lg border border-red-400/25 bg-red-950/20 px-3 text-xs text-red-200"><span className="truncate">{tag.label}</span><X className="h-3.5 w-3.5 shrink-0" /></button>)}</div>}
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-800 pt-3"><p role="status" aria-live="polite" className="text-sm text-slate-300">{isLoading && !tournaments.length ? 'Cargando torneos…' : `${filtered.length} ${filtered.length === 1 ? 'torneo encontrado' : 'torneos encontrados'}`}</p>{hasFilters && <button onClick={clearFilters} className="inline-flex min-h-10 items-center gap-1.5 rounded-lg px-2 text-sm font-semibold text-red-300 hover:bg-white/5"><X className="h-4 w-4" />Limpiar filtros</button>}</div>
+        </div>
+
+        {(pinError || favoriteError) && <p role="alert" className="mb-4 rounded-xl border border-rose-400/30 bg-rose-950/30 p-3 text-sm text-rose-200">{pinError || favoriteError}</p>}
+        {error && <div role="alert" className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-400/30 bg-amber-950/30 p-4 text-sm text-amber-100"><p>{error}{visible.length > 0 && ' Se muestra la última información disponible.'}</p><button onClick={() => void refreshTournaments()} disabled={isLoading} className="arena-secondary-button">Reintentar</button></div>}
+
+        {isLoading && !tournaments.length ? <LoadingCards /> : !error || visible.length > 0 ? filtered.length === 0 ? <div className="rounded-2xl border border-slate-800 bg-slate-900/50 px-5 py-12 text-center"><Trophy className="mx-auto mb-3 h-10 w-10 text-slate-500" /><h3 className="text-lg font-bold text-white">{selectedView === 'mine' ? 'Aquí estarán tus torneos' : selectedView === 'favorites' ? 'Guarda tus próximos desafíos' : hasFilters ? 'No encontramos torneos con estos filtros' : 'Pronto habrá nuevas competencias'}</h3><p className="mx-auto mt-2 max-w-lg text-sm leading-relaxed text-slate-400">{selectedView === 'mine' ? 'Inscríbete en un torneo para seguir tu asistencia, partidas y resultados.' : selectedView === 'favorites' ? 'Toca el corazón de un torneo para guardarlo en este navegador.' : hasFilters ? 'Prueba otro juego, estado o búsqueda, o restablece el catálogo.' : visible.some(t => t.status === 'completed') ? 'Puedes revisar el historial mientras se anuncian los próximos torneos.' : 'Publicaremos aquí fechas, premios y cupos para la comunidad.'}</p><div className="mt-5 flex flex-wrap justify-center gap-2">{hasFilters && <button onClick={clearFilters} className="arena-secondary-button">Ver torneos activos</button>}{!hasFilters && visible.some(t => t.status === 'completed') && <button onClick={() => updateFilters({ status: 'completed' })} className="arena-secondary-button">Ver historial</button>}{isAdmin && !hasFilters && <button onClick={() => setIsCreateOpen(true)} className="arena-primary-button">Crear torneo</button>}</div></div> : <>
+          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+            {pageItems.map(t => {
+              const action = getTournamentAction(t, user);
+              const registration = findMyRegistration(t, user);
+              const remaining = Math.max(0, t.maxParticipants - t.participants.length);
+              return <article key={t.id} className="glass-card group flex min-w-0 flex-col overflow-hidden rounded-2xl">
+                <div className="relative h-40 overflow-hidden"><img src={t.bannerUrl} alt="" loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" /><div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-black/20" /><div className="absolute left-3 top-3"><StatusBadge tournament={t} /></div><button aria-label={`${favorites.includes(t.id) ? 'Quitar de' : 'Guardar en'} favoritos: ${t.title}`} aria-pressed={favorites.includes(t.id)} onClick={() => toggleFavorite(t.id)} className="absolute right-3 top-3 flex h-11 w-11 items-center justify-center rounded-full border border-white/20 bg-black/70 text-white hover:bg-red-950"><Heart className={`h-5 w-5 ${favorites.includes(t.id) ? 'fill-red-400 text-red-400' : ''}`} /></button><div className="absolute bottom-3 left-4 right-4 flex items-end justify-between gap-3"><span className="text-sm font-bold text-white">{t.gameName}</span><span className="text-right text-base font-bold text-amber-300">{t.prizePool}</span></div></div>
+                <div className="flex flex-1 flex-col p-5"><div className="mb-3 flex flex-wrap gap-2">{t.isHidden && <span className="rounded bg-amber-500/10 px-2 py-1 text-xs font-semibold text-amber-300">Oculto · admin</span>}{t.isFeatured && <span className="flex items-center gap-1 rounded bg-red-500/10 px-2 py-1 text-xs font-semibold text-red-300"><Star className="h-3 w-3" />Destacado</span>}{registration && <span className="flex items-center gap-1 rounded bg-emerald-500/10 px-2 py-1 text-xs font-semibold text-emerald-300"><CheckCircle2 className="h-3.5 w-3.5" />{registration.checkedIn ? 'Asistencia confirmada' : 'Estás inscrito'}</span>}</div>
+                  <h3 className="text-lg font-bold leading-snug text-white"><Link href={`/tournament/${t.slug}`} className="hover:text-red-300">{t.title}</Link></h3><p className="mt-1 text-xs text-slate-400">Organiza {t.organizer.name}</p>
+                  <dl className="my-4 grid grid-cols-2 gap-x-4 gap-y-3 rounded-xl border border-slate-800 bg-slate-900/60 p-3 text-sm"><div><dt className="mb-1 text-xs text-slate-400">Modalidad</dt><dd className="font-semibold text-slate-100">{formatTournamentMode(t)}</dd></div><div><dt className="mb-1 text-xs text-slate-400">Entrada</dt><dd className="font-semibold text-emerald-300">{t.entryFee}</dd></div><div><dt className="mb-1 text-xs text-slate-400">Formato</dt><dd className="text-slate-200">{formatTournamentFormat(t.format)}</dd></div><div><dt className="mb-1 text-xs text-slate-400">Región</dt><dd className="text-slate-200">{t.region}</dd></div></dl>
+                  <p className="mb-4 flex items-start gap-2 text-sm leading-relaxed text-slate-300"><Calendar className="mt-0.5 h-4 w-4 shrink-0 text-red-300" /><span>{formatTournamentDate(t.startDate)}</span></p>
+                  <div className="mt-auto"><div className="mb-2 flex justify-between gap-2 text-xs"><span className="text-slate-300">{t.participants.length} / {t.maxParticipants} {t.teamType === 'team' ? 'equipos' : 'jugadores'}</span><span className={`font-semibold ${remaining === 0 ? 'text-amber-300' : 'text-slate-300'}`}>{t.status === 'completed' ? 'Finalizado' : remaining === 0 ? 'Cupos completos' : `${remaining} cupos libres`}</span></div><div role="progressbar" aria-label={`Cupos de ${t.title}`} aria-valuemin={0} aria-valuemax={t.maxParticipants} aria-valuenow={t.participants.length} className="mb-4 h-1.5 overflow-hidden rounded-full bg-slate-800"><div className="h-full rounded-full bg-red-400" style={{ width: `${t.maxParticipants > 0 ? Math.min(100, t.participants.length / t.maxParticipants * 100) : 0}%` }} /></div><Link href={action.href} className={`flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-bold transition-colors ${['register', 'check_in', 'match'].includes(action.kind) ? 'bg-red-400 text-black hover:bg-red-300' : 'border border-slate-700 bg-slate-800 text-white hover:border-red-400'}`}>{action.label}<ArrowRight className="h-4 w-4" /></Link></div>
+                  {isAdmin && !t.isHidden && t.status !== 'completed' && <button disabled={pinning !== null} onClick={() => void toggleFeatured(t)} className="mt-3 flex min-h-10 items-center justify-center gap-1.5 rounded-lg text-xs font-semibold text-slate-300 hover:bg-white/5 disabled:opacity-50"><Star className={`h-3.5 w-3.5 ${t.isFeatured ? 'fill-red-300 text-red-300' : ''}`} />{pinning === t.id ? 'Guardando…' : t.isFeatured ? 'Quitar destacado' : 'Destacar en portada'}</button>}
+                </div>
+              </article>;
             })}
           </div>
-          </OfficialGamesEditor>
-        </div>
+          {totalPages > 1 && <nav aria-label="Páginas de torneos" className="mt-7 flex flex-wrap items-center justify-center gap-3"><button disabled={page === 1} onClick={() => updateFilters({ page: String(page - 1) })} className="arena-secondary-button disabled:opacity-40">Anterior</button><span className="text-sm text-slate-300">Página {page} de {totalPages}</span><button disabled={page === totalPages} onClick={() => updateFilters({ page: String(page + 1) })} className="arena-secondary-button disabled:opacity-40">Siguiente</button></nav>}
+        </> : null}
       </section>
-
-      {/* TOURNAMENTS DIRECTORY */}
-      <section id="torneos" className="py-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-
-        <div className="space-y-6 mb-8">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <h2 className="text-2xl sm:text-3xl font-black text-white uppercase tracking-tight flex items-center space-x-3">
-                <Trophy className="w-7 h-7 text-red-400" />
-                <span>Directorio de Torneos</span>
-              </h2>
-              <p className="text-xs text-slate-400 mt-1">
-                Explora las llaves y participa en los torneos habilitados por la administración.
-              </p>
-            </div>
-
-            <div className="relative w-full md:w-80">
-              <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                placeholder="Buscar torneo o juego..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white placeholder-slate-500 text-xs focus:outline-none focus:border-red-400 transition-colors"
-              />
-            </div>
-          </div>
-
-          {/* Filter Pills */}
-          <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-            <div className="flex flex-wrap items-center gap-1.5 text-xs font-medium">
-              <button
-                onClick={() => setSelectedStatus('all')}
-                className={`px-3 py-1.5 rounded-lg transition-all ${selectedStatus === 'all'
-                  ? 'bg-white/10 text-red-300 font-bold shadow-sm'
-                  : 'text-slate-400 hover:text-white'
-                  }`}
-              >
-                Todos ({tournaments.length})
-              </button>
-              <button
-                onClick={() => setSelectedStatus('in_progress')}
-                className={`px-3 py-1.5 rounded-lg flex items-center space-x-1.5 transition-all ${selectedStatus === 'in_progress'
-                  ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 font-bold'
-                  : 'text-slate-400 hover:text-white'
-                  }`}
-              >
-                <span className="w-1.5 h-1.5 rounded-full bg-rose-500 beacon-dot" />
-                <span>En Juego</span>
-              </button>
-              <button
-                onClick={() => setSelectedStatus('check_in')}
-                className={`px-3 py-1.5 rounded-lg flex items-center space-x-1.5 transition-all ${selectedStatus === 'check_in'
-                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold'
-                  : 'text-slate-400 hover:text-white'
-                  }`}
-              >
-                <Clock className="w-3.5 h-3.5 text-amber-400" />
-                <span>Fase Check-In</span>
-              </button>
-              <button
-                onClick={() => setSelectedStatus('registration_open')}
-                className={`px-3 py-1.5 rounded-lg flex items-center space-x-1.5 transition-all ${selectedStatus === 'registration_open'
-                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold'
-                  : 'text-slate-400 hover:text-white'
-                  }`}
-              >
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Inscripción Abierta</span>
-              </button>
-            </div>
-
-            <div className="flex items-center space-x-2 text-xs">
-              <span className="text-slate-400">Formato:</span>
-              <select
-                value={selectedFormat}
-                onChange={(e) => setSelectedFormat(e.target.value as any)}
-                className="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-white text-xs focus:outline-none focus:border-red-400"
-              >
-                <option value="all">Todos los formatos</option>
-                <option value="single_elimination">Eliminación Simple</option>
-                <option value="double_elimination">Doble Eliminación</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        {/* Tournaments Grid */}
-        {filteredTournaments.length === 0 ? (
-          <div className="text-center py-20 bg-[#191213] rounded-2xl border border-slate-800 space-y-3">
-            <Trophy className="w-12 h-12 text-slate-600 mx-auto" />
-            <h3 className="text-base font-bold text-white">No hay torneos disponibles en este momento</h3>
-            <p className="text-xs text-slate-400 max-w-sm mx-auto">
-              Pronto se anunciarán nuevas competencias oficiales. Los administradores publicarán los calendarios y premios.
-            </p>
-            {isAdmin && (
-              <button
-                onClick={() => setIsCreateOpen(true)}
-                className="px-4 py-2 rounded-xl bg-red-400 text-black text-xs font-bold font-mono uppercase"
-              >
-                + Crear Nuevo Torneo
-              </button>
-            )}
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredTournaments.map((t) => {
-              const isLive = t.status === 'in_progress';
-              const isCheckIn = t.status === 'check_in';
-              const isRegistration = t.status === 'registration_open';
-              const isCompleted = t.status === 'completed';
-
-              return (
-                <div
-                  key={t.id}
-                  className="glass-card rounded-2xl overflow-hidden flex flex-col group"
-                >
-                  <div className="relative h-48 overflow-hidden">
-                    <img
-                      src={t.bannerUrl}
-                      alt={t.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#1b1518] via-black/30 to-transparent" />
-
-                    <div className="absolute top-3 left-3">
-                      {isLive && (
-                        <span className="badge-live px-2.5 py-1 rounded-md text-[11px] font-bold flex items-center space-x-1.5 shadow-lg">
-                          <span className="w-2 h-2 rounded-full bg-rose-500 beacon-dot" />
-                          <span>EN JUEGO</span>
-                        </span>
-                      )}
-                      {isCheckIn && (
-                        <span className="badge-checkin px-2.5 py-1 rounded-md text-[11px] font-bold flex items-center space-x-1.5 shadow-lg">
-                          <Clock className="w-3.5 h-3.5" />
-                          <span>CHECK-IN</span>
-                        </span>
-                      )}
-                      {isRegistration && (
-                        <span className="badge-open px-2.5 py-1 rounded-md text-[11px] font-bold flex items-center space-x-1.5 shadow-lg">
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                          <span>INSCRIPCIONES</span>
-                        </span>
-                      )}
-                      {isCompleted && (
-                        <span className="px-2.5 py-1 rounded-md text-[11px] font-bold bg-slate-800/90 text-slate-300 border border-slate-700">
-                          FINALIZADO
-                        </span>
-                      )}
-                      {t.isHidden && (
-                        <span className="px-2.5 py-1 rounded-md text-[11px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
-                          OCULTO (ADMIN)
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="absolute bottom-3 right-3 px-2.5 py-1 rounded-lg bg-black/80 backdrop-blur-md border border-white/10 text-xs font-mono font-bold text-amber-400">
-                      {t.prizePool}
-                    </div>
-
-                    <div className="absolute bottom-3 left-3 text-xs font-bold text-white uppercase tracking-wider">
-                      {t.gameName}
-                    </div>
-                  </div>
-
-                  <div className="p-5 flex-1 flex flex-col justify-between space-y-4 bg-[#1b1518]">
-                    <div className="space-y-2">
-                      <Link href={`/tournament/${t.slug}`}>
-                        <h3 className="text-base font-bold text-white uppercase leading-snug hover:text-red-400 transition-colors line-clamp-2">
-                          {t.title}
-                        </h3>
-                      </Link>
-
-                      <div className="flex items-center space-x-2 text-xs text-slate-400">
-                        <img
-                          src={t.organizer.avatar}
-                          alt={t.organizer.name}
-                          className="w-4 h-4 rounded-full object-cover"
-                        />
-                        <span className="truncate">{t.organizer.name}</span>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2 p-3 rounded-xl bg-slate-900/60 border border-slate-800 text-[11px]">
-                      <div>
-                        <span className="text-slate-500 block">Formato</span>
-                        <span className="font-semibold text-slate-200 capitalize">
-                          {t.format.replace('_', ' ')}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-slate-500 block">Modalidad</span>
-                        <span className="font-semibold text-slate-200">
-                          {t.teamType === 'solo' ? 'Solo 1v1' : `${t.teamSize}v${t.teamSize}`}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-slate-500 block">Región</span>
-                        <span className="font-semibold text-red-300 font-mono">
-                          {t.region}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-slate-500 block">Entrada</span>
-                        <span className="font-semibold text-emerald-400">
-                          {t.entryFee}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between text-[11px] text-slate-400 font-mono py-1 px-1 border-t border-slate-800/60">
-                      <div className="flex items-center space-x-1.5 truncate">
-                        <Calendar className="w-3.5 h-3.5 text-red-400 shrink-0" />
-                        <span className="truncate">{formatTournamentDate(t.startDate)}</span>
-                      </div>
-                    </div>
-
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-[11px] font-mono">
-                        <span className="text-slate-400">Inscritos:</span>
-                        <span className="font-bold text-white">
-                          {t.participants.length} / {t.maxParticipants} slots
-                        </span>
-                      </div>
-                      <div className="w-full h-1.5 rounded-full bg-slate-800 overflow-hidden">
-                        <div
-                          className="h-full bg-red-400 rounded-full"
-                          style={{
-                            width: `${Math.min(100, (t.participants.length / t.maxParticipants) * 100)}%`
-                          }}
-                        />
-                      </div>
-                    </div>
-
-                    <Link
-                      href={`/tournament/${t.slug}`}
-                      className="w-full py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider text-white bg-slate-800 hover:bg-red-500 hover:text-black border border-slate-700/80 hover:border-red-400 flex items-center justify-center space-x-1.5 transition-all font-mono"
-                    >
-                      <span>VER TORNEO & LLAVES</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </Link>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-      </section>
-
-      {/* Create Modal */}
-      <CreateTournamentModal
-        isOpen={isCreateOpen}
-        onClose={() => setIsCreateOpen(false)}
-      />
-
+      <p className="mt-8 flex items-center gap-2 text-xs leading-relaxed text-slate-400"><Heart className="h-3.5 w-3.5 shrink-0" />Los favoritos se guardan en este navegador{user ? ' para tu cuenta' : ''}. Los avisos de asistencia aparecen al iniciar sesión.</p>
     </div>
-  );
+    <CreateTournamentModal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} />
+  </div>;
+}
+
+export default function ArenaPage() {
+  return <Suspense fallback={<div className="mx-auto max-w-7xl px-4 py-10"><LoadingCards /></div>}><TournamentDirectory /></Suspense>;
 }
 

@@ -57,29 +57,10 @@ async function main() {
     assert.equal(match.status, 'ready');
     assert.equal(new Set((await db.query('SELECT seed FROM tournament_participants')).rows.map(p => p.seed)).size, 2);
     await assert.rejects(() => db.transaction(tx => insertRegistration(tx, 't1', 2, { ...registration, userId: 'u3' })));
-    await db.exec(`CREATE TABLE tournaments (id TEXT PRIMARY KEY, max_participants INT);
-      INSERT INTO tournaments VALUES ('t1',2);
-      ALTER TABLE tournament_matches ADD COLUMN winner_id TEXT;
-      ALTER TABLE tournament_matches ADD COLUMN team1_score INT DEFAULT 0;
-      ALTER TABLE tournament_matches ADD COLUMN team2_score INT DEFAULT 0;`);
-    const { POST } = load('../src/app/api/tournaments/[id]/draw/route.ts', {
-      '@/lib/auth': { verifyToken: token => token === 'admin' ? { role: 'admin' } : { role: 'player' } },
-      '@/lib/db': { initDb: async () => {}, withDbTransaction: work => db.transaction(work) }
-    });
-    const draw = token => POST(new Request('http://localhost/api/tournaments/t1/draw', {
-      method: 'POST', headers: { authorization: `Bearer ${token}` }
-    }), { params: Promise.resolve({ id: 't1' }) });
-    assert.equal((await draw('player')).status, 403);
-    assert.equal((await draw('admin')).status, 200);
-    assert.equal(new Set((await db.query('SELECT seed FROM tournament_participants')).rows.map(p => p.seed)).size, 2);
-    assert.equal((await db.query('SELECT status FROM tournament_matches')).rows[0].status, 'ready');
-    await db.query("UPDATE tournament_matches SET status='in_progress'");
-    assert.equal((await draw('admin')).status, 400, 'An active bracket must not be reshuffled');
-    await db.query("UPDATE tournament_matches SET status='completed',team1_score=1");
-    assert.equal((await draw('admin')).status, 400, 'Scores must be preserved');
+    // Complete draw/check-in/bye/result regression coverage lives in test-tournament-competition.cjs.
     await db.query('DELETE FROM tournament_participants');
     assert.equal((await db.query('SELECT * FROM tournament_registration_details')).rows.length, 0);
-    console.log('PASS: identity fields, dates, age, phone, random slots, bracket persistence, duplicates/capacity, private data, cleanup, admin draw, active matches and results protection.');
+    console.log('PASS: identity fields, dates, age, phone, random slots, bracket persistence, duplicates/capacity, private data and cleanup.');
   } finally { await db.close(); }
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });

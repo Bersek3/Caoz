@@ -1,6 +1,6 @@
 import { validateRegistrationDetails } from '@/lib/registrationDetails';
 import { NextResponse } from 'next/server';
-import { getDb, initDb } from '@/lib/db';
+import { getDb, initDb, withDbTransaction } from '@/lib/db';
 import { verifyToken } from '@/lib/auth';
 import { reserveRegistration } from '@/lib/tournamentPayments';
 
@@ -102,6 +102,7 @@ export async function POST(
         }
 
         teamObj = teamRes.rows[0];
+        if (teamObj.captain_id !== userId) return NextResponse.json({ error: 'Solo el capitán puede inscribir al equipo. Pídele que confirme el roster y complete la inscripción.' }, { status: 403 });
 
         // Fetch all members of this team
         const membersRes = await db.query(`
@@ -263,7 +264,6 @@ export async function DELETE(
 ) {
   try {
     await initDb();
-    const db = await getDb();
     const { id } = await params;
     const userId = getAuthUserId(request);
 
@@ -271,9 +271,10 @@ export async function DELETE(
       return NextResponse.json({ error: 'Debes iniciar sesión para realizar esta acción.' }, { status: 401 });
     }
 
-    // 1. Fetch tournament
+    return await withDbTransaction(async db => {
+    // Serialize a withdrawal with draw/check-in/payment operations.
     const trnRes = await db.query(
-      'SELECT id, title, team_type, team_size, status FROM tournaments WHERE id = $1 OR slug = $1',
+      'SELECT id, title, team_type, team_size, status FROM tournaments WHERE id = $1 OR slug = $1 FOR UPDATE',
       [id]
     );
 
@@ -283,6 +284,7 @@ export async function DELETE(
 
     const tournament = trnRes.rows[0];
     const isSolo = tournament.team_type === 'solo' || tournament.team_size === 1;
+    if (!['registration_open','check_in'].includes(tournament.status)) return NextResponse.json({ error: 'La competición ya comenzó. Contacta al staff para gestionar una ausencia sin alterar las llaves.' }, { status: 409 });
 
     // Fetch user details
     const userRes = await db.query('SELECT id, username FROM users WHERE id = $1', [userId]);
@@ -312,6 +314,8 @@ export async function DELETE(
     }
 
     const participant = partRes.rows[0];
+    const activeMatches = await db.query("SELECT id FROM tournament_matches WHERE tournament_id=$1 AND (winner_id IS NOT NULL OR status IN ('in_progress','completed','disputed')) LIMIT 1", [tournament.id]);
+    if (activeMatches.rows.length) return NextResponse.json({ error: 'El cuadro ya tiene actividad. Contacta al staff para gestionar tu retiro.' }, { status: 409 });
     const paid = await db.query("SELECT id FROM tournament_payments WHERE participant_id=$1 AND status='confirmed' LIMIT 1", [participant.id]);
     if (paid.rows.length) return NextResponse.json({ error: 'Esta inscripción tiene un pago confirmado. Contacta al organizador para retirar la participación y gestionar la devolución según las reglas del torneo.' }, { status: 409 });
 
@@ -325,7 +329,7 @@ export async function DELETE(
         team1_name = 'Vacío',
         team1_avatar = NULL,
         team1_seed = NULL,
-        status = CASE WHEN team2_participant_id IS NOT NULL THEN 'ready' ELSE 'pending' END
+        status = 'pending'
       WHERE tournament_id = $1 AND team1_participant_id = $2
     `, [tournament.id, participant.id]);
 
@@ -344,6 +348,7 @@ export async function DELETE(
       message: isSolo
         ? 'Has cancelado tu participación en el torneo exitosamente.'
         : `El equipo "${participant.name}" ha sido retirado del torneo exitosamente.`
+    });
     });
   } catch (error: any) {
     console.error('Withdraw participant API error:', error);

@@ -2,6 +2,7 @@ import { randomUUID } from 'crypto';
 import { getDb, withDbTransaction } from './db';
 import { insertRegistration, Registration } from './tournamentRegistration';
 import { virtualposConfig, virtualposRequest, validateCheckoutUrl } from './virtualpos';
+import { assertWaitlistTurn } from './tournamentWaitlist';
 
 const activeStatuses = ['creating', 'pending', 'review'];
 
@@ -26,10 +27,12 @@ export async function reserveRegistration(tournamentId: string, registration: Re
     const count = participants.length;
     const pending = rows.filter(p => activeStatuses.includes(p.status) && new Date(p.expires_at).getTime() > Date.now());
     if (count + pending.length >= tournament.max_participants) throw new Error('No quedan cupos disponibles. Algunos pueden estar reservados por pagos pendientes.');
+    await assertWaitlistTurn(db,tournament,registration.userId,registration.teamId);
     if (pending.some(p => p.registration.roster.some((member: { userId: string }) => registration.roster.some(candidate => candidate.userId === member.userId)))) throw new Error('Un integrante ya tiene una inscripción pendiente de pago.');
     if (!tournament.entry_fee_amount) {
       if (!/^(gratis|free|free to play|0)$/i.test(tournament.entry_fee.trim())) throw new Error('El organizador debe configurar el precio en CLP antes de habilitar las inscripciones.');
       const participantId = await insertRegistration(db, tournamentId, tournament.max_participants, registration);
+      await db.query('DELETE FROM tournament_waitlist WHERE tournament_id=$1 AND (user_id=$2 OR ($3::text IS NOT NULL AND team_id=$3))',[tournamentId,registration.userId,registration.teamId]);
       return { participantId, create: false };
     }
     virtualposConfig();
@@ -37,6 +40,7 @@ export async function reserveRegistration(tournamentId: string, registration: Re
     const user = (await db.query('SELECT email FROM users WHERE id=$1', [registration.userId])).rows[0];
     const paymentId = `pay-${randomUUID()}`;
     await db.query(`INSERT INTO tournament_payments (id,tournament_id,user_id,registration_key,amount,registration) VALUES ($1,$2,$3,$4,$5,$6)`, [paymentId,tournamentId,registration.userId,key,tournament.entry_fee_amount,JSON.stringify(registration)]);
+    await db.query("UPDATE tournament_waitlist SET status='claimed' WHERE tournament_id=$1 AND (user_id=$2 OR ($3::text IS NOT NULL AND team_id=$3))",[tournamentId,registration.userId,registration.teamId]);
     return { paymentId, amount: tournament.entry_fee_amount, title: tournament.title, email: user.email, create: true };
   });
   if (!reserved.create) return reserved;

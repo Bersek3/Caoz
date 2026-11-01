@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getDb, initDb } from '@/lib/db';
+import { getDb, initDb, withDbTransaction } from '@/lib/db';
 import { verifyToken } from '@/lib/auth';
 import { getOfficialGames } from '@/lib/games';
 import { getMatchViewer, ownsMatchParticipant } from '@/lib/matchAccess';
@@ -7,6 +7,9 @@ import { MAX_TOURNAMENT_REQUEST_BYTES } from '@/lib/tournamentBanner';
 import { resolveTournamentRules } from '@/lib/tournamentRules';
 import { validateTournamentPrizes } from '@/lib/tournamentPrizes';
 import { getUserAvatar } from '@/lib/userAvatar';
+import { createCompetitionBracket } from '@/lib/tournamentCompetition';
+import { normalizeTournamentDate } from '@/lib/dateUtils';
+import { randomUUID } from 'crypto';
 
 function safeParse(val: any, fallback: any = []) {
   if (!val) return fallback;
@@ -65,7 +68,15 @@ export async function GET(request: Request) {
             inGameId: p.captain_in_game_id,
             avatar: getUserAvatar(p.account_username || p.captain_name || p.name)
           },
-          roster: safeParse(p.roster, [])
+          roster: (() => {
+            const members = safeParse(p.roster,[]);
+            return Array.isArray(members) ? members.map((member: { id?:string; userId?:string; username?:string; name?:string; role?:string; inGameId?:string },index:number) => {
+              const name = member.name || member.username || 'Participante';
+              return { ...member,id:member.id || member.userId || `roster-${p.id}-${index}`,name,
+                avatar:getUserAvatar(member.username || name),inGameId:member.inGameId || (member.userId===p.user_id?p.captain_in_game_id:'') || '',
+                role:member.role==='sub'?'sub':member.role==='captain' || member.userId===p.user_id?'captain':'starter' };
+            }) : [];
+          })()
         }));
 
       const allMatches = matchRes.rows.filter((m) => m.tournament_id === t.id);
@@ -124,6 +135,9 @@ export async function GET(request: Request) {
 
       const winnersRounds = assembleRounds('winners');
       const losersRounds = assembleRounds('losers');
+      const final = winnersRounds.at(-1)?.matches[0];
+      const championId = final?.status === 'completed' ? final.winnerId : undefined;
+      const runnerUpId = championId ? (final!.team1.participantId === championId ? final!.team2.participantId : final!.team1.participantId) : undefined;
 
       return {
         id: t.id,
@@ -157,9 +171,13 @@ export async function GET(request: Request) {
         rules: safeParse(t.rules, ['Reglas oficiales del torneo']),
         rulesMode: t.rules_mode || 'custom',
         rulesTemplateVersion: t.rules_template_version,
-        schedule: safeParse(t.schedule, [{ stage: 'Fase Principal', time: '20:00' }]),
+        schedule: safeParse(t.schedule, [{ stage: 'Fase Principal', time: t.start_date, format: 'BO3' }]),
         participants,
         rounds: winnersRounds,
+        championId,
+        runnerUpId,
+        isFeatured: Boolean(t.is_featured),
+        prizeDeliveryStatus: t.prize_delivery_status || 'pending',
         losersRounds: losersRounds.length > 0 ? losersRounds : undefined,
         isHidden: Boolean(t.is_hidden)
       };
@@ -180,23 +198,16 @@ export async function POST(request: Request) {
     if (new TextEncoder().encode(rawBody).length > MAX_TOURNAMENT_REQUEST_BYTES) {
       return NextResponse.json({ error: 'El torneo supera el tamaño permitido. Reduce el banner o el texto.' }, { status: 413 });
     }
-    const body = JSON.parse(rawBody);
+    let body;
+    try { body = JSON.parse(rawBody); } catch { return NextResponse.json({ error: 'Datos inválidos.' }, { status: 400 }); }
+    if (!body || typeof body !== 'object' || Array.isArray(body)) return NextResponse.json({ error: 'Datos inválidos.' }, { status: 400 });
 
-    const authHeader = request.headers.get('authorization');
-    let isAdmin = false;
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      const token = authHeader.split(' ')[1];
-      const payload = verifyToken(token);
-      if (payload && payload.role === 'admin') {
-        isAdmin = true;
-      }
-    }
-
-    if (!isAdmin) {
+    const creator = await getMatchViewer(request);
+    if (creator?.role !== 'admin') {
       return NextResponse.json({ error: 'Solo los administradores tienen permiso para crear y publicar torneos.' }, { status: 403 });
     }
 
-    const newId = `trn-${Date.now()}`;
+    const newId = `trn-${randomUUID()}`;
     const baseSlug = (body.title || 'torneo')
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
@@ -214,6 +225,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Selecciona un juego válido e ingresa un título de hasta 255 caracteres.' }, { status: 400 });
     }
     const maxP = body.maxParticipants || 8;
+    if (body.format && body.format !== 'single_elimination') {
+      return NextResponse.json({ error: 'Por ahora se admite eliminación simple. Los demás formatos estarán disponibles cuando tengan un cuadro completo compatible.' }, { status: 400 });
+    }
+    const startDate = normalizeTournamentDate(body.startDate);
+    if (!startDate || new Date(startDate).getTime() <= Date.now()) return NextResponse.json({ error: 'Selecciona una fecha y hora de inicio futura válida (hora de Chile).' }, { status: 400 });
     const entryFeeAmount = body.entryFeeAmount ?? 0;
     if (!Number.isInteger(entryFeeAmount) || entryFeeAmount < 0 || entryFeeAmount > 10_000_000) {
       return NextResponse.json({ error: 'Ingresa un precio entero entre 0 y 10.000.000 CLP.' }, { status: 400 });
@@ -224,6 +240,7 @@ export async function POST(request: Request) {
 
     const teamType = body.teamType ?? (game.defaultTeamSize === 1 ? 'solo' : 'team');
     const teamSize = body.teamSize ?? (teamType === 'solo' ? 1 : game.id === 'fortnite' ? 2 : game.defaultTeamSize);
+    if (!['solo','team'].includes(teamType) || !Number.isInteger(teamSize) || teamSize < 1 || teamSize > 100 || (teamType === 'solo' && teamSize !== 1)) return NextResponse.json({ error: 'Selecciona una modalidad y un tamaño de equipo válidos.' }, { status: 400 });
     let prizeSettings;
     let ruleSettings;
     try {
@@ -237,6 +254,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: (error as Error).message }, { status: 400 });
     }
 
+    await withDbTransaction(async db => {
     await db.query(`
       INSERT INTO tournaments (
         id, title, slug, game_id, game_name, banner_url, thumbnail_url,
@@ -259,11 +277,11 @@ export async function POST(request: Request) {
       game.name,
       body.bannerUrl || game.bannerImage,
       body.thumbnailUrl || body.bannerUrl || game.coverImage,
-      body.organizerId || 'user-bersek',
-      body.organizerName || 'Francisco Bersek',
-      body.organizerAvatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200&auto=format&fit=crop',
-      true,
-      140,
+      creator.id,
+      creator.username,
+      getUserAvatar(creator.username),
+      false,
+      0,
       'registration_open',
       body.format || 'single_elimination',
       teamType,
@@ -273,62 +291,20 @@ export async function POST(request: Request) {
       prizeSettings.prizePool,
       JSON.stringify(prizeSettings.prizeDistribution),
       maxP,
-      body.startDate || 'Próximo Sábado 20:00 GMT-3',
-      '45 min antes',
-      '10 min antes',
+      startDate,
+      new Date(new Date(startDate).getTime() - 45 * 60_000).toISOString(),
+      new Date(new Date(startDate).getTime() - 10 * 60_000).toISOString(),
       false,
       body.description || 'Torneo organizado en CZ ARENA.',
       JSON.stringify(ruleSettings.rules),
-      JSON.stringify(body.schedule || [{ stage: 'Ronda 1', time: '20:00', format: 'BO3' }]),
+      JSON.stringify(body.schedule || [{ stage: 'Ronda 1', time: startDate, format: 'BO3' }]),
       entryFeeAmount,
       ruleSettings.rulesMode,
       ruleSettings.rulesTemplateVersion
     ]);
 
-    // Generate bracket rounds and matches in PostgreSQL
-    const numRounds = Math.log2(maxP);
-    const roundNames = ['Cuartos de Final', 'Semifinales', 'Gran Final'];
-    if (numRounds === 4) roundNames.unshift('Octavos de Final');
-    if (numRounds === 5) roundNames.unshift('Dieciseisavos de Final', 'Octavos de Final');
-
-    for (let r = 0; r < numRounds; r++) {
-      const matchCount = maxP / Math.pow(2, r + 1);
-      const title = roundNames[roundNames.length - numRounds + r] || `Ronda ${r + 1}`;
-      const roundId = `round-${newId}-r${r}`;
-
-      await db.query(`
-        INSERT INTO tournament_rounds (id, tournament_id, round_index, title, bracket_type)
-        VALUES ($1, $2, $3, $4, $5)
-      `, [roundId, newId, r, title, 'winners']);
-
-      for (let m = 0; m < matchCount; m++) {
-        const matchId = `match-${newId}-r${r}-m${m}`;
-        await db.query(`
-          INSERT INTO tournament_matches (
-            id, round_id, tournament_id, round_index, round_title, match_index, bracket_type,
-            team1_name, team2_name, status, best_of, scheduled_time
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-        `, [
-          matchId, roundId, newId, r, title, m, 'winners',
-          r === 0 ? 'Vacío' : `Ganador R${r} M${m * 2 + 1}`,
-          r === 0 ? 'Vacío' : `Ganador R${r} M${m * 2 + 2}`,
-          r === 0 ? 'ready' : 'pending',
-          r === numRounds - 1 ? 5 : 3,
-          body.startDate || 'Por definir'
-        ]);
-
-        await db.query(`
-          INSERT INTO match_messages (id, match_id, sender_name, sender_role, message)
-          VALUES ($1, $2, $3, $4, $5)
-        `, [
-          `msg-${Date.now()}-${r}-${m}`,
-          matchId,
-          'Sistema de Torneo',
-          'system',
-          'Matchroom creado. Utiliza este chat para coordinar el lobby y reportar el marcador final.'
-        ]);
-      }
-    }
+    await createCompetitionBracket(db,newId,maxP,startDate);
+    });
 
     return NextResponse.json({ success: true, slug, tournamentId: newId });
   } catch (error: any) {

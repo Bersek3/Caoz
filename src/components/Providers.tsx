@@ -35,7 +35,7 @@ export const Providers: React.FC<{ children: React.ReactNode }> = ({ children })
   return (
     <AuthProvider>
       <TournamentProvider>
-        <div onContextMenu={event => event.preventDefault()} className={`flex flex-col min-h-screen ${isArenaRoute ? "arena-theme" : ""}`}>
+        <div className={`flex flex-col min-h-screen ${isArenaRoute ? "arena-theme" : ""}`}>
           {isArenaRoute && (
             <Navbar onOpenCreateModal={() => setIsCreateModalOpen(true)} />
           )}

@@ -1,363 +1,127 @@
 ﻿'use client';
 
-import { getUserAvatar } from '../lib/userAvatar';
-import React, { useState, useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import {
-  Trophy,
-  Swords,
-  PlusCircle,
-  Shield,
-  LogIn,
-  User,
-  LogOut,
-  Bell,
-  Clock,
-  Flame,
-  Calendar,
-  CheckCircle2,
-  CheckCheck
-} from 'lucide-react';
+import { Bell, Calendar, CheckCheck, CheckCircle2, Clock, Flame, LogIn, LogOut, PlusCircle, Swords, Trophy, User, Users, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTournament } from '../context/TournamentContext';
-import { getCountdown } from '../lib/dateUtils';
-import { AuthModal } from './AuthModal';
+import { getCheckInWindow, parseTournamentDate } from '../lib/dateUtils';
+import { findMyRegistration, getTournamentAction } from '../lib/tournamentPresentation';
+import { getUserAvatar } from '../lib/userAvatar';
 
-interface NavbarProps {
-  onOpenCreateModal?: () => void;
+const readEvent = 'caoz-notifications-read';
+function subscribeRead(listener: () => void) {
+  window.addEventListener('storage', listener);
+  window.addEventListener(readEvent, listener);
+  return () => { window.removeEventListener('storage', listener); window.removeEventListener(readEvent, listener); };
+}
+interface NavbarProps { onOpenCreateModal?: () => void }
+interface TournamentNotification {
+  id: string; title: string; message: string; type: 'check_in' | 'starting_soon' | 'in_progress' | 'completed';
+  href: string; tournamentTitle: string; timeLabel: string; urgent: boolean;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ onOpenCreateModal }) => {
+export function Navbar({ onOpenCreateModal }: NavbarProps) {
   const pathname = usePathname();
   const { user, logout, openAuthModal } = useAuth();
   const { tournaments } = useTournament();
-
   const [showNotifications, setShowNotifications] = useState(false);
-  const [readIds, setReadIds] = useState<string[]>([]);
-
+  const [now, setNow] = useState(() => Date.now());
+  const bellRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const isAdmin = user?.role === 'admin';
+  const readKey = `caoz_notifications_read_${user?.id || 'guest'}`;
+  const readSnapshot = useSyncExternalStore(subscribeRead, () => {
+    try { return localStorage.getItem(readKey) || '[]'; } catch { return '[]'; }
+  }, () => '[]');
+  let readIds: string[] = [];
+  try { const saved: unknown = JSON.parse(readSnapshot); if (Array.isArray(saved)) readIds = saved.filter((id): id is string => typeof id === 'string'); } catch { /* Ignore invalid local preferences. */ }
 
-  // Real-time notifications for registered tournaments (Check-In & Start)
+  useEffect(() => {
+    const tick = () => setNow(Date.now());
+    const interval = window.setInterval(tick, 1000);
+    window.addEventListener('focus', tick);
+    return () => { window.clearInterval(interval); window.removeEventListener('focus', tick); };
+  }, []);
+  useEffect(() => {
+    if (!showNotifications) return;
+    const frame = requestAnimationFrame(() => panelRef.current?.querySelector<HTMLButtonElement>('button')?.focus());
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') { setShowNotifications(false); bellRef.current?.focus(); }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => { cancelAnimationFrame(frame); document.removeEventListener('keydown', onKey); };
+  }, [showNotifications]);
+
   const userNotifications = useMemo(() => {
     if (!user) return [];
-
-    const items: Array<{
-      id: string;
-      title: string;
-      message: string;
-      type: 'check_in' | 'starting_soon' | 'in_progress';
-      tournamentSlug: string;
-      tournamentTitle: string;
-      timeLabel: string;
-      urgent: boolean;
-    }> = [];
-
-    tournaments.forEach((t) => {
-      // Check if user is registered in this tournament
-      const myReg = t.participants.find(
-        (p) =>
-          p.name === user.username ||
-          p.userId === user.id ||
-          (user.team?.name && p.name === user.team.name) ||
-          p.captain?.name === user.username ||
-          (user.team?.id && p.teamId === user.team.id) ||
-          p.roster?.some((r: any) => r.userId === user.id || (r.username && r.username.toLowerCase() === user.username.toLowerCase()))
-      );
-
-      // Only notify registered participants (or admins)
-      if (!myReg && !isAdmin) return;
-
-      const countdown = getCountdown(t.startDate);
-
-      // 1. Check-In Alert
-      if (t.status === 'check_in' || (countdown.isCheckInWindow && !countdown.isPast && t.status !== 'completed')) {
-        const checked = myReg?.checkedIn;
-        items.push({
-          id: `checkin-${t.id}-${checked ? 'done' : 'pending'}`,
-          title: checked ? 'Check-In Confirmado ✓' : '¡Check-In Abierto!',
-          message: checked
-            ? `Tu cupo en "${t.title}" está asegurado. Las llaves comenzarán pronto.`
-            : `El Check-In para "${t.title}" está activo. Confirma tu asistencia para no perder tu cupo en el bracket.`,
-          type: 'check_in',
-          tournamentSlug: t.slug,
-          tournamentTitle: t.title,
-          timeLabel: countdown.minutes > 0 ? `Inicia en ${countdown.minutes}m ${countdown.seconds}s` : 'En fase Check-in',
-          urgent: !checked
-        });
+    const items: TournamentNotification[] = [];
+    tournaments.forEach(t => {
+      if (t.isHidden && !isAdmin) return;
+      const registration = findMyRegistration(t, user);
+      if (!registration && !isAdmin) return;
+      const window = getCheckInWindow(t, now);
+      const start = parseTournamentDate(t.startDate)?.getTime();
+      const minutes = start ? Math.max(0, Math.ceil((start - now) / 60000)) : null;
+      const action = getTournamentAction(t, user);
+      const base = { href: action.href, tournamentTitle: t.title };
+      if (window.isOpen) {
+        const confirmed = registration?.checkedIn;
+        const closesIn = window.closesAt ? Math.max(0, Math.ceil((window.closesAt.getTime() - now) / 60000)) : null;
+        items.push({ ...base, id: `checkin-${t.id}-${t.checkInOpensAt}-${confirmed ? 'done' : 'pending'}`, title: confirmed ? 'Asistencia confirmada' : isAdmin && !registration ? 'Check-in abierto' : 'Confirma tu asistencia',
+          message: confirmed ? 'Tu asistencia está confirmada. Revisa el horario y prepara tu partida.' : isAdmin && !registration ? 'La ventana de confirmación está abierta para los participantes.' : 'El check-in está abierto. Confirma antes del cierre para conservar tu cupo.',
+          type: 'check_in', timeLabel: closesIn === null ? 'Abierto' : `Cierra en ${closesIn} min`, urgent: !confirmed });
+      } else if (minutes !== null && minutes > 0 && minutes <= 120 && !window.hasClosed && t.status !== 'completed' && t.status !== 'in_progress') {
+        items.push({ ...base, id: `soon-${t.id}-${t.startDate}`, title: 'Tu torneo comienza pronto', message: 'Revisa el horario del check-in y prepara tu participación.', type: 'starting_soon', timeLabel: `En ${minutes} min`, urgent: false });
       }
-
-      // 2. Starting Soon Alert (Within next 2 hours, before check-in)
-      if (!countdown.isPast && countdown.totalMilliseconds > 0 && countdown.totalMilliseconds < 2 * 60 * 60 * 1000 && !countdown.isCheckInWindow && t.status !== 'completed') {
-        const minsLeft = Math.floor(countdown.totalMilliseconds / (60 * 1000));
-        items.push({
-          id: `start-soon-${t.id}`,
-          title: 'Torneo Próximo a Comenzar',
-          message: `"${t.title}" comenzará aproximadamente en ${minsLeft} minutos. ¡Prepara a tu equipo!`,
-          type: 'starting_soon',
-          tournamentSlug: t.slug,
-          tournamentTitle: t.title,
-          timeLabel: `En ${minsLeft} min`,
-          urgent: false
-        });
-      }
-
-      // 3. Tournament In Progress / Live
-      if (t.status === 'in_progress') {
-        items.push({
-          id: `live-${t.id}`,
-          title: '¡Torneo En Juego!',
-          message: `Las partidas de "${t.title}" están en desarrollo. Revisa tus llaves y accede a tu Sala de Partida.`,
-          type: 'in_progress',
-          tournamentSlug: t.slug,
-          tournamentTitle: t.title,
-          timeLabel: 'En Vivo',
-          urgent: true
-        });
-      }
+      if (t.status === 'in_progress') items.push({ ...base, id: `live-${t.id}-${t.startDate}-${action.href}`, title: action.kind === 'match' ? 'Tu partida está disponible' : 'Torneo en juego', message: 'Consulta tu participación, las partidas y los resultados actualizados.', type: 'in_progress', timeLabel: 'En juego', urgent: true });
+      if (t.status === 'completed' && registration) items.push({ ...base, id: `results-${t.id}-${t.startDate}`, title: 'Resultados disponibles', message: 'El torneo finalizó. Revisa la clasificación y los premios.', type: 'completed', timeLabel: 'Finalizado', urgent: false });
     });
+    return items.sort((a, b) => Number(b.urgent) - Number(a.urgent));
+  }, [user, tournaments, isAdmin, now]);
+  const unreadCount = userNotifications.filter(notification => !readIds.includes(notification.id)).length;
 
-    return items;
-  }, [user, tournaments, isAdmin]);
+  function markRead(ids: string[]) {
+    try { localStorage.setItem(readKey, JSON.stringify([...new Set([...readIds, ...ids])].slice(-500))); window.dispatchEvent(new Event(readEvent)); }
+    catch { /* Notifications remain available when browser storage is disabled. */ }
+  }
+  function closeNotifications() { setShowNotifications(false); bellRef.current?.focus(); }
 
-  const unreadCount = userNotifications.filter((n) => !readIds.includes(n.id)).length;
+  const navLinks = <>
+    <Link href="/arena" className={`arena-nav-link ${pathname === '/arena' ? 'is-active' : ''}`}><Trophy className="h-4 w-4" />Torneos</Link>
+    {user && <><Link href="/arena?view=mine&status=all#torneos" className="arena-nav-link"><Users className="h-4 w-4" />Mis torneos</Link><Link href="/profile" className={`arena-nav-link ${pathname === '/profile' ? 'is-active' : ''}`}><User className="h-4 w-4" />Mi perfil</Link></>}
+  </>;
 
-  const markAllAsRead = () => {
-    setReadIds(userNotifications.map((n) => n.id));
-  };
-
-  return (
-    <header className="sticky top-0 z-50 w-full glass-panel border-b border-white/10 backdrop-blur-md">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-
-        {/* Brand Logo */}
-        <div className="flex items-center space-x-8">
-          <Link href="/arena" className="flex items-center space-x-3 group">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-red-500 via-red-600 to-purple-600 p-[2px] shadow-lg shadow-red-500/20 group-hover:shadow-red-400/40 transition-all duration-300">
-              <div className="w-full h-full bg-[#130f10] rounded-[10px] flex items-center justify-center">
-                <Swords className="w-5 h-5 text-red-400 group-hover:scale-110 transition-transform duration-300" />
-              </div>
-            </div>
-            <div className="flex flex-col">
-              <div className="flex items-center space-x-2">
-                <span className="font-black text-xl tracking-wider text-white uppercase bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-100 to-slate-400">
-                  CZ <span className="text-red-400 font-extrabold">ARENA</span>
-                </span>
-                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-500/10 text-red-300 border border-red-500/30">
-                  ESPORTS
-                </span>
-              </div>
-              <span className="text-[10px] text-slate-400 tracking-widest font-mono uppercase -mt-0.5">
-                Plataforma de Torneos
-              </span>
-            </div>
-          </Link>
-
-          {/* Navigation items */}
-          <nav className="hidden md:flex items-center space-x-1">
-            <Link
-              href="/arena"
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${pathname.startsWith('/arena') || pathname.startsWith('/torneo')
-                  ? 'bg-white/10 text-red-300 shadow-sm'
-                  : 'text-slate-300 hover:text-white hover:bg-white/5'
-                }`}
-            >
-              🏆 Torneos
-            </Link>
-
-            {user && (
-              <Link
-                href="/profile"
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${pathname === '/profile'
-                    ? 'bg-white/10 text-red-300 shadow-sm'
-                    : 'text-slate-300 hover:text-white hover:bg-white/5'
-                  }`}
-              >
-                Mi Perfil
-              </Link>
-            )}
-          </nav>
-        </div>
-
-        {/* Right side actions */}
-        <div className="flex items-center space-x-2 sm:space-x-3">
-
-          {/* Create Tournament CTA - ONLY visible for Administrators! */}
-          {isAdmin && onOpenCreateModal && (
-            <button
-              onClick={onOpenCreateModal}
-              className="relative inline-flex items-center space-x-2 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold text-white bg-gradient-to-r from-red-500 to-red-600 hover:from-red-400 hover:to-red-500 shadow-lg shadow-red-500/25 hover:shadow-red-400/40 transition-all duration-200 transform hover:-translate-y-0.5"
-            >
-              <PlusCircle className="w-4 h-4" />
-              <span className="hidden sm:inline">Crear Torneo</span>
-              <span className="sm:hidden">Crear</span>
-            </button>
-          )}
-
-          {/* Notification Bell (Only when logged in) */}
-          {user && (
-            <div className="relative">
-              <button
-                onClick={() => setShowNotifications(!showNotifications)}
-                className="relative p-2 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
-                title="Notificaciones de torneos y Check-In"
-              >
-                <Bell className="w-5 h-5" />
-                {unreadCount > 0 && (
-                  <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white shadow-lg shadow-rose-500/50">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-400 opacity-75" />
-                    <span className="relative">{unreadCount > 9 ? '9+' : unreadCount}</span>
-                  </span>
-                )}
-              </button>
-
-              {/* Dropdown Menu */}
-              {showNotifications && (
-                <>
-                  <div
-                    className="fixed inset-0 z-40"
-                    onClick={() => setShowNotifications(false)}
-                  />
-                  <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl bg-[#1c1417] border border-slate-700/80 shadow-2xl z-50 overflow-hidden animate-fade-in divide-y divide-slate-800">
-                    {/* Header */}
-                    <div className="px-4 py-3 bg-[#21181c] flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <Bell className="w-4 h-4 text-red-400" />
-                        <h4 className="text-xs font-bold text-white uppercase tracking-wider">
-                          Notificaciones de Torneo
-                        </h4>
-                        {unreadCount > 0 && (
-                          <span className="px-1.5 py-0.2 rounded bg-rose-500/20 text-rose-300 text-[10px] font-mono font-bold">
-                            {unreadCount} nuevas
-                          </span>
-                        )}
-                      </div>
-                      {unreadCount > 0 && (
-                        <button
-                          onClick={markAllAsRead}
-                          className="text-[11px] text-red-400 hover:text-red-300 transition-colors font-medium flex items-center space-x-1 cursor-pointer"
-                        >
-                          <CheckCheck className="w-3.5 h-3.5" />
-                          <span>Marcar leídas</span>
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Notification List */}
-                    <div className="max-h-[380px] overflow-y-auto divide-y divide-slate-800/60">
-                      {userNotifications.length === 0 ? (
-                        <div className="py-8 px-4 text-center space-y-2">
-                          <CheckCircle2 className="w-8 h-8 text-slate-600 mx-auto" />
-                          <p className="text-xs text-white font-medium">Estás al día</p>
-                          <p className="text-[11px] text-slate-400">
-                            Aquí recibirás avisos automáticos cuando se abra el Check-In o comiencen tus torneos inscritos.
-                          </p>
-                        </div>
-                      ) : (
-                        userNotifications.map((notif) => {
-                          const isUnread = !readIds.includes(notif.id);
-                          return (
-                            <Link
-                              key={notif.id}
-                              href={`/tournament/${notif.tournamentSlug}`}
-                              onClick={() => {
-                                setReadIds((prev) => [...prev, notif.id]);
-                                setShowNotifications(false);
-                              }}
-                              className={`p-3.5 flex items-start space-x-3 hover:bg-slate-800/60 transition-colors block ${isUnread ? 'bg-red-950/25' : ''
-                                }`}
-                            >
-                              <div
-                                className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${notif.type === 'check_in'
-                                    ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                                    : notif.type === 'in_progress'
-                                      ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
-                                      : 'bg-red-500/20 text-red-400 border border-red-500/30'
-                                  }`}
-                              >
-                                {notif.type === 'check_in' && <Clock className="w-4 h-4" />}
-                                {notif.type === 'in_progress' && <Flame className="w-4 h-4" />}
-                                {notif.type === 'starting_soon' && <Calendar className="w-4 h-4" />}
-                              </div>
-
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center justify-between gap-1">
-                                  <h5 className="text-xs font-bold text-white line-clamp-1">
-                                    {notif.title}
-                                  </h5>
-                                  <span className="text-[10px] font-mono text-red-400 shrink-0">
-                                    {notif.timeLabel}
-                                  </span>
-                                </div>
-                                <p className="text-[11px] text-slate-300 mt-0.5 line-clamp-2 leading-relaxed">
-                                  {notif.message}
-                                </p>
-                                <span className="text-[10px] text-slate-400 font-mono mt-1 block truncate">
-                                  {notif.tournamentTitle} â†’
-                                </span>
-                              </div>
-                            </Link>
-                          );
-                        })
-                      )}
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-
-          {/* Auth Pill or Login Buttons */}
-          {user ? (
-            <div className="flex items-center space-x-2 sm:space-x-3 pl-2 border-l border-slate-800">
-              <Link
-                href="/profile"
-                className="flex items-center space-x-2.5 hover:opacity-85 transition-opacity"
-              >
-                <div className="relative">
-                  <img
-                    src={getUserAvatar(user.username)}
-                    alt={user.username}
-                    className="w-8 h-8 rounded-full border border-red-500/40 object-cover"
-                  />
-                  <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-[#07090e] rounded-full" />
-                </div>
-                <div className="hidden lg:flex flex-col text-left">
-                  <span className="text-xs font-semibold text-white leading-tight">
-                    {user.fullName || user.username}
-                  </span>
-                  <span className="text-[10px] text-slate-400 font-mono">
-                    {user.username}
-                  </span>
-                </div>
-              </Link>
-
-              <button
-                onClick={logout}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-slate-800 transition-colors cursor-pointer"
-                title="Cerrar sesión"
-              >
-                <LogOut className="w-4 h-4" />
-              </button>
-            </div>
-          ) : (
-            <div className="flex items-center space-x-2 pl-2 border-l border-slate-800">
-              <button
-                onClick={() => openAuthModal('login')}
-                className="px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-200 hover:text-white bg-slate-800 hover:bg-slate-700 flex items-center space-x-1.5 transition-colors cursor-pointer"
-              >
-                <LogIn className="w-3.5 h-3.5 text-red-400" />
-                <span>Ingresar</span>
-              </button>
-            </div>
-          )}
-
-        </div>
-
+  return <header className="sticky top-0 z-50 w-full border-b border-white/10 glass-panel backdrop-blur-md">
+    <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-2 px-4 sm:px-6 lg:px-8">
+      <div className="flex min-w-0 items-center gap-5">
+        <Link href="/arena" aria-label="CZ Arena, inicio de torneos" className="flex shrink-0 items-center gap-2">
+          <span className="hidden h-9 w-9 items-center justify-center rounded-xl border border-red-400/40 bg-red-950/40 sm:flex"><Swords className="h-5 w-5 text-red-300" /></span>
+          <span><span className="block text-lg font-black tracking-wide text-white">CZ <span className="text-red-300">ARENA</span></span><span className="hidden text-[10px] uppercase tracking-widest text-slate-400 sm:block">Plataforma de torneos</span></span>
+        </Link>
+        <nav aria-label="Navegación principal" className="hidden items-center gap-1 lg:flex">{navLinks}</nav>
       </div>
-    </header>
-  );
-};
-
-
+      <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+        {isAdmin && onOpenCreateModal && <button onClick={onOpenCreateModal} aria-label="Crear torneo" className="flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-xl bg-red-500 px-2.5 text-sm font-semibold text-white hover:bg-red-400"><PlusCircle className="h-4 w-4" /><span className="hidden xl:inline">Crear torneo</span></button>}
+        {user && <div className="relative">
+          <button ref={bellRef} onClick={() => setShowNotifications(!showNotifications)} aria-label={`Notificaciones: ${unreadCount} sin leer`} aria-expanded={showNotifications} aria-controls="tournament-notifications" className="relative flex h-11 w-11 items-center justify-center rounded-xl text-slate-200 hover:bg-slate-800"><Bell className="h-5 w-5" />{unreadCount > 0 && <span className="absolute right-0.5 top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white">{unreadCount > 9 ? '9+' : unreadCount}</span>}</button>
+          {showNotifications && <><div className="fixed inset-0 z-40" onClick={closeNotifications} /><div ref={panelRef} id="tournament-notifications" role="region" aria-labelledby="notification-title" className="fixed left-4 right-4 top-28 z-50 overflow-hidden rounded-2xl border border-slate-700 bg-[#1c1417] shadow-2xl sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-96">
+            <div className="flex items-center justify-between gap-2 border-b border-slate-800 p-4"><h2 id="notification-title" className="text-sm font-bold text-white">Tus notificaciones</h2><button onClick={closeNotifications} aria-label="Cerrar notificaciones" className="rounded-lg p-2 text-slate-300 hover:bg-slate-800"><X className="h-4 w-4" /></button></div>
+            {unreadCount > 0 && <button onClick={() => markRead(userNotifications.map(item => item.id))} className="flex min-h-11 w-full items-center justify-end gap-1.5 border-b border-slate-800 px-4 text-xs font-semibold text-red-300 hover:bg-slate-800"><CheckCheck className="h-4 w-4" />Marcar todas como leídas</button>}
+            <div className="max-h-[min(65vh,420px)] overflow-y-auto divide-y divide-slate-800">
+              {userNotifications.length === 0 ? <div className="space-y-2 px-5 py-8 text-center"><CheckCircle2 className="mx-auto h-8 w-8 text-slate-500" /><p className="text-sm font-semibold text-white">Estás al día</p><p className="text-xs leading-relaxed text-slate-400">Aquí verás los avisos de asistencia, partidas y resultados de tus torneos.</p></div> : userNotifications.map(notification => <Link key={notification.id} href={notification.href} onClick={() => { markRead([notification.id]); setShowNotifications(false); }} className={`flex gap-3 p-4 hover:bg-slate-800/60 ${!readIds.includes(notification.id) ? 'bg-red-950/25' : ''}`}>
+                <span className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${notification.urgent ? 'bg-amber-500/15 text-amber-300' : 'bg-red-500/15 text-red-300'}`}>{notification.type === 'check_in' ? <Clock className="h-4 w-4" /> : notification.type === 'in_progress' ? <Flame className="h-4 w-4" /> : notification.type === 'completed' ? <Trophy className="h-4 w-4" /> : <Calendar className="h-4 w-4" />}</span>
+                <span className="min-w-0 flex-1"><span className="flex flex-wrap items-center justify-between gap-1"><span className="text-sm font-semibold text-white">{notification.title}</span><span className="text-xs text-red-300">{notification.timeLabel}</span></span><span className="mt-1 block text-xs leading-relaxed text-slate-300">{notification.message}</span><span className="mt-1 block text-xs font-semibold text-slate-400">{notification.tournamentTitle}</span></span>
+              </Link>)}
+            </div>
+            <p className="border-t border-slate-800 px-4 py-3 text-xs leading-relaxed text-slate-400">Avisos dentro de la plataforma. Se actualizan mientras navegas.</p>
+          </div></>}
+        </div>}
+        {user ? <><Link href="/profile" aria-label="Mi perfil" className="flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-xl px-1 hover:bg-slate-800"><img src={user.avatarUrl || getUserAvatar(user.username)} alt="" className="h-8 w-8 rounded-full border border-red-400/40 object-cover" /><span className="hidden max-w-28 truncate text-sm text-slate-200 xl:inline">{user.username}</span></Link><button onClick={logout} aria-label="Cerrar sesión" title="Cerrar sesión" className="hidden h-11 w-11 items-center justify-center rounded-xl text-slate-300 hover:bg-slate-800 hover:text-red-300 lg:flex"><LogOut className="h-4 w-4" /></button></> : <button onClick={() => openAuthModal('login')} className="arena-secondary-button"><LogIn className="h-4 w-4" /><span>Ingresar</span></button>}
+      </div>
+    </div>
+    <nav aria-label="Navegación móvil" className="flex items-center gap-1 overflow-x-auto border-t border-white/5 px-3 lg:hidden">{navLinks}{user && <button onClick={logout} className="arena-nav-link ml-auto"><LogOut className="h-4 w-4" />Salir</button>}</nav>
+  </header>;
+}
 

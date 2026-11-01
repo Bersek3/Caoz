@@ -14,7 +14,9 @@ function load(file, overrides = {}) {
 }
 async function main() {
   const mockData = load('../src/data/mockData.ts');
-  const service = load('../src/lib/editTournament.ts', { '@/data/mockData': mockData, './tournamentRules': load('../src/lib/tournamentRules.ts') });
+  const dates = load('../src/lib/dateUtils.ts');
+  const service = load('../src/lib/editTournament.ts', { '@/data/mockData': mockData, './tournamentRules': load('../src/lib/tournamentRules.ts'),
+    './tournamentPrizes': load('../src/lib/tournamentPrizes.ts'), './tournamentCompetition': load('../src/lib/tournamentCompetition.ts'), './dateUtils': dates });
   const db = new PGlite();
   try {
     // Exercise the production table definitions and compatibility views in memory.
@@ -26,6 +28,8 @@ async function main() {
     await db.exec(`ALTER TABLE torneos ADD COLUMN entry_fee_amount INT DEFAULT 0;
       ALTER TABLE torneos ADD COLUMN rules_mode VARCHAR(16) DEFAULT 'custom';
       ALTER TABLE torneos ADD COLUMN rules_template_version VARCHAR(64);
+      ALTER TABLE torneos ADD COLUMN IF NOT EXISTS is_featured BOOLEAN NOT NULL DEFAULT false;
+      ALTER TABLE torneos ADD COLUMN IF NOT EXISTS prize_delivery_status VARCHAR(32) NOT NULL DEFAULT 'pending';
       CREATE VIEW tournaments AS SELECT * FROM torneos;
       CREATE VIEW tournament_participants AS SELECT * FROM participantes_torneo;
       CREATE VIEW tournament_rounds AS SELECT * FROM rondas_torneo;
@@ -44,7 +48,7 @@ async function main() {
       format: 'single_elimination', teamType: 'team', teamSize: 5, region: 'GLOBAL', entryFeeAmount: 2500,
       prizePool: '$100', prizeDistribution: [{ place: '1', prize: '$100' }], maxParticipants: 8,
       startDate: '2026-12-01T21:00', checkInOpensAt: '30 minutos antes', checkInClosesAt: '10 minutos antes',
-      checkInActive: true, description: 'Actualizado', rules: ['Uno','Dos','Tres','Cuatro'], schedule: [{ stage: 'Final', time: '21:00', format: 'BO5' }], isHidden: true
+      checkInActive: false, description: 'Actualizado', rules: ['Uno','Dos','Tres','Cuatro'], schedule: [{ stage: 'Final', time: '21:00', format: 'BO5' }], isHidden: true
     };
     const update = body => db.transaction(tx => service.editTournament(tx, 'original', body));
     const result = await update(data);
@@ -55,8 +59,19 @@ async function main() {
     assert.deepEqual(saved.rules, data.rules); assert.deepEqual(saved.schedule, data.schedule);
     assert.deepEqual(saved.prize_distribution, data.prizeDistribution);
     assert.equal((await db.query('SELECT * FROM tournament_matches')).rows[0].team1_score, 2);
-    assert.equal((await db.query('SELECT * FROM tournament_matches')).rows[0].scheduled_time, data.startDate);
+    assert.equal((await db.query('SELECT * FROM tournament_matches')).rows[0].scheduled_time, dates.normalizeTournamentDate(data.startDate));
     assert.equal((await db.query('SELECT * FROM match_messages')).rows.length, 1);
+    const shiftedStart='2026-12-02T21:00';
+    const previousOpen=new Date(saved.check_in_opens_at).getTime(),previousClose=new Date(saved.check_in_closes_at).getTime();
+    await update({...data,startDate:shiftedStart,checkInOpensAt:saved.check_in_opens_at,checkInClosesAt:saved.check_in_closes_at});
+    let shifted=(await db.query('SELECT * FROM tournaments')).rows[0];
+    assert.equal(new Date(shifted.check_in_opens_at).getTime()-previousOpen,86400000,'Unchanged absolute check-in opening moves with the start date');
+    assert.equal(new Date(shifted.check_in_closes_at).getTime()-previousClose,86400000,'Unchanged absolute closing moves with the start date');
+    await update({...data,startDate:'2026-12-03T21:00',checkInOpensAt:'2026-12-03T18:00',checkInClosesAt:'2026-12-03T20:00'});
+    shifted=(await db.query('SELECT * FROM tournaments')).rows[0];
+    assert.equal(shifted.check_in_opens_at,dates.normalizeTournamentDate('2026-12-03T18:00'),'An intentional check-in override is preserved');
+    assert.equal(shifted.check_in_closes_at,dates.normalizeTournamentDate('2026-12-03T20:00'));
+    await update(data);
     await assert.rejects(() => update({ ...data, maxParticipants: 16 }), /Confirma/);
     assert.equal((await db.query('SELECT max_participants FROM tournaments')).rows[0].max_participants, 8);
     for (const invalid of [{ ...data, entryFeeAmount: -1 }, { ...data, teamSize: 0 }, { ...data, status: 'invalid' }, { ...data, title: '' }, { ...data, bannerUrl: 'javascript:alert(1)' }, { ...data, rules: [42] }]) await assert.rejects(() => update(invalid));
@@ -68,7 +83,7 @@ async function main() {
     assert.equal((await db.query('SELECT * FROM tournament_matches')).rows.length, 15);
     assert.equal((await db.query('SELECT * FROM match_messages')).rows.length, 0);
     const participant = (await db.query('SELECT * FROM tournament_participants')).rows[0];
-    assert.equal(participant.id, 'p1'); assert.equal(participant.checked_in, true);
+    assert.equal(participant.id, 'p1'); assert.equal(participant.checked_in, false,'A structural rebuild requires renewed attendance confirmation');
     assert(participant.seed >= 1 && participant.seed <= 16);
     assert.equal((await db.query("SELECT * FROM tournament_matches WHERE team1_participant_id='p1' OR team2_participant_id='p1'")).rows.length, 1);
     for (let i = 2; i <= 9; i++) await db.query("INSERT INTO tournament_participants(id,tournament_id,name,tag,seed) VALUES ($1,'t1',$1,'SOLO',$2)", [`p${i}`,i]);
@@ -77,6 +92,7 @@ async function main() {
       '@/lib/auth': { verifyToken: token => ({ role: token === 'admin' ? 'admin' : 'player' }) },
       '@/lib/db': { initDb: async () => {}, withDbTransaction: work => db.transaction(work) },
       '@/lib/editTournament': service,
+      '@/lib/matchAccess': { getMatchViewer: async () => ({ role: 'admin' }) },
       '@/lib/tournamentBanner': { MAX_TOURNAMENT_REQUEST_BYTES: 1500000 }
     });
     const request = (token,body) => new Request('http://localhost/api/tournaments/t1', { method: 'PUT', headers: { authorization: `Bearer ${token}` }, body });

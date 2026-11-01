@@ -26,6 +26,8 @@ export interface GameInfo {
 
 export interface PlayerRosterMember {
   id: string;
+  userId?: string;
+  username?: string;
   name: string;
   inGameId: string;
   role: 'captain' | 'starter' | 'sub';
@@ -133,6 +135,10 @@ export interface Tournament {
   losersRounds?: TournamentRound[];
   grandFinal?: TournamentMatch;
   isHidden?: boolean;
+  isFeatured?: boolean;
+  prizeDeliveryStatus?: 'pending' | 'processing' | 'delivered';
+  championId?: string;
+  runnerUpId?: string;
 }
 
 export type UserRole = 'player' | 'organizer';

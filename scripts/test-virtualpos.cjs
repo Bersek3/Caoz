@@ -59,7 +59,8 @@ async function main() {
     const headers = user => user ? {'Content-Type':'application/json',Authorization:`Bearer ${signToken({userId:user,username:user,role:'player',email:`${user}@example.test`})}`} : {'Content-Type':'application/json'};
     const payer = {first_name:'Test',last_name:'Player',social_id:'12345678-9',phone:'56912345678'};
     const request = (user, method='GET', body) => new Request('https://arena.example.test/api/test',{method,headers:headers(user),...(body?{body:JSON.stringify(body)}:{})});
-    const register = (user,id) => registration.POST(request(user,'POST',{username:'forged',captainInGameId:'Player',payer,amount:1,paid:true}),{params:Promise.resolve({id})});
+    const personalDetails = {fullName:'Test Player',birthDate:'2000-01-01',documentNumber:'12345678-9',phone:'+56912345678'};
+    const register = (user,id) => registration.POST(request(user,'POST',{username:'forged',captainInGameId:'Player',personalDetails,payer,amount:1,paid:true}),{params:Promise.resolve({id})});
     const count = async id => Number((await memory.query('SELECT COUNT(*) AS count FROM participantes_torneo WHERE tournament_id=$1',[id])).rows[0].count);
     assert.equal((await register(null,'paid')).status,401);
     assert.equal((await register('one','free')).status,200);
@@ -92,7 +93,9 @@ async function main() {
     const beforeDuplicate = creates;
     await assert.rejects(()=>reserveRegistration('paid',payment.registration,payer));
     assert.equal(creates,beforeDuplicate,'A concurrent confirmed registration cannot be charged again');
-    assert.equal((await memory.query("SELECT team1_participant_id FROM partidas_torneo WHERE tournament_id='paid'")).rows[0].team1_participant_id,(await memory.query('SELECT participant_id FROM tournament_payments WHERE id=$1',[first.paymentId])).rows[0].participant_id);
+    const paidMatch = (await memory.query("SELECT team1_participant_id,team2_participant_id FROM partidas_torneo WHERE tournament_id='paid'")).rows[0];
+    const paidParticipant = (await memory.query('SELECT participant_id FROM tournament_payments WHERE id=$1',[first.paymentId])).rows[0].participant_id;
+    assert([paidMatch.team1_participant_id,paidMatch.team2_participant_id].includes(paidParticipant),'The confirmed participant occupies either valid drawn slot');
     for (const [user,id] of [['four','late'],['five','mismatch'],['six','rejected']]) {
       const created = await (await register(user,id)).json();
       const local = (await memory.query('SELECT * FROM tournament_payments WHERE id=$1',[created.paymentId])).rows[0];

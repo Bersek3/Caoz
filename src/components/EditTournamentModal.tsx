@@ -8,12 +8,14 @@ import { useTournament } from '../context/TournamentContext';
 import { prepareTournamentBanner, MAX_TOURNAMENT_REQUEST_BYTES } from '../lib/tournamentBanner';
 import { TournamentRulesEditor } from './TournamentRulesEditor';
 import { showAlert, showConfirm } from './StyledDialog';
+import { normalizeTournamentDate, toTournamentDateTimeInput } from '../lib/dateUtils';
 
 export function EditTournamentModal({ tournament, onClose }: { tournament: Tournament; onClose: () => void }) {
   const { user, token } = useAuth();
   const { games, refreshTournaments } = useTournament();
   const [data, setData] = useState(() => ({
     ...tournament,
+    startDate: toTournamentDateTimeInput(tournament.startDate),
     bannerUrl: tournament.bannerUrl || '', thumbnailUrl: tournament.thumbnailUrl || '',
     description: tournament.description || '', prizePool: tournament.prizePool || '',
     checkInOpensAt: tournament.checkInOpensAt || '', checkInClosesAt: tournament.checkInClosesAt || '',
@@ -52,7 +54,9 @@ export function EditTournamentModal({ tournament, onClose }: { tournament: Tourn
     setBusy(true); setError('');
     try {
       if (structural && !await showConfirm('Cambiaste el juego, formato, modalidad o cupos. Se reconstruirán y sortearán las llaves. Se conservarán las inscripciones, pero se borrarán los resultados y chats de las partidas actuales. Revisa que los inscritos cumplan la nueva modalidad. ¿Guardar estos cambios?')) return;
-      const body = JSON.stringify({ ...data, rules: data.rules.map(rule => rule.trim()).filter(Boolean), participants: undefined, rounds: undefined, losersRounds: undefined, grandFinal: undefined, rebuildBracket: structural });
+      const startDate = normalizeTournamentDate(data.startDate);
+      if (!startDate) throw new Error('Indica una fecha y hora válida en horario de Chile.');
+      const body = JSON.stringify({ ...data, startDate, rules: data.rules.map(rule => rule.trim()).filter(Boolean), participants: undefined, rounds: undefined, losersRounds: undefined, grandFinal: undefined, rebuildBracket: structural });
       if (new Blob([body]).size > MAX_TOURNAMENT_REQUEST_BYTES) throw new Error('Las imágenes o el texto superan el tamaño permitido. Reduce las imágenes.');
       const response = await fetch(`/api/tournaments/${tournament.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body });
       const result = await response.json();
@@ -82,10 +86,10 @@ export function EditTournamentModal({ tournament, onClose }: { tournament: Tourn
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="text-xs text-slate-300 sm:col-span-2">Nombre del torneo<input autoFocus required maxLength={255} value={data.title} onChange={e => change('title', e.target.value)} className={inputClass} /></label>
             <label className="text-xs text-slate-300">Juego<select value={data.gameId} onChange={e => change('gameId', e.target.value as Tournament['gameId'])} className={inputClass}>{games.map(game => <option key={game.id} value={game.id}>{game.name}</option>)}</select></label>
-            <label className="text-xs text-slate-300">Estado<select value={data.status} onChange={e => change('status', e.target.value as Tournament['status'])} className={inputClass}>
+            <label className="text-xs text-slate-300">Estado actual<select disabled value={data.status} className={inputClass}>
               <option value="registration_open">Inscripciones abiertas</option><option value="check_in">Check-in</option><option value="in_progress">En curso</option><option value="completed">Finalizado</option>
             </select></label>
-            <label className="text-xs text-slate-300">Fecha y hora de inicio<input required maxLength={100} value={data.startDate} onChange={e => change('startDate', e.target.value)} placeholder="2026-11-15T20:00" className={inputClass} /><span className="mt-1 block text-slate-500">Puedes indicar fecha y hora o el texto del horario.</span></label>
+            <label className="text-xs text-slate-300">Fecha y hora de inicio<input type="datetime-local" required value={data.startDate} onChange={e => change('startDate', e.target.value)} className={inputClass} /><span className="mt-1 block text-slate-400">Hora de Chile. Usa los controles de check-in del torneo para cambiar de fase.</span></label>
             <label className="text-xs text-slate-300">Región<select value={data.region} onChange={e => change('region', e.target.value as Tournament['region'])} className={inputClass}>{['LATAM','NA','EU','GLOBAL'].map(region => <option key={region}>{region}</option>)}</select></label>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
@@ -102,7 +106,7 @@ export function EditTournamentModal({ tournament, onClose }: { tournament: Tourn
             <h3 className="text-sm font-bold text-red-300">Configuración competitiva</h3>
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="text-xs text-slate-300">Formato<select value={data.format} onChange={e => change('format', e.target.value as Tournament['format'])} className={inputClass}>
-                <option value="single_elimination">Eliminación simple</option><option value="double_elimination">Doble eliminación</option><option value="round_robin">Round Robin</option><option value="swiss">Suizo</option>
+                <option value="single_elimination">Eliminación simple</option>{tournament.format !== 'single_elimination' && <option disabled value={tournament.format}>Formato anterior: cambia a eliminación simple</option>}
               </select></label>
               <label className="text-xs text-slate-300">Cupos<select value={data.maxParticipants} onChange={e => change('maxParticipants', Number(e.target.value))} className={inputClass}>{[8,16,32].map(size => <option key={size} value={size}>{size}</option>)}</select></label>
               <label className="text-xs text-slate-300">Modalidad<select value={data.teamType} onChange={e => setData(previous => ({ ...previous, teamType: e.target.value as 'solo' | 'team', teamSize: e.target.value === 'solo' ? 1 : (data.gameId === 'fortnite' ? 2 : games.find(g => g.id === data.gameId)?.defaultTeamSize || 5) }))} className={inputClass}><option value="solo">Individual</option><option value="team">Por equipos</option></select></label>
@@ -138,7 +142,7 @@ export function EditTournamentModal({ tournament, onClose }: { tournament: Tourn
             <label className="text-xs text-slate-300">Seguidores del organizador<input type="number" required min={0} max={2147483647} step={1} value={data.organizer.followers} onChange={e => change('organizer',{ ...data.organizer,followers: Number(e.target.value) })} className={inputClass} /></label>
           </div>
           <div className="flex flex-wrap gap-5 text-xs text-slate-300">
-            <label className="flex items-center gap-2"><input type="checkbox" checked={data.checkInActive} onChange={e => change('checkInActive',e.target.checked)} />Check-in activo</label>
+            <span className="text-slate-400">El check-in se abre y cierra desde la ficha del torneo.</span>
             <label className="flex items-center gap-2"><input type="checkbox" checked={data.isHidden} onChange={e => change('isHidden',e.target.checked)} />Torneo oculto</label>
             <label className="flex items-center gap-2"><input type="checkbox" checked={data.organizer.verified} onChange={e => change('organizer',{ ...data.organizer,verified: e.target.checked })} />Organizador verificado</label>
           </div>

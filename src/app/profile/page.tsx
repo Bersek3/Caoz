@@ -2,7 +2,7 @@
 import { showAlert, showConfirm } from '../../components/StyledDialog';
 
 import { getUserAvatar } from '../../lib/userAvatar';
-import React, { useState, useEffect } from 'react';
+import React, { Suspense, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { 
@@ -42,6 +42,8 @@ import { EditTournamentModal } from '../../components/EditTournamentModal';
 import type { Tournament } from '../../types/tournament';
 import { useAuth } from '../../context/AuthContext';
 import { useTournament } from '../../context/TournamentContext';
+import { findMyRegistration, formatTournamentMode, getTournamentAction, sortTournaments } from '../../lib/tournamentPresentation';
+import { TournamentReturnLink } from '../../components/TournamentReturnLink';
 
 interface TeamMember {
   id: string;
@@ -485,14 +487,7 @@ export default function ProfilePage() {
   const [withdrawingId, setWithdrawingId] = useState<string | null>(null);
 
   // Find user's tournaments (solo by username or team by team name)
-  const myTournaments = tournaments.filter((t) =>
-    t.participants.some(
-      (p) =>
-        p.name === user.username ||
-        (team && p.name === team.name) ||
-        p.captain?.name === user.username
-    )
-  );
+  const myTournaments = sortTournaments(tournaments.filter(t => !t.isHidden && t.status !== 'completed' && findMyRegistration(t,user)));
 
   const handleWithdrawTournament = async (trn: any) => {
     const isSolo = trn.teamType === 'solo' || trn.teamSize === 1;
@@ -558,6 +553,7 @@ export default function ProfilePage() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8 animate-fade-in">
+      <Suspense fallback={null}><TournamentReturnLink /></Suspense>
       
       {/* Top Breadcrumb */}
       <div>
@@ -1140,7 +1136,7 @@ export default function ProfilePage() {
                       className="p-3 rounded-xl bg-slate-900/80 border border-slate-800 hover:border-red-500/30 flex items-center justify-between gap-3 transition-colors"
                     >
                       <Link
-                        href={`/tournament/${trn.slug}`}
+                        href={getTournamentAction(trn,user).href}
                         className="flex-1 min-w-0 group"
                       >
                         <h4 className="text-xs font-bold text-white group-hover:text-red-400 transition-colors line-clamp-1 flex items-center gap-1.5">
@@ -1148,7 +1144,7 @@ export default function ProfilePage() {
                           <ExternalLink className="w-3 h-3 text-slate-500 group-hover:text-red-400 shrink-0" />
                         </h4>
                         <p className="text-[10px] text-slate-400 font-mono mt-0.5">
-                          {trn.gameName} • {isSolo ? 'Individual (1v1)' : `Equipos (${trn.teamSize}v${trn.teamSize})`} • {trn.status === 'in_progress' ? 'En Juego' : 'Inscrito'}
+                          {trn.gameName} • {formatTournamentMode(trn)} • {getTournamentAction(trn,user).label}
                         </p>
                       </Link>
 

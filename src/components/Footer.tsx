@@ -20,7 +20,7 @@ export const Footer: React.FC = () => {
               </span>
             </div>
             <p className="text-sm text-slate-400 max-w-sm">
-              Plataforma de gestión y competencia de esports de nueva generación. Organiza torneos, automatiza brackets de eliminación directa y doble eliminación.
+              Compite en torneos oficiales, confirma tu asistencia y sigue tus partidas y resultados en un solo lugar.
             </p>
           </div>
 
@@ -29,10 +29,10 @@ export const Footer: React.FC = () => {
               Comunidad & Soporte
             </h4>
             <ul className="space-y-2 text-sm text-slate-400">
-              <li className="hover:text-red-400 transition-colors cursor-pointer">Discord Oficial</li>
-              <li className="hover:text-red-400 transition-colors cursor-pointer">Reglamento Competitivo</li>
-              <li className="hover:text-red-400 transition-colors cursor-pointer">Llamar a un Árbitro / Soporte</li>
-              <li className="hover:text-red-400 transition-colors cursor-pointer">Guía para Organizadores</li>
+              <li><Link href="/arena/ayuda" className="hover:text-red-300">Ayuda y preguntas frecuentes</Link></li>
+              <li><a href="mailto:contacto.caoz@gmail.com" className="hover:text-red-300">Contactar soporte</a></li>
+              <li><Link href="/arena/pagos" className="hover:text-red-300">Pagos e inscripciones</Link></li>
+              <li><Link href="/arena" className="hover:text-red-300">Explorar torneos y reglamentos</Link></li>
             </ul>
           </div>
 

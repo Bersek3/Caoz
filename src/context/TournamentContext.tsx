@@ -1,8 +1,7 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { Tournament, GameInfo, Participant, TournamentMatch, TournamentRound, UserRole } from '../types/tournament';
-import { POPULAR_GAMES, INITIAL_TOURNAMENTS } from '../data/mockData';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
+import { Tournament, GameInfo, TournamentMatch, UserRole } from '../types/tournament';
 import { useAuth } from './AuthContext';
 import { MAX_TOURNAMENT_REQUEST_BYTES } from '../lib/tournamentBanner';
 
@@ -11,7 +10,6 @@ interface TournamentContextType {
   games: GameInfo[];
   refreshGames: () => Promise<void>;
   userRole: UserRole;
-  setUserRole: (role: UserRole) => void;
   currentUser: {
     id: string;
     name: string;
@@ -23,7 +21,9 @@ interface TournamentContextType {
     teamTag: string;
   };
   isLoading: boolean;
-  refreshTournaments: () => Promise<void>;
+  error: string | null;
+  lastUpdated: number | null;
+  refreshTournaments: (options?: { silent?: boolean }) => Promise<void>;
   getTournament: (id: string) => Tournament | undefined;
   registerParticipant: (tournamentId: string, participantData: {
     username?: string;
@@ -36,6 +36,7 @@ interface TournamentContextType {
     rosterMembers?: { name: string; inGameId: string; role: 'starter' | 'sub' }[];
   }) => Promise<{ success: boolean; message: string; participantId?: string; checkoutUrl?: string; paymentId?: string }>;
   checkInParticipant: (tournamentId: string, participantId: string) => Promise<void>;
+  setCheckInPhase: (tournamentId: string, action: 'open' | 'close') => Promise<void>;
   createTournament: (data: Partial<Tournament>) => Promise<string>;
   updateMatchScore: (tournamentId: string, matchId: string, score1: number, score2: number, proofUrl?: string) => Promise<void>;
   sendMatchChatMessage: (tournamentId: string, matchId: string, text: string, isProof?: boolean) => Promise<void>;
@@ -50,11 +51,19 @@ interface TournamentContextType {
 const TournamentContext = createContext<TournamentContextType | undefined>(undefined);
 
 export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user: authUser } = useAuth();
+  const { user } = useAuth();
+  return <TournamentState key={`${user?.id || 'guest'}:${user?.role || 'player'}`}>{children}</TournamentState>;
+};
+
+const TournamentState: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user: authUser, token: authToken } = useAuth();
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
-  const [userRole, setUserRole] = useState<UserRole>('player');
-  const [isLoading, setIsLoading] = useState(false);
+  const userRole: UserRole = authUser?.role === 'admin' || authUser?.role === 'organizer' ? 'organizer' : 'player';
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<number | null>(null);
   const refreshVersion = useRef(0);
+  const foregroundVersion = useRef(0);
   const [games, setGames] = useState<GameInfo[]>([]);
   const refreshGames = async () => {
     const response = await fetch('/api/games', { cache: 'no-store' });
@@ -62,16 +71,15 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     if (!response.ok) throw new Error(data.error || 'No se pudieron cargar los videojuegos.');
     setGames(data.games);
   };
-  useEffect(() => { refreshGames().catch(console.error); }, []);
-
-  // Sync role with authUser role
   useEffect(() => {
-    if (authUser?.role === 'admin' || authUser?.role === 'organizer') {
-      setUserRole('organizer');
-    } else {
-      setUserRole('player');
-    }
-  }, [authUser]);
+    const controller = new AbortController();
+    fetch('/api/games', { cache: 'no-store', signal: controller.signal }).then(async response => {
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'No se pudieron cargar los videojuegos.');
+      if (!controller.signal.aborted) setGames(data.games);
+    }).catch(error => { if (!controller.signal.aborted) console.error(error); });
+    return () => controller.abort();
+  }, []);
 
   const currentUser = {
     id: authUser?.id || '',
@@ -84,31 +92,45 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     teamTag: authUser?.teamTag || ''
   };
 
-  const refreshTournaments = async () => {
+  const refreshTournaments = useCallback((options: { silent?: boolean } = {}) => {
     const version = ++refreshVersion.current;
-    try {
-      setIsLoading(true);
-      const token = localStorage.getItem('caoz_auth_token');
-      const res = await fetch('/api/tournaments', {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
+    if (!options.silent) foregroundVersion.current = version;
+    return fetch('/api/tournaments', {
+        headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
         cache: 'no-store'
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (version === refreshVersion.current) setTournaments(data.tournaments || []);
+      }).then(async res => {
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'No se pudieron cargar los torneos.');
+      if (version === refreshVersion.current) {
+        setTournaments(data.tournaments || []);
+        setError(null);
+        setLastUpdated(Date.now());
       }
-    } catch (e) {
-      console.error('Failed to load tournaments from API:', e);
-    } finally {
-      if (version === refreshVersion.current) setIsLoading(false);
-    }
-  };
+    }).catch(e => {
+      if (version === refreshVersion.current) setError(e instanceof Error ? e.message : 'No se pudo conectar. Revisa tu conexión y vuelve a intentar.');
+    }).finally(() => {
+      if (!options.silent && foregroundVersion.current === version) setIsLoading(false);
+    });
+  }, [authToken]);
 
   useEffect(() => {
-    setTournaments([]);
     refreshTournaments();
     return () => { refreshVersion.current++; };
-  }, [authUser?.id, authUser?.role]);
+  }, [authUser?.id, authUser?.role, refreshTournaments]);
+
+  useEffect(() => {
+    const refresh = () => { if (document.visibilityState === 'visible') void refreshTournaments({ silent: true }); };
+    const timer = window.setInterval(refresh, 15000);
+    window.addEventListener('focus', refresh);
+    window.addEventListener('online', refresh);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener('focus', refresh);
+      window.removeEventListener('online', refresh);
+      document.removeEventListener('visibilitychange', refresh);
+    };
+  }, [refreshTournaments]);
 
   const getTournament = (id: string) => {
     return tournaments.find((t) => t.id === id || t.slug === id);
@@ -149,22 +171,30 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
       await refreshTournaments();
       return { success: true, message: data.message || '¡Inscripción confirmada!', participantId: data.participantId, checkoutUrl: data.checkoutUrl, paymentId: data.paymentId };
-    } catch (e: any) {
-      return { success: false, message: e.message || 'Error al conectar con el servidor' };
+    } catch (e) {
+      return { success: false, message: e instanceof Error ? e.message : 'Error al conectar con el servidor' };
     }
   };
 
   const checkInParticipant = async (tournamentId: string, participantId: string) => {
-    try {
-      await fetch(`/api/tournaments/${tournamentId}/check-in`, {
+      const response = await fetch(`/api/tournaments/${tournamentId}/check-in`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ participantId, teamName: currentUser.teamName })
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('caoz_auth_token') || ''}` },
+        body: JSON.stringify({ participantId })
       });
-      await refreshTournaments();
-    } catch (e) {
-      console.error('Check-in error:', e);
-    }
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'No se pudo confirmar tu asistencia.');
+      await refreshTournaments({ silent: true });
+  };
+
+  const setCheckInPhase = async (tournamentId: string, action: 'open' | 'close') => {
+    const response = await fetch(`/api/tournaments/${tournamentId}/check-in`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('caoz_auth_token') || ''}` },
+      body: JSON.stringify({ action })
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'No se pudo actualizar el check-in.');
+    await refreshTournaments({ silent: true });
   };
 
   const createTournament = async (data: Partial<Tournament>): Promise<string> => {
@@ -233,7 +263,7 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     isProof: boolean = false
   ) => {
     try {
-      await fetch(`/api/matches/${matchId}/chat`, {
+      const response = await fetch(`/api/matches/${matchId}/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -246,15 +276,17 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           isProofImage: isProof
         })
       });
-      await refreshTournaments();
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'No se pudo enviar el mensaje.');
+      await refreshTournaments({ silent: true });
     } catch (e) {
-      console.error('Send chat error:', e);
+      throw e;
     }
   };
 
   const reportMatchDispute = async (tournamentId: string, matchId: string, reason: string) => {
     try {
-      await fetch(`/api/matches/${matchId}/chat`, {
+      const response = await fetch(`/api/matches/${matchId}/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -268,9 +300,11 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           disputeReason: reason
         })
       });
-      await refreshTournaments();
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'No se pudo abrir la disputa.');
+      await refreshTournaments({ silent: true });
     } catch (e) {
-      console.error('Report dispute error:', e);
+      throw e;
     }
   };
 
@@ -290,8 +324,9 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     if (!targetMatch) return;
 
     const isTeam1 = targetMatch.team1.participantId === winnerId || targetMatch.team1.name === winnerId;
-    const score1 = isTeam1 ? 2 : 0;
-    const score2 = isTeam1 ? 0 : 2;
+    const requiredWins = Math.floor(targetMatch.bestOf / 2) + 1;
+    const score1 = isTeam1 ? requiredWins : 0;
+    const score2 = isTeam1 ? 0 : requiredWins;
 
     await updateMatchScore(tournamentId, matchId, score1, score2);
   };
@@ -322,8 +357,8 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       }
       await refreshTournaments();
       return { success: true, message: data.message || 'Participación retirada exitosamente' };
-    } catch (e: any) {
-      return { success: false, message: e.message || 'Error de conexión' };
+    } catch (e) {
+      return { success: false, message: e instanceof Error ? e.message : 'Error de conexión' };
     }
   };
 
@@ -344,8 +379,8 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       }
       await refreshTournaments();
       return { success: true, message: data.message };
-    } catch (e: any) {
-      return { success: false, message: e.message || 'Error de conexión' };
+    } catch (e) {
+      return { success: false, message: e instanceof Error ? e.message : 'Error de conexión' };
     }
   };
 
@@ -364,8 +399,8 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       }
       await refreshTournaments();
       return { success: true, message: data.message || 'Torneo eliminado correctamente' };
-    } catch (e: any) {
-      return { success: false, message: e.message || 'Error de conexión' };
+    } catch (e) {
+      return { success: false, message: e instanceof Error ? e.message : 'Error de conexión' };
     }
   };
 
@@ -376,13 +411,15 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         games,
         refreshGames,
         userRole,
-        setUserRole,
         currentUser,
         isLoading,
+        error,
+        lastUpdated,
         refreshTournaments,
         getTournament,
         registerParticipant,
         checkInParticipant,
+        setCheckInPhase,
         createTournament,
         updateMatchScore,
         sendMatchChatMessage,

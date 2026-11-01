@@ -1,16 +1,12 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   X, 
   Users, 
   ShieldCheck, 
-  Gamepad2, 
-  Plus, 
-  Trash2, 
   CheckCircle2,
-  Sparkles,
   AlertCircle,
   AlertTriangle,
   ArrowRight,
@@ -22,6 +18,9 @@ import confetti from 'canvas-confetti';
 import { useTournament } from '../context/TournamentContext';
 import { useAuth } from '../context/AuthContext';
 import { Tournament } from '../types/tournament';
+import { useModalAccessibility } from '@/hooks/useModalAccessibility';
+import { findMyRegistration, formatTournamentMode } from '@/lib/tournamentPresentation';
+import Link from 'next/link';
 
 interface RegisterModalProps {
   tournament: Tournament;
@@ -30,7 +29,12 @@ interface RegisterModalProps {
   onRegisteredSuccess?: () => void;
 }
 
-export const RegisterModal: React.FC<RegisterModalProps> = ({
+export const RegisterModal: React.FC<RegisterModalProps> = (props) => {
+  const { user } = useAuth();
+  return props.isOpen ? <RegistrationForm key={`${props.tournament.id}:${user?.id || 'guest'}`} {...props} /> : null;
+};
+
+const RegistrationForm: React.FC<RegisterModalProps> = ({
   tournament,
   isOpen,
   onClose,
@@ -39,41 +43,36 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
   const router = useRouter();
   const { user, openAuthModal } = useAuth();
   const { registerParticipant, games } = useTournament();
+  const modalRef = useModalAccessibility(isOpen, onClose);
+  const titleId = React.useId();
 
   const requiredTeamSize = tournament.teamSize || (tournament.teamType === 'team' ? 5 : 1);
   const isSolo = tournament.teamType === 'solo' || requiredTeamSize === 1;
-  const game = games.find((g) => g.id === tournament.gameId) || games[0];
+  const game = games.find((g) => g.id === tournament.gameId);
+  const roster = user?.team?.members || [];
+  const captain = roster.find(member => member.user_id === user?.team?.captain_id || member.role === 'captain');
+  const isCaptain = isSolo || Boolean(user?.team?.is_captain || (user?.team?.captain_id && user.team.captain_id === user.id));
+  const isRegistrationOpen = tournament.status === 'registration_open' && tournament.participants.length < tournament.maxParticipants;
 
   const currentTeamMembers = user?.team?.members?.length || user?.team?.memberCount || (user?.teamName && user.teamName !== 'Sin equipo' ? 1 : 0);
   const isTeamComplete = isSolo || (!!(user?.team || (user?.teamName && user.teamName !== 'Sin equipo')) && currentTeamMembers >= requiredTeamSize);
 
   // Check if user is already participating in this tournament in any team
-  const alreadyInParticipant = tournament.participants.find(
-    (p) =>
-      (user && (p.name === user.username || p.userId === user.id)) ||
-      (user?.teamName && p.name === user.teamName) ||
-      (user?.team?.id && p.teamId === user.team.id) ||
-      (user && p.captain?.name === user.username) ||
-      (user && p.roster?.some((r: any) => r.userId === user.id || (r.username && r.username.toLowerCase() === user.username.toLowerCase())))
-  );
+  const alreadyInParticipant = findMyRegistration(tournament, user);
   const isAlreadyRegistered = !!alreadyInParticipant;
 
-  const [captainInGameId, setCaptainInGameId] = useState('');
-  const [captainDiscord, setCaptainDiscord] = useState('');
+  const [captainInGameId, setCaptainInGameId] = useState(() => {
+    const gameId = tournament.gameId.toLowerCase();
+    return /valorant|league|lol|tft/.test(gameId) ? user?.riotId || '' : /fortnite|rocket/.test(gameId) ? user?.epicGamesUsername || '' : /apex|ea-sports|fifa/.test(gameId) ? user?.eaId || '' : /counter|cs2|dota|pubg/.test(gameId) ? user?.steamId || '' : '';
+  });
+  const [captainDiscord, setCaptainDiscord] = useState(user?.discordTag || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [success, setSuccess] = useState(false);
+  const [acceptedRules, setAcceptedRules] = useState(false);
   const [payer, setPayer] = useState({ first_name: '', last_name: '', social_id: '', phone: '' });
-  const [personalDetails, setPersonalDetails] = useState({ fullName: '', birthDate: '', documentNumber: '', phone: '+56' });
+  const [personalDetails, setPersonalDetails] = useState({ fullName: user?.fullName || '', birthDate: user?.birthDate?.slice(0, 10) || '', documentNumber: '', phone: '+56' });
   const isPaid = (tournament.entryFeeAmount || 0) > 0;
-
-  useEffect(() => {
-    if (user) {
-      setCaptainInGameId(user.riotId || user.steamId || user.epicGamesUsername || user.eaId || '');
-      setPersonalDetails({ fullName: user.fullName || '', birthDate: user.birthDate?.slice(0, 10) || '', documentNumber: '', phone: '+56' });
-      setCaptainDiscord(user.discordTag || '');
-    }
-  }, [user]);
 
   if (!isOpen) return null;
 
@@ -85,6 +84,9 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
       setErrorMsg('Debes iniciar sesión para inscribirte en el torneo.');
       return;
     }
+    if (!isRegistrationOpen) { setErrorMsg('Las inscripciones están cerradas o ya no quedan cupos.'); return; }
+    if (!isCaptain) { setErrorMsg('Solo el capitán puede confirmar la inscripción del equipo.'); return; }
+    if (!acceptedRules) { setErrorMsg('Lee y acepta las bases del torneo para continuar.'); return; }
 
     if (isAlreadyRegistered) {
       setErrorMsg(`Ya te encuentras registrado en este torneo (en "${alreadyInParticipant.name}"). Cada usuario solo puede participar en 1 equipo por torneo.`);
@@ -148,15 +150,15 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
           spread: 60,
           origin: { y: 0.55 }
         });
-      } catch (e) {}
+      } catch {}
 
       setTimeout(() => {
         onRegisteredSuccess?.();
         onClose();
         setSuccess(false);
       }, 1600);
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Error al procesar la inscripción');
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : 'Error al procesar la inscripción');
     } finally {
       setIsSubmitting(false);
     }
@@ -164,7 +166,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-fade-in">
-      <div className="relative w-full max-w-2xl bg-[#191213] border border-slate-700/80 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+      <div ref={modalRef} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1} className="relative w-full max-w-2xl bg-[#191213] border border-slate-700/80 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
         
         {/* Header */}
         <div className="px-6 py-4 bg-[#211719] border-b border-slate-800 flex items-center justify-between">
@@ -173,16 +175,17 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
               <Users className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-white">
+              <h3 id={titleId} className="text-base font-bold text-white">
                 Inscripción al Torneo
               </h3>
               <p className="text-xs text-slate-400">
-                {tournament.title} • {isSolo ? 'Modalidad Solo 1v1' : `Equipos de ${tournament.teamSize}`}
+                {tournament.title} • {formatTournamentMode(tournament)}
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
+            aria-label="Cerrar inscripción"
             className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
           >
             <X className="w-5 h-5" />
@@ -248,7 +251,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
                   type="button"
                   onClick={() => {
                     onClose();
-                    router.push('/profile');
+                    router.push(`/profile?returnTo=${encodeURIComponent(`/tournament/${tournament.slug}?tab=overview#inscripcion`)}`);
                   }}
                   className="flex-1 py-3 px-4 rounded-xl font-bold text-xs uppercase tracking-wider text-black bg-red-400 hover:bg-red-300 shadow-lg shadow-red-400/20 transition-all font-mono flex items-center justify-center space-x-2"
                 >
@@ -268,13 +271,15 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
             <form onSubmit={handleSubmit} className="space-y-5">
               
               {errorMsg && (
-                <div className="p-3 rounded-xl bg-red-950/30 border border-red-500/40 text-red-300 text-xs flex items-center space-x-2">
+                <div role="alert" className="p-3 rounded-xl bg-red-950/30 border border-red-500/40 text-red-300 text-xs flex items-center space-x-2">
                   <AlertCircle className="w-4 h-4 shrink-0" />
                   <span>{errorMsg}</span>
                 </div>
               )}
 
               {/* Tournament Slot Info */}
+              {!isRegistrationOpen && <p role="alert" className="rounded-xl border border-amber-500/40 bg-amber-950/30 p-3 text-sm text-amber-200">Las inscripciones están cerradas o se completaron los cupos. Cierra este formulario para consultar el estado del torneo.</p>}
+              {!isCaptain && <p className="rounded-xl border border-amber-500/40 bg-amber-950/30 p-3 text-sm text-amber-200">Solo el capitán puede inscribir al equipo. Comparte el enlace del torneo con {captain?.username || 'tu capitán'}.</p>}
               <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between text-xs">
                 <span className="text-slate-400">Cupos Ocupados:</span>
                 <span className="font-mono font-bold text-red-400">
@@ -293,7 +298,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
                     type="button"
                     onClick={() => {
                       onClose();
-                      router.push('/profile');
+                      router.push(`/profile?returnTo=${encodeURIComponent(`/tournament/${tournament.slug}?tab=overview#inscripcion`)}`);
                     }}
                     className="ml-2 px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 text-[10px] font-bold shrink-0 border border-amber-500/40"
                   >
@@ -320,7 +325,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
                 <div className="p-4 rounded-xl bg-red-950/20 border border-red-500/30 space-y-2">
                   <div className="flex items-center space-x-2 text-xs font-bold text-red-400 uppercase tracking-wider">
                     <UserCheck className="w-4 h-4" />
-                    <span>Inscripción Individual (Solo 1v1)</span>
+                    <span>Inscripción individual</span>
                   </div>
                   <p className="text-xs text-slate-300">
                     Competirás en las llaves del torneo con tu usuario oficial:
@@ -352,7 +357,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
                     <div>
                       <h4 className="text-sm font-bold text-white">{user.teamName || user.team?.name || 'Sin equipo'}</h4>
                       <p className="text-[11px] text-slate-400 font-mono">
-                        TAG: [{user.teamTag || user.team?.tag || 'TEAM'}] • Capitán: @{user.username}
+                        TAG: [{user.teamTag || user.team?.tag || 'TEAM'}] • Capitán: {captain?.username ? `@${captain.username}` : isCaptain ? `@${user.username}` : 'Ver roster del equipo'}
                       </p>
                     </div>
                     <span className={`text-xs font-bold font-mono px-2.5 py-1 rounded ${
@@ -362,6 +367,8 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
                     </span>
                   </div>
 
+                  {roster.length > 0 && <div className="space-y-2"><p className="text-xs font-semibold text-white">Integrantes que se inscribirán</p><ul className="space-y-1.5">{roster.map(member => <li key={member.id || member.user_id} className="flex flex-wrap items-center justify-between gap-1 rounded-lg bg-black/20 px-3 py-2 text-xs"><span className="text-slate-200">@{member.username} <span className="text-slate-500">{member.user_id === user.team?.captain_id ? '· Capitán' : member.role === 'sub' ? '· Suplente' : '· Titular'}</span></span><span className={member.in_game_id ? 'text-slate-400' : 'text-amber-300'}>{member.in_game_id || 'ID de juego pendiente'}</span></li>)}</ul><p className="text-[11px] text-slate-400">Revisa titulares, suplentes e IDs antes de confirmar. Puedes actualizar tu equipo desde el perfil.</p></div>}
+
                   {!isTeamComplete && (
                     <div className="p-2.5 rounded-lg bg-amber-950/40 border border-amber-500/40 text-amber-300 text-xs flex items-center justify-between">
                       <span>Faltan {Math.max(0, requiredTeamSize - currentTeamMembers)} integrante(s) para completar el equipo.</span>
@@ -369,7 +376,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
                         type="button"
                         onClick={() => {
                           onClose();
-                          router.push('/profile');
+                          router.push(`/profile?returnTo=${encodeURIComponent(`/tournament/${tournament.slug}?tab=overview#inscripcion`)}`);
                         }}
                         className="ml-2 px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 text-[10px] font-bold shrink-0 border border-amber-500/40"
                       >
@@ -393,10 +400,11 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-[11px] text-slate-400 mb-1">
+                    <label htmlFor={`${titleId}-game-id`} className="block text-[11px] text-slate-400 mb-1">
                       {game?.tagFieldLabel || 'In-Game ID'} *
                     </label>
                     <input
+                      id={`${titleId}-game-id`}
                       type="text"
                       placeholder={game?.tagPlaceholder || 'Ingresa tu ID'}
                       value={captainInGameId}
@@ -407,12 +415,13 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
                   </div>
 
                   <div>
-                    <label className="block text-[11px] text-slate-400 mb-1">
-                      Discord de Contacto (Usuario#0000)
+                    <label htmlFor={`${titleId}-discord`} className="block text-[11px] text-slate-400 mb-1">
+                      Usuario de Discord (opcional)
                     </label>
                     <input
+                      id={`${titleId}-discord`}
                       type="text"
-                      placeholder="usuario#1234"
+                      placeholder="Tu usuario de Discord"
                       value={captainDiscord}
                       onChange={(e) => setCaptainDiscord(e.target.value)}
                       className="w-full px-3.5 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white text-xs focus:border-red-400 focus:outline-none"
@@ -469,9 +478,10 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
                 </fieldset>
               )}
               <div className="pt-2">
+                <label className="mb-4 flex items-start gap-2 text-xs leading-relaxed text-slate-300"><input type="checkbox" required checked={acceptedRules} onChange={event => setAcceptedRules(event.target.checked)} className="mt-1 accent-red-400" /><span>He leído y acepto las <a href={`/tournament/${tournament.slug}?tab=rules`} target="_blank" rel="noreferrer" className="text-red-300 underline">bases del torneo</a> y la <Link href="/privacidad" target="_blank" className="text-red-300 underline">política de privacidad</Link>.</span></label>
                 <button
                   type="submit"
-                  disabled={isSubmitting || isAlreadyRegistered || (!isSolo && !isTeamComplete)}
+                  disabled={isSubmitting || isAlreadyRegistered || !isRegistrationOpen || !isCaptain || !acceptedRules || (!isSolo && !isTeamComplete)}
                   className="w-full py-3 rounded-xl font-bold text-xs uppercase tracking-wider text-black bg-red-400 hover:bg-red-300 shadow-lg shadow-red-400/25 transition-all font-mono disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   {isSubmitting 

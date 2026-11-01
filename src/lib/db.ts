@@ -203,6 +203,18 @@ async function initializeDatabase() {
   // Existing published rules remain custom until an administrator opts into a preset.
   await db.query("ALTER TABLE torneos ADD COLUMN IF NOT EXISTS rules_mode VARCHAR(16) NOT NULL DEFAULT 'custom'");
   await db.query('ALTER TABLE torneos ADD COLUMN IF NOT EXISTS rules_template_version VARCHAR(64)');
+  await db.query('ALTER TABLE torneos ADD COLUMN IF NOT EXISTS is_featured BOOLEAN NOT NULL DEFAULT false');
+  await db.query("ALTER TABLE torneos ADD COLUMN IF NOT EXISTS prize_delivery_status VARCHAR(32) NOT NULL DEFAULT 'pending'");
+  await db.query(`CREATE TABLE IF NOT EXISTS tournament_waitlist (
+    id VARCHAR(64) PRIMARY KEY,
+    tournament_id VARCHAR(64) NOT NULL REFERENCES torneos(id) ON DELETE CASCADE,
+    user_id VARCHAR(64) NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+    team_id VARCHAR(64),
+    status VARCHAR(16) NOT NULL DEFAULT 'waiting',
+    offer_expires_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(tournament_id, user_id)
+  )`);
   await db.query(`CREATE TABLE IF NOT EXISTS tournament_payments (
     id VARCHAR(64) PRIMARY KEY,
     tournament_id VARCHAR(64) NOT NULL REFERENCES torneos(id),

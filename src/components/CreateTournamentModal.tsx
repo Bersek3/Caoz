@@ -19,7 +19,8 @@ import {
 } from 'lucide-react';
 import { useTournament } from '../context/TournamentContext';
 import { GameId, TournamentFormat } from '../types/tournament';
-import { formatTournamentDate } from '../lib/dateUtils';
+import { formatTournamentDate, normalizeTournamentDate, toTournamentDateTimeInput } from '../lib/dateUtils';
+import { useModalAccessibility } from '../hooks/useModalAccessibility';
 import { TournamentPrizesEditor } from './TournamentPrizesEditor';
 import { prizePlace, validateTournamentPrizes, type TournamentPrize } from '../lib/tournamentPrizes';
 import { TournamentRulesEditor } from './TournamentRulesEditor';
@@ -34,18 +35,11 @@ interface CreateTournamentModalProps {
 export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ isOpen, onClose }) => {
   const router = useRouter();
   const { games, createTournament } = useTournament();
+  const dialogRef = useModalAccessibility(isOpen, onClose);
 
   // Default to tomorrow at 20:00
   const getDefaultDateTime = () => {
-    const d = new Date();
-    d.setDate(d.getDate() + 1);
-    d.setHours(20, 0, 0, 0);
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    const hours = String(d.getHours()).padStart(2, '0');
-    const minutes = String(d.getMinutes()).padStart(2, '0');
-    return `${year}-${month}-${day}T${hours}:${minutes}`;
+    return toTournamentDateTimeInput(new Date(Date.now() + 86400000).toISOString()).slice(0, 10) + 'T20:00';
   };
 
   const [rulesMode, setRulesMode] = useState<RulesMode>('automatic');
@@ -55,7 +49,8 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
   const [step, setStep] = useState<number>(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
-  const [startDateTime, setStartDateTime] = useState<string>(getDefaultDateTime());
+  const [startDateTime, setStartDateTime] = useState<string>(getDefaultDateTime);
+  const [earliestStart] = useState(() => toTournamentDateTimeInput(new Date().toISOString()));
   const [formData, setFormData] = useState({
     title: '',
     gameId: 'valorant' as GameId,
@@ -94,12 +89,10 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
     }));
   };
 
-  React.useEffect(() => {
     if (games.length && !games.some(game => game.id === formData.gameId)) {
       const game = games[0];
-      setFormData(previous => ({ ...previous, gameId: game.id, teamSize: game.defaultTeamSize, teamType: game.defaultTeamSize > 1 ? 'team' : 'solo' }));
+      setFormData({ ...formData, gameId: game.id, teamSize: game.defaultTeamSize, teamType: game.defaultTeamSize > 1 ? 'team' : 'solo' });
     }
-  }, [games, formData.gameId]);
   const selectedGame = games.find((g) => g.id === formData.gameId) || games[0];
 
   const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -134,6 +127,11 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
     e.preventDefault();
     if (isSubmitting || isPreparingBanner) return;
     setSubmitError('');
+    const startInstant = normalizeTournamentDate(startDateTime);
+    if (!startInstant || new Date(startInstant).getTime() <= Date.now()) {
+      setSubmitError('Elige una fecha futura válida en horario de Chile.');
+      return;
+    }
     if (!formData.title.trim()) {
       showAlert('Por favor, ingresa un nombre para el torneo');
       return;
@@ -161,7 +159,7 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
         entryFee: formData.entryFee,
         entryFeeAmount: formData.entryFeeAmount,
         ...prizeSettings,
-        startDate: startDateTime || formData.startDate,
+        startDate: startInstant,
         description: formData.description || `Torneo oficial de ${games.find(g => g.id === formData.gameId)?.name}. Compite por el título y premios.`,
         ...ruleSettings
       });
@@ -181,7 +179,7 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
-      <div className="relative w-full max-w-3xl bg-[#191213] border border-slate-700/80 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="create-tournament-title" className="relative w-full max-w-3xl bg-[#191213] border border-slate-700/80 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
         
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-[#21181c]">
@@ -190,7 +188,7 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
               <Trophy className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-base sm:text-lg font-bold text-white">
+              <h2 id="create-tournament-title" className="text-base sm:text-lg font-bold text-white">
                 Crear torneo
               </h2>
               <p className="text-xs text-slate-400">
@@ -393,7 +391,7 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
                       Fecha y Horario de Inicio
                     </label>
                     <span className="text-[10px] text-red-400 font-mono font-bold bg-red-950/60 px-2 py-0.5 rounded border border-red-800/40">
-                      Horario: GMT-3 (Chile / LATAM)
+                      Hora de Chile
                     </span>
                   </div>
                   
@@ -401,7 +399,7 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
                     <input
                       type="datetime-local"
                       value={startDateTime}
-                      min={new Date().toISOString().slice(0, 16)}
+                      min={earliestStart}
                       onChange={(e) => setStartDateTime(e.target.value)}
                       className="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white text-sm focus:outline-none focus:border-red-400 font-mono scheme-dark cursor-pointer transition-colors"
                       required
@@ -461,23 +459,8 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
                     </p>
                   </div>
 
-                  <div
-                    onClick={() => setFormData({ ...formData, format: 'double_elimination' })}
-                    className={`cursor-pointer p-4 rounded-xl border text-left transition-all ${
-                      formData.format === 'double_elimination'
-                        ? 'bg-purple-500/15 border-purple-400 shadow-lg shadow-purple-500/15'
-                        : 'bg-slate-900/60 border-slate-800 hover:border-slate-700'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="font-bold text-sm text-white">Doble Eliminación</span>
-                      {formData.format === 'double_elimination' && (
-                        <Check className="w-4 h-4 text-purple-400" />
-                      )}
-                    </div>
-                    <p className="text-xs text-slate-400">
-                      Incluye Cuadro Superior (Winners) y Cuadro Inferior (Losers). Los equipos tienen una segunda oportunidad.
-                    </p>
+                  <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4 text-sm text-slate-400">
+                    El formato disponible es eliminación simple, con avance automático y pases por cupos vacíos.
                   </div>
                 </div>
               </div>

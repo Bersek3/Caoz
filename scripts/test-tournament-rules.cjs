@@ -44,7 +44,11 @@ async function main() {
   assert(rules.formatRulesDocument('CAOZ',custom).includes('1. Regla especial CAOZ'));
 
   const mockData = load('../src/data/mockData.ts');
-  const service = load('../src/lib/editTournament.ts',{ '@/data/mockData': mockData,'./tournamentRules': rules });
+  const competition = load('../src/lib/tournamentCompetition.ts');
+  const dates = load('../src/lib/dateUtils.ts');
+  const prizes = load('../src/lib/tournamentPrizes.ts');
+  const service = load('../src/lib/editTournament.ts',{ '@/data/mockData': mockData,'./tournamentRules': rules,
+    './tournamentCompetition': competition,'./dateUtils': dates,'./tournamentPrizes': prizes });
   const db = new PGlite();
   try {
     const source = fs.readFileSync(path.resolve(__dirname,'../src/lib/db.ts'),'utf8');
@@ -54,6 +58,8 @@ async function main() {
     await db.exec(`ALTER TABLE torneos ADD COLUMN entry_fee_amount INTEGER NOT NULL DEFAULT 0;
       ALTER TABLE torneos ADD COLUMN rules_mode VARCHAR(16) NOT NULL DEFAULT 'custom';
       ALTER TABLE torneos ADD COLUMN rules_template_version VARCHAR(64);
+      ALTER TABLE torneos ADD COLUMN IF NOT EXISTS is_featured BOOLEAN NOT NULL DEFAULT false;
+      ALTER TABLE torneos ADD COLUMN IF NOT EXISTS prize_delivery_status VARCHAR(32) NOT NULL DEFAULT 'pending';
       CREATE VIEW tournaments AS SELECT * FROM torneos;
       CREATE VIEW tournament_participants AS SELECT * FROM participantes_torneo;
       CREATE VIEW tournament_rounds AS SELECT * FROM rondas_torneo;
@@ -62,13 +68,15 @@ async function main() {
       CREATE TABLE users(id TEXT PRIMARY KEY,username TEXT);
       CREATE TABLE tournament_payments(tournament_id TEXT,status TEXT,expires_at TIMESTAMPTZ);`);
     const overrides = {
-      '@/lib/db': { initDb: async () => {},getDb: async () => db },
+      '@/lib/db': { initDb: async () => {},getDb: async () => db,withDbTransaction: work => db.transaction(work) },
       '@/lib/auth': { verifyToken: () => ({ role: 'admin' }) },
       '@/lib/games': { getOfficialGames: async () => mockData.POPULAR_GAMES },
-      '@/lib/matchAccess': { getMatchViewer: async () => ({ role: 'admin' }),ownsMatchParticipant: () => false },
+      '@/lib/matchAccess': { getMatchViewer: async () => ({ role: 'admin',id:'staff',username:'Staff' }),ownsMatchParticipant: () => false },
       '@/lib/tournamentBanner': { MAX_TOURNAMENT_REQUEST_BYTES: 1500000 },
       '@/lib/tournamentRules': rules,
-      '@/lib/tournamentPrizes': load('../src/lib/tournamentPrizes.ts'),
+      '@/lib/tournamentPrizes': prizes,
+      '@/lib/tournamentCompetition': competition,
+      '@/lib/dateUtils': dates,
       '@/lib/userAvatar': load('../src/lib/userAvatar.ts')
     };
     const api = load('../src/app/api/tournaments/route.ts',overrides);
