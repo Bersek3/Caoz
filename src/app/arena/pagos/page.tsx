@@ -6,7 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import { formatTournamentDate } from '@/lib/dateUtils';
 
 interface Payment {id:string;title:string;username:string;status:string;amount:number;created_at:string}
-const labels:Record<string,string>={confirmed:'Confirmado',pending:'Pendiente',creating:'Preparando',review:'Revisión manual',failed:'Rechazado / cancelado',refund_required:'Devolución pendiente'};
+const labels:Record<string,string>={confirmed:'Confirmado',pending:'Pendiente',creating:'Preparando',review:'Revisión manual',failed:'Rechazado / cancelado',cancelled:'Inscripción cancelada',refund_required:'Devolución pendiente'};
 export default function PaymentsPage() {
   const {user,isLoading,openAuthModal}=useAuth();
   return <section className="mx-auto max-w-5xl space-y-5 px-4 py-10 text-white sm:px-6">

@@ -46,10 +46,11 @@ async function main() {
     const registration = require('../src/app/api/tournaments/[id]/register/route.ts');
     const webhook = require('../src/app/api/payments/flow/confirmation/route.ts');
     const status = require('../src/app/api/payments/[id]/route.ts');
+    const cancel = require('../src/app/api/payments/[id]/cancel/route.ts');
     const { reconcilePayment, reserveRegistration } = require('../src/lib/tournamentPayments.ts');
     await Promise.all([initDb(),initDb()]);
     for (const user of ['one','two','three','four','five','six','seven']) await memory.query(`INSERT INTO usuarios (id,email,username,password_hash,birth_date) VALUES ($1,$2,$1,'unused','2000-01-01')`,[user,`${user}@example.test`]);
-    for (const id of ['paid','late','mismatch','rejected','free','missing-config','team-paid','network-failure']) {
+    for (const id of ['paid','late','mismatch','rejected','free','missing-config','team-paid','network-failure','cancelled','paid-before-cancel']) {
       await memory.query(`INSERT INTO torneos (id,title,slug,game_id,game_name,start_date,team_type,team_size,max_participants,entry_fee,entry_fee_amount) VALUES ($1,$1,$1,'fortnite','Fortnite','2026-12-01T20:00','solo',1,2,$2,$3)`,[id,id==='free'?'Gratis':'5.000 CLP',id==='free'?0:5000]);
       await memory.query(`INSERT INTO rondas_torneo (id,tournament_id,round_index,title) VALUES ($1,$2,0,'Final')`,[`round-${id}`,id]);
       await memory.query(`INSERT INTO partidas_torneo (id,tournament_id,round_index,round_title,match_index,team1_name,team2_name) VALUES ($1,$2,0,'Final',0,'Empty','Empty')`,[`match-${id}`,id]);
@@ -138,6 +139,33 @@ async function main() {
     recovered.status=2;
     assert.equal((await reconcilePayment(recovered.uuid,review.id)).status,'confirmed','Provider callback recovers an interrupted creation');
     assert.equal(await count('network-failure'),1);
+    const cancellable = await (await register('four','cancelled')).json();
+    const cancelParams = {params:Promise.resolve({id:cancellable.paymentId})};
+    assert.equal((await cancel.POST(request(null,'POST'),cancelParams)).status,401);
+    assert.equal((await cancel.POST(request('five','POST'),cancelParams)).status,404,'Other players cannot cancel this payment');
+    assert.equal((await cancel.POST(request('four','POST'),cancelParams)).status,200);
+    assert.equal((await cancel.POST(request('four','POST'),cancelParams)).status,200,'Cancellation is idempotent');
+    let cancelled = (await memory.query('SELECT * FROM tournament_payments WHERE id=$1',[cancellable.paymentId])).rows[0];
+    assert.equal(cancelled.status,'cancelled');
+    assert.equal(cancelled.checkout_url,null);
+    assert.equal(await count('cancelled'),0);
+    assert.equal((await reconcilePayment(cancelled.provider_uuid)).status,'cancelled','Pending provider callbacks cannot reactivate a cancelled inscription');
+    const cancellationResult = await (await status.GET(request('four'),cancelParams)).json();
+    assert.equal(cancellationResult.payment.checkoutUrl,undefined);
+    const attemptsBeforeRetry = creates;
+    assert.notEqual((await register('four','cancelled')).status,200,'Old link must expire before the same entrant can pay again');
+    assert.equal(creates,attemptsBeforeRetry);
+    await memory.query("UPDATE tournament_payments SET expires_at=CURRENT_TIMESTAMP-INTERVAL '1 minute' WHERE id=$1",[cancellable.paymentId]);
+    const newAttempt = await (await register('four','cancelled')).json();
+    assert(newAttempt.checkoutUrl,'A new attempt is allowed after the previous link expires');
+    orders.get(cancelled.provider_uuid).status=2;
+    assert.equal((await reconcilePayment(cancelled.provider_uuid)).status,'refund_required','A late payment for a cancelled entry must not register the player');
+    assert.equal(await count('cancelled'),0);
+    const raced = await (await register('five','paid-before-cancel')).json();
+    const racedPayment = (await memory.query('SELECT * FROM tournament_payments WHERE id=$1',[raced.paymentId])).rows[0];
+    orders.get(racedPayment.provider_uuid).status=2;
+    assert.equal((await cancel.POST(request('five','POST'),{params:Promise.resolve({id:raced.paymentId})})).status,409,'A payment already made cannot be cancelled as unpaid');
+    assert.equal(await count('paid-before-cancel'),1);
     delete process.env.FLOW_API_KEY;
     const disabled = await register('seven','missing-config');
     assert.notEqual(disabled.status,200);

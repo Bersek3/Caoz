@@ -18,6 +18,8 @@ export async function reserveRegistration(tournamentId: string, registration: Re
     }
     const rows = (await db.query('SELECT * FROM tournament_payments WHERE tournament_id=$1', [tournamentId])).rows;
     const key = registration.teamId || registration.userId;
+    const cancelled = rows.find(p => p.registration_key === key && p.status === 'cancelled' && new Date(p.expires_at).getTime() > Date.now());
+    if (cancelled) throw new Error('Cancelaste esta inscripción. Espera al vencimiento del enlace anterior de Flow antes de iniciar otro pago.');
     const existing = rows.find(p => p.registration_key === key && (p.status === 'review' || (activeStatuses.includes(p.status) && new Date(p.expires_at).getTime() > Date.now())));
     if (existing) {
       if (existing.provider !== 'flow') throw new Error('Existe un pago pendiente con el proveedor anterior. Contacta al organizador para resolverlo antes de pagar con Flow.');
@@ -85,7 +87,7 @@ export async function reconcilePayment(uuid: string | null, paymentId?: string) 
     if (['confirmed', 'refund_required'].includes(payment.status)) return payment;
     if (order.status === 2) {
       const count = Number((await tx.query('SELECT COUNT(*) AS count FROM tournament_participants WHERE tournament_id=$1', [saved.tournament_id])).rows[0].count);
-      if (tournament.status !== 'registration_open' || tournament.is_hidden || count >= tournament.max_participants) {
+      if (payment.status === 'cancelled' || tournament.status !== 'registration_open' || tournament.is_hidden || count >= tournament.max_participants) {
         await tx.query("UPDATE tournament_payments SET status='refund_required' WHERE id=$1", [saved.id]);
         return { ...payment, status: 'refund_required' };
       }
@@ -101,8 +103,33 @@ export async function reconcilePayment(uuid: string | null, paymentId?: string) 
         return { ...payment, status: 'refund_required' };
       }
     }
+    if (payment.status === 'cancelled') return payment;
     const status = [3,4].includes(order.status) ? 'failed' : payment.checkout_url ? 'pending' : 'review';
     await tx.query('UPDATE tournament_payments SET status=$1 WHERE id=$2', [status,saved.id]);
     return { ...payment, status };
+  });
+}
+
+export class PaymentCancellationError extends Error {
+  constructor(message: string, public status: number) { super(message); }
+}
+
+export async function cancelPendingPayment(paymentId: string, userId: string) {
+  const db = await getDb();
+  const saved = (await db.query('SELECT * FROM tournament_payments WHERE id=$1', [paymentId])).rows[0];
+  if (!saved || saved.user_id !== userId) throw new PaymentCancellationError('Pago no encontrado.', 404);
+  if (saved.provider !== 'flow') throw new PaymentCancellationError('Contacta a soporte para cancelar un pago del proveedor anterior.', 409);
+  if (saved.status === 'cancelled') return;
+  if (saved.status !== 'pending') throw new PaymentCancellationError('Solo puedes cancelar una inscripción pendiente de pago. Si ya pagaste o está en revisión, contacta a soporte.', 409);
+  // Do not cancel from a browser-supplied status or while Flow cannot be verified.
+  const verified = await reconcilePayment(saved.provider_uuid || null, saved.id);
+  if (verified.status !== 'pending') throw new PaymentCancellationError('El estado del pago cambió. Consulta el resultado antes de cancelar.', 409);
+  await withDbTransaction(async tx => {
+    // Match the lock order used by checkout creation and callbacks.
+    await tx.query('SELECT * FROM tournaments WHERE id=$1 FOR UPDATE', [saved.tournament_id]);
+    const payment = (await tx.query('SELECT * FROM tournament_payments WHERE id=$1 FOR UPDATE', [saved.id])).rows[0];
+    if (payment.status === 'cancelled') return;
+    if (payment.user_id !== userId || payment.provider !== 'flow' || payment.status !== 'pending') throw new PaymentCancellationError('El estado del pago cambió. Consulta el resultado antes de cancelar.', 409);
+    await tx.query("UPDATE tournament_payments SET status='cancelled',checkout_url=NULL WHERE id=$1", [saved.id]);
   });
 }

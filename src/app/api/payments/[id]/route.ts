@@ -18,5 +18,5 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 
   const tournament = (await db.query('SELECT slug FROM tournaments WHERE id=$1', [payment.tournament_id])).rows[0];
   const checkoutUrl = payment.provider === 'flow' && payment.user_id === viewer.id && payment.status === 'pending' && new Date(payment.expires_at).getTime() > Date.now() ? payment.checkout_url : undefined;
-  return NextResponse.json({ payment: { id: payment.id, status: payment.status, provider: payment.provider, amount: payment.amount, currency: 'CLP', expiresAt: payment.expires_at, tournamentSlug: tournament.slug, checkoutUrl }, verifying }, { headers: { 'Cache-Control': 'private, no-store' } });
+  return NextResponse.json({ payment: { id: payment.id, status: payment.status, provider: payment.provider, amount: payment.amount, currency: 'CLP', expiresAt: payment.expires_at, tournamentSlug: tournament.slug, checkoutUrl, canCancel: payment.provider === 'flow' && payment.user_id === viewer.id && payment.status === 'pending' && !verifying }, verifying }, { headers: { 'Cache-Control': 'private, no-store' } });
 }
