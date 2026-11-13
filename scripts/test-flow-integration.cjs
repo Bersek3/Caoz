@@ -39,7 +39,8 @@ async function main() {
       return Response.json({token:uuid,flowOrder:creates,url:'https://sandbox.flow.cl/checkout'});
     }
     const found=orders.get(params.get('token')) || [...orders.values()].find(order=>order.commerceOrder===params.get('commerceId'));
-    return found?Response.json(found):Response.json({code:1700,message:'Transaction not found'},{status:400});
+    // Production Flow returns the amount as text, including for cancelled orders.
+    return found?Response.json({...found,amount:String(found.amount)}):Response.json({code:1700,message:'Transaction not found'},{status:400});
   };
   try {
     const { initDb } = require('../src/lib/db.ts');

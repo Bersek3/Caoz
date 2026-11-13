@@ -9,7 +9,7 @@ export interface FlowPaymentStatus {
   commerceOrder: string;
   status: number;
   currency: string;
-  amount: number;
+  amount: number | string;
 }
 
 export function flowConfig() {

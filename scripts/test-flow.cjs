@@ -12,7 +12,7 @@ function load(file, dependencies, globals = {}) {
   return exports;
 }
 
-function payments({ paid = true, full = false, mismatch = false, closed = false, duplicate = false, network = false, expired = false, failedRegistration = false } = {}) {
+function payments({ paid = true, full = false, mismatch = false, closed = false, duplicate = false, network = false, expired = false, failedRegistration = false, amount } = {}) {
   const row = { id: 'pay-1', provider: 'flow', tournament_id: 't-1', amount: 1000, status: 'pending', provider_uuid: 'flow_token_12345', provider_order: '123', registration: {}, expires_at: new Date(0) };
   let inserts = 0;
   const query = async (sql, params) => {
@@ -24,7 +24,7 @@ function payments({ paid = true, full = false, mismatch = false, closed = false,
     if (sql.includes('SET status=$1')) row.status = params[0];
     return { rows: [] };
   };
-  const order = { flowOrder: 123, commerceOrder: 'pay-1', amount: mismatch ? 2000 : 1000, currency: 'CLP', status: paid ? 2 : expired ? 4 : 1 };
+  const order = { flowOrder: 123, commerceOrder: 'pay-1', amount: amount === undefined ? (mismatch ? 2000 : 1000) : amount, currency: 'CLP', status: paid ? 2 : expired ? 4 : 1 };
   if (duplicate) row.status = 'confirmed';
   const api = load('src/lib/tournamentPayments.ts', {
     './db': { getDb: async () => ({ query }), withDbTransaction: async fn => fn({ query }) },
@@ -89,6 +89,23 @@ test('unpaid expiration releases the reservation', async () => {
   const p = payments({ paid: false, expired: true });
   assert.equal((await p.api.reconcilePayment('flow_token_12345')).status, 'failed');
   assert.equal(p.inserts(), 0);
+});
+
+test('Flow numeric string amounts verify both approved and cancelled orders', async () => {
+  for (const amount of ['1000', '1000.00']) {
+    const paid = payments({ amount });
+    assert.equal((await paid.api.reconcilePayment('flow_token_12345')).status, 'confirmed');
+    const expired = payments({ paid:false, expired:true, amount });
+    assert.equal((await expired.api.reconcilePayment('flow_token_12345')).status, 'failed');
+  }
+});
+
+test('Flow amount validation rejects malformed, fractional and mismatched values', async () => {
+  for (const amount of ['', ' ', '1e3', '0x3e8', true, null, '1000.50', '2000', 'Infinity', 1000.5]) {
+    const p = payments({ amount });
+    await assert.rejects(p.api.reconcilePayment('flow_token_12345'));
+    assert.equal(p.inserts(),0);
+  }
 });
 
 test('recovery by commerce order verifies payment ownership', async () => {

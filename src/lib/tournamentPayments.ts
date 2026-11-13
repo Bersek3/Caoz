@@ -77,7 +77,10 @@ export async function reconcilePayment(uuid: string | null, paymentId?: string) 
     : await flowRequest<FlowPaymentStatus>('payment/getStatusByCommerceId', { commerceId: paymentId! });
   const saved = (await db.query("SELECT * FROM tournament_payments WHERE id=$1 AND provider='flow'", [order.commerceOrder])).rows[0];
   if (!saved) throw new Error('Pago no encontrado.');
-  if ((paymentId && saved.id !== paymentId) || order.amount !== saved.amount || order.currency !== 'CLP' || !Number.isSafeInteger(order.flowOrder) || order.flowOrder <= 0 || ![1,2,3,4].includes(order.status)) throw new Error('El pago no coincide con la inscripci\u00f3n.');
+  // Flow returns CLP amounts as either JSON numbers or decimal strings (e.g. "3000").
+  // Accept only whole pesos; do not coerce empty strings, exponents, booleans or fractions.
+  const amount = typeof order.amount === 'string' && /^(?:0|[1-9]\d*)(?:\.0+)?$/.test(order.amount) ? Number(order.amount) : order.amount;
+  if ((paymentId && saved.id !== paymentId) || !Number.isSafeInteger(amount) || amount !== saved.amount || order.currency !== 'CLP' || !Number.isSafeInteger(order.flowOrder) || order.flowOrder <= 0 || ![1,2,3,4].includes(order.status)) throw new Error('El pago no coincide con la inscripci\u00f3n.');
   return withDbTransaction(async tx => {
     // All registration paths lock tournament first, then payment, to serialize capacity and callbacks.
     const tournament = (await tx.query('SELECT * FROM tournaments WHERE id=$1 FOR UPDATE', [saved.tournament_id])).rows[0];
