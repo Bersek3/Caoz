@@ -157,3 +157,23 @@ test('transport signs GET and form POST; checkout URLs reject foreign hosts', as
     for (const [key, value] of Object.entries(previous)) if (value === undefined) delete process.env[key]; else process.env[key] = value;
   }
 });
+
+test('Flow rejection records code and redacts credentials and email from diagnostics', async () => {
+  const env = { FLOW_API_KEY: 'private-api-key', FLOW_SECRET_KEY: 'private-secret-key', FLOW_ENV: 'sandbox', APP_URL: 'http://localhost:3000' };
+  const previous = Object.fromEntries(Object.keys(env).map(key => [key, process.env[key]]));
+  Object.assign(process.env, env);
+  const logs = [];
+  const api = load('src/lib/flow.ts', {}, {
+    console: { error: (...args) => logs.push(args) },
+    fetch: async () => ({ ok: false, status: 401, json: async () => ({ code: 162, message: 'Invalid private-api-key private-secret-key payer@example.test' }) }),
+  });
+  try {
+    await assert.rejects(api.flowRequest('payment/create', { email: 'payer@example.test' }, 'POST'), /HTTP 401, código 162/);
+    const output = JSON.stringify(logs);
+    for (const value of ['private-api-key', 'private-secret-key', 'payer@example.test']) assert.equal(output.includes(value), false);
+    assert.equal(logs[0][1].code, '162');
+    assert.equal(logs[0][1].environment, 'sandbox');
+  } finally {
+    for (const [key, value] of Object.entries(previous)) if (value === undefined) delete process.env[key]; else process.env[key] = value;
+  }
+});

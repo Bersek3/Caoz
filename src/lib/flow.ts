@@ -10,9 +10,9 @@ export interface FlowPaymentStatus {
 }
 
 export function flowConfig() {
-  const apiKey = process.env.FLOW_API_KEY;
-  const secretKey = process.env.FLOW_SECRET_KEY;
-  const environment = process.env.FLOW_ENV || 'sandbox';
+  const apiKey = process.env.FLOW_API_KEY?.trim();
+  const secretKey = process.env.FLOW_SECRET_KEY?.trim();
+  const environment = process.env.FLOW_ENV?.trim() || 'sandbox';
   if (!apiKey || !secretKey || !process.env.APP_URL || !['sandbox', 'production'].includes(environment)) throw new Error('Los pagos con Flow aún no están configurados. Contacta al organizador.');
   const site = new URL(process.env.APP_URL);
   const live = environment === 'production';
@@ -39,7 +39,18 @@ export async function flowRequest<T>(path: 'payment/create' | 'payment/getStatus
     ...(method === 'POST' ? { body: body.toString() } : {}),
     cache: 'no-store', redirect: 'error', signal: AbortSignal.timeout(20000),
   });
-  if (!response.ok) throw new Error('Flow no pudo procesar la solicitud. Verifica el estado del pago antes de reintentar.');
+  if (!response.ok) {
+    const error = await response.json().catch(() => null) as { code?: unknown; message?: unknown } | null;
+    const code = typeof error?.code === 'number' && Number.isFinite(error.code) ? String(error.code) : 'sin código';
+    let detail = typeof error?.message === 'string' ? error.message : 'Respuesta sin detalle JSON';
+    // Flow can echo request values in errors. Never log credentials or payer data.
+    for (const value of [config.apiKey, config.secretKey, body.get('s'), params.token, params.email, params.commerceOrder, params.commerceId]) {
+      if (typeof value === 'string' && value) detail = detail.split(value).join('[oculto]');
+    }
+    detail = detail.replace(/[\r\n\t]/g, ' ').replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, '[correo oculto]').slice(0, 250);
+    console.error('Flow API rechazó solicitud', { path, environment: config.environment, httpStatus: response.status, code, detail });
+    throw new Error(`Flow rechazó la solicitud (HTTP ${response.status}, código ${code}). Consulta Mis pagos antes de reintentar y comunica esta referencia al organizador.`);
+  }
   return response.json() as Promise<T>;
 }
 
