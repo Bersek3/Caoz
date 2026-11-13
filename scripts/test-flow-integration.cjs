@@ -50,6 +50,7 @@ async function main() {
     const cancel = require('../src/app/api/payments/[id]/cancel/route.ts');
     const archive = require('../src/app/api/payments/[id]/archive/route.ts');
     const list = require('../src/app/api/payments/route.ts');
+    const tournamentRoutes = require('../src/app/api/tournaments/route.ts');
     const { reconcilePayment, reserveRegistration } = require('../src/lib/tournamentPayments.ts');
     await Promise.all([initDb(),initDb()]);
     for (const user of ['one','two','three','four','five','six','seven']) await memory.query(`INSERT INTO usuarios (id,email,username,password_hash,birth_date) VALUES ($1,$2,$1,'unused','2000-01-01')`,[user,`${user}@example.test`]);
@@ -194,6 +195,25 @@ async function main() {
     assert(overview.payments.every(p=>p.username==='one'),'Tournament filtering never bypasses ownership');
     assert.equal((await archive.POST(request('seven','POST',archiveBody),{params:Promise.resolve({id:first.paymentId})})).status,409,'Confirmed charges cannot be archived');
     assert.equal((await archive.POST(request('seven','POST',archiveBody),{params:Promise.resolve({id:newAttempt.paymentId})})).status,409,'Live pending orders cannot be archived');
+    // A test tournament can be removed only after its absent Flow orders are verified and archived.
+    await memory.query(`INSERT INTO tournaments(id,title,slug,game_id,game_name,start_date,max_participants) VALUES ('deletable','Test cleanup','deletable-slug','fortnite','Fortnite','2026-12-01T20:00',2)`);
+    await memory.query(`INSERT INTO tournament_payments(id,tournament_id,user_id,registration_key,amount,registration,provider,status,created_at)
+      VALUES('pay-cleanup','deletable','one','one',10,'{}','flow','review',CURRENT_TIMESTAMP-INTERVAL '5 minutes')`);
+    const deleteRequest=(who,query)=>new Request('https://arena.example.test/api/tournaments?'+query,{method:'DELETE',headers:headers(who)});
+    assert.equal((await tournamentRoutes.DELETE(deleteRequest('one','id=deletable'))).status,403);
+    assert.equal((await tournamentRoutes.DELETE(deleteRequest('seven','id=deletable'))).status,409,'Unresolved attempts still protect the tournament');
+    assert.equal((await archive.POST(request('seven','POST',archiveBody),{params:Promise.resolve({id:'pay-cleanup'})})).status,200);
+    assert.equal((await tournamentRoutes.DELETE(deleteRequest('seven','all=true'))).status,409,'Bulk deletion is atomic and refuses any protected payment');
+    assert.equal(Number((await memory.query("SELECT COUNT(*) AS count FROM tournaments WHERE id='deletable'")).rows[0].count),1,'Bulk rollback leaves deletable tournaments intact');
+    assert.equal((await tournamentRoutes.DELETE(deleteRequest('seven','id=deletable-slug'))).status,200,'Deletion also resolves a slug');
+    assert.equal(Number((await memory.query("SELECT COUNT(*) AS count FROM tournaments WHERE id='deletable'")).rows[0].count),0);
+    assert.equal(Number((await memory.query("SELECT COUNT(*) AS count FROM tournament_payments WHERE id='pay-cleanup'")).rows[0].count),0);
+    const audit=(await memory.query("SELECT * FROM removed_tournament_payment_attempts WHERE payment_id='pay-cleanup'")).rows[0];
+    assert.equal(audit.amount,10);assert.equal(audit.removed_by,'seven');assert.equal(audit.tournament_title,'Test cleanup');
+    assert.equal((await tournamentRoutes.DELETE(deleteRequest('seven','id=paid'))).status,409,'Confirmed charges continue protecting their tournament');
+    const rejected=(await memory.query("SELECT id FROM tournament_payments WHERE tournament_id='rejected'")).rows[0];
+    assert.equal((await archive.POST(request('seven','POST',archiveBody),{params:Promise.resolve({id:rejected.id})})).status,200);
+    assert.equal((await tournamentRoutes.DELETE(deleteRequest('seven','id=rejected'))).status,409,'An archived real provider order still protects its history');
     // A later provider recovery must not silently register a formerly archived entry.
     orders.set('late-orphan-token',{uuid:'late-orphan-token',flowOrder:9999,commerceOrder:orphan,currency:'CLP',amount:10,status:2});
     assert.equal((await reconcilePayment('late-orphan-token')).status,'refund_required');
