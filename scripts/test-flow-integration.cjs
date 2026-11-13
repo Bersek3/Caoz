@@ -55,7 +55,7 @@ async function main() {
     const { reconcilePayment, reserveRegistration } = require('../src/lib/tournamentPayments.ts');
     await Promise.all([initDb(),initDb()]);
     for (const user of ['one','two','three','four','five','six','seven']) await memory.query(`INSERT INTO usuarios (id,email,username,password_hash,birth_date) VALUES ($1,$2,$1,'unused','2000-01-01')`,[user,`${user}@example.test`]);
-    for (const id of ['paid','late','mismatch','rejected','free','missing-config','team-paid','network-failure','cancelled','paid-before-cancel']) {
+    for (const id of ['paid','late','mismatch','rejected','free','missing-config','team-paid','network-failure','cancelled','paid-before-cancel','rejected-archived','rejection-changed','rejection-unavailable']) {
       await memory.query(`INSERT INTO torneos (id,title,slug,game_id,game_name,start_date,team_type,team_size,max_participants,entry_fee,entry_fee_amount) VALUES ($1,$1,$1,'fortnite','Fortnite','2026-12-01T20:00','solo',1,2,$2,$3)`,[id,id==='free'?'Gratis':'5.000 CLP',id==='free'?0:5000]);
       await memory.query(`INSERT INTO rondas_torneo (id,tournament_id,round_index,title) VALUES ($1,$2,0,'Final')`,[`round-${id}`,id]);
       await memory.query(`INSERT INTO partidas_torneo (id,tournament_id,round_index,round_title,match_index,team1_name,team2_name) VALUES ($1,$2,0,'Final',0,'Empty','Empty')`,[`match-${id}`,id]);
@@ -241,8 +241,25 @@ async function main() {
     assert.equal(audit.amount,10);assert.equal(audit.removed_by,'seven');assert.equal(audit.tournament_title,'Test cleanup');
     assert.equal((await tournamentRoutes.DELETE(deleteRequest('seven','id=paid'))).status,409,'Confirmed charges continue protecting their tournament');
     const rejected=(await memory.query("SELECT id FROM tournament_payments WHERE tournament_id='rejected'")).rows[0];
-    assert.equal((await archive.POST(request('seven','POST',archiveBody),{params:Promise.resolve({id:rejected.id})})).status,200);
-    assert.equal((await tournamentRoutes.DELETE(deleteRequest('seven','id=rejected'))).status,409,'An archived real provider order still protects its history');
+    assert.equal((await tournamentRoutes.DELETE(deleteRequest('seven','id=rejected'))).status,200,'A rejected-only tournament can be deleted without manually archiving each payment');
+    const rejectedAudit=(await memory.query('SELECT * FROM removed_tournament_payment_attempts WHERE payment_id=$1',[rejected.id])).rows[0];
+    assert.equal(rejectedAudit.provider_status,3);assert(rejectedAudit.provider_order);
+    for (const id of ['rejected-archived','rejection-changed','rejection-unavailable']) {
+      const created=await (await register('six',id)).json();
+      const record=(await memory.query('SELECT * FROM tournament_payments WHERE id=$1',[created.paymentId])).rows[0];
+      orders.get(record.provider_uuid).status=3;
+      await reconcilePayment(record.provider_uuid);
+      if (id==='rejected-archived') {
+        assert.equal((await archive.POST(request('seven','POST',archiveBody),{params:Promise.resolve({id:record.id})})).status,200);
+        assert.equal((await tournamentRoutes.DELETE(deleteRequest('seven','id='+id))).status,200,'Archived rejected-only tournaments are also deletable');
+      } else {
+        if (id==='rejection-changed') orders.get(record.provider_uuid).status=2;
+        else orders.delete(record.provider_uuid);
+        assert.equal((await tournamentRoutes.DELETE(deleteRequest('seven','id='+id))).status,id==='rejection-changed'?409:503,'A paid or unverifiable provider order must block deletion');
+        assert.equal(Number((await memory.query('SELECT COUNT(*) AS count FROM tournaments WHERE id=$1',[id])).rows[0].count),1);
+        assert.equal(Number((await memory.query('SELECT COUNT(*) AS count FROM removed_tournament_payment_attempts WHERE payment_id=$1',[record.id])).rows[0].count),0,'Failed deletion does not leave partial audit data');
+      }
+    }
     // A later provider recovery must not silently register a formerly archived entry.
     orders.set('late-orphan-token',{uuid:'late-orphan-token',flowOrder:9999,commerceOrder:orphan,currency:'CLP',amount:10,status:2});
     assert.equal((await reconcilePayment('late-orphan-token')).status,'refund_required');

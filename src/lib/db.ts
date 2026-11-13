@@ -252,6 +252,8 @@ async function initializeDatabase() {
     removed_by VARCHAR(64) NOT NULL,
     removed_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
   )`);
+  await db.query('ALTER TABLE removed_tournament_payment_attempts ADD COLUMN IF NOT EXISTS provider_order TEXT');
+  await db.query('ALTER TABLE removed_tournament_payment_attempts ADD COLUMN IF NOT EXISTS provider_status INTEGER');
   await db.query(`CREATE INDEX IF NOT EXISTS tournament_payments_reservations ON tournament_payments(tournament_id, status, expires_at)`);
 
   // 6. Tabla: participantes_torneo
