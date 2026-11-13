@@ -203,6 +203,26 @@ async function main() {
     assert(overview.payments.every(p=>p.username==='one'),'Tournament filtering never bypasses ownership');
     assert.equal((await archive.POST(request('seven','POST',archiveBody),{params:Promise.resolve({id:first.paymentId})})).status,409,'Confirmed charges cannot be archived');
     assert.equal((await archive.POST(request('seven','POST',archiveBody),{params:Promise.resolve({id:newAttempt.paymentId})})).status,409,'Live pending orders cannot be archived');
+    await memory.query("UPDATE tournament_payments SET expires_at=CURRENT_TIMESTAMP-INTERVAL '1 minute' WHERE id=$1",[newAttempt.paymentId]);
+    assert.equal((await archive.POST(request('seven','POST',archiveBody),{params:Promise.resolve({id:newAttempt.paymentId})})).status,200,'Expired unpaid links can be archived after provider verification');
+    const expiredAttempt=(await memory.query('SELECT * FROM tournament_payments WHERE id=$1',[newAttempt.paymentId])).rows[0];
+    assert.equal(expiredAttempt.status,'failed');assert.equal(expiredAttempt.archive_reason,'flow_expired_unpaid');assert.equal(expiredAttempt.checkout_url,null);
+    overview=await (await list.GET(listRequest('seven'))).json();
+    assert.equal(overview.payments.some(p=>p.id===newAttempt.paymentId),false);
+    orders.get(expiredAttempt.provider_uuid).status=2;
+    assert.equal((await reconcilePayment(expiredAttempt.provider_uuid)).status,'refund_required','A delayed payment on an expired archived order requires refund');
+    overview=await (await list.GET(listRequest('seven'))).json();
+    assert(overview.payments.some(p=>p.id===newAttempt.paymentId&&p.status==='refund_required'));
+    await memory.query("UPDATE tournaments SET status='completed' WHERE id='paid'");
+    assert.equal((await archive.POST(request('seven','POST',archiveBody),{params:Promise.resolve({id:first.paymentId})})).status,200,'Approved payments can be archived after a tournament finishes');
+    const finishedPayment=(await memory.query('SELECT * FROM tournament_payments WHERE id=$1',[first.paymentId])).rows[0];
+    assert.equal(finishedPayment.status,'confirmed');assert.equal(finishedPayment.archive_reason,'completed_tournament_payment');
+    overview=await (await list.GET(listRequest('seven'))).json();
+    assert.equal(overview.payments.some(p=>p.id===first.paymentId),false,'Archived approved receipts leave the admin active view');
+    overview=await (await list.GET(listRequest('seven','?includeArchived=1'))).json();
+    assert(overview.payments.some(p=>p.id===first.paymentId&&p.status==='confirmed'));
+    overview=await (await list.GET(listRequest('one'))).json();
+    assert(overview.payments.some(p=>p.id===first.paymentId&&p.status==='confirmed'),'The payer keeps their approved receipt after admin archives it');
     // A test tournament can be removed only after its absent Flow orders are verified and archived.
     await memory.query(`INSERT INTO tournaments(id,title,slug,game_id,game_name,start_date,max_participants) VALUES ('deletable','Test cleanup','deletable-slug','fortnite','Fortnite','2026-12-01T20:00',2)`);
     await memory.query(`INSERT INTO tournament_payments(id,tournament_id,user_id,registration_key,amount,registration,provider,status,created_at)

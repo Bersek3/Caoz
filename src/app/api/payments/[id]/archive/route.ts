@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { initDb } from '@/lib/db';
 import { getMatchViewer } from '@/lib/matchAccess';
-import { archiveFailedPayment, PaymentArchiveError } from '@/lib/paymentArchive';
+import { archivePayment, PaymentArchiveError } from '@/lib/paymentArchive';
 
 export const runtime = 'nodejs';
 
@@ -14,7 +14,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   try {
     await initDb();
     const { id } = await params;
-    await archiveFailedPayment(id, viewer.id, body?.confirmedOriginalFlowAccount === true);
+    await archivePayment(id, viewer.id, body?.confirmedOriginalFlowAccount === true);
     return NextResponse.json({ success: true }, { headers: { 'Cache-Control': 'private, no-store' } });
   } catch (error) {
     if (error instanceof PaymentArchiveError) return NextResponse.json({ error: error.message }, { status: error.status });
