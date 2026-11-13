@@ -48,7 +48,7 @@ Evita incluir documentos de identidad, información bancaria u otros datos innec
 
 ### Pagos de inscripción
 
-Si el torneo requiere un pago y la pasarela está habilitada, tratamos el nombre y apellido del pagador, RUT, teléfono y correo electrónico para iniciar la operación con VirtualPOS.
+Si el torneo requiere un pago y la pasarela está habilitada, enviamos a Flow el correo electrónico asociado a la cuenta, importe, descripción y referencia de la inscripción para iniciar la operación. Los datos del medio de pago se ingresan directamente en el entorno de Flow.
 
 Registramos el importe, moneda, torneo, cuenta asociada, datos de la inscripción, identificadores de la transacción, enlace de pago, fechas y estado de la operación. Estos datos permiten verificar el pago y gestionar la inscripción.
 
@@ -90,7 +90,7 @@ El correo de acceso, hash de contraseña, fecha de nacimiento, N° de documento,
 
 **Personal autorizado y responsables de la competencia.** La información pertinente puede ser utilizada por administradores, árbitros y quienes gestionan la participación, según las funciones y permisos habilitados. No se debe entregar información de identidad o contacto a un organizador por el solo hecho de organizar un torneo. Si una actividad requiere una comunicación adicional, deberá informarse su finalidad y alcance.
 
-**Proveedor de pagos.** Al iniciar un pago se envían a VirtualPOS el nombre, apellido, RUT, teléfono y correo del pagador, importe, descripción y referencias de la operación. El proveedor trata también los datos que ingreses directamente en su entorno conforme a sus condiciones y política de privacidad.
+**Proveedor de pagos.** Al iniciar un pago se envían a Flow el correo electrónico del pagador, importe, descripción y referencia de la operación. El proveedor trata también los datos que ingreses directamente en su entorno conforme a sus condiciones y política de privacidad.
 
 **Proveedores técnicos.** El servicio necesita infraestructura de alojamiento y base de datos. **[Identificar los proveedores contratados, su función y países de tratamiento antes de publicar.]**
 

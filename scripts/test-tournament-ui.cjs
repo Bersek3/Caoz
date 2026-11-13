@@ -300,13 +300,13 @@ async function run() {
       const payments = await setup({ role: 'player' });
       await payments.goto('/arena/pago?paymentId=pay-active');
       await payments.page.getByText('Referencia: pay-active', { exact: true }).waitFor();
-      await payments.page.getByRole('link', { name: 'Continuar pago en VirtualPOS', exact: true }).waitFor();
+      await payments.page.getByRole('link', { name: 'Continuar pago en Flow', exact: true }).waitFor();
       await payments.page.getByText(/^Cupo reservado por /).waitFor();
       await payments.page.evaluate(() => { window.__paymentNavigationSentinel = true; window.history.pushState(null, '', '/arena/pago?paymentId=pay-expired'); });
       await payments.page.getByText('Referencia: pay-expired', { exact: true }).waitFor();
       assert.equal(await payments.page.evaluate(() => window.__paymentNavigationSentinel), true);
       assert.equal(await payments.page.getByText('Referencia: pay-active', { exact: true }).count(), 0);
-      assert.equal(await payments.page.getByRole('link', { name: 'Continuar pago en VirtualPOS', exact: true }).count(), 0);
+      assert.equal(await payments.page.getByRole('link', { name: 'Continuar pago en Flow', exact: true }).count(), 0);
       await payments.page.getByText('La reserva del cupo ha expirado', { exact: true }).waitFor();
       await payments.page.screenshot({ path: path.join(screenshots, 'payment-expired.png'), fullPage: true });
       assert.deepEqual(payments.errors, []);
@@ -329,7 +329,7 @@ async function run() {
       assert.equal(refundMail.protocol, 'mailto:');
       assert.match(refundMail.searchParams.get('subject'), /pay-refund/);
       assert.match(refundMail.searchParams.get('body'), /Referencia: pay-refund[\s\S]*refund_required/);
-      assert.equal(await payments.page.getByRole('link', { name: 'Continuar pago en VirtualPOS', exact: true }).count(), 0);
+      assert.equal(await payments.page.getByRole('link', { name: 'Continuar pago en Flow', exact: true }).count(), 0);
       assert.deepEqual(payments.errors, []);
     });
     await check('payment history fits mobile and logout clears prior account data', async () => {

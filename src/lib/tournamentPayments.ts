@@ -1,12 +1,12 @@
 import { randomUUID } from 'crypto';
 import { getDb, withDbTransaction } from './db';
 import { insertRegistration, Registration } from './tournamentRegistration';
-import { virtualposConfig, virtualposRequest, validateCheckoutUrl } from './virtualpos';
+import { flowConfig, flowRequest, flowCheckoutUrl, validFlowToken, FlowPaymentStatus } from './flow';
 import { assertWaitlistTurn } from './tournamentWaitlist';
 
 const activeStatuses = ['creating', 'pending', 'review'];
 
-export async function reserveRegistration(tournamentId: string, registration: Registration, payer: { first_name: string; last_name: string; social_id: string; phone: string }) {
+export async function reserveRegistration(tournamentId: string, registration: Registration) {
   const reserved = await withDbTransaction(async db => {
     const tournament = (await db.query('SELECT * FROM tournaments WHERE id=$1 FOR UPDATE', [tournamentId])).rows[0];
     if (!tournament || tournament.status !== 'registration_open' || tournament.is_hidden) throw new Error('Las inscripciones no están abiertas.');
@@ -20,12 +20,13 @@ export async function reserveRegistration(tournamentId: string, registration: Re
     const key = registration.teamId || registration.userId;
     const existing = rows.find(p => p.registration_key === key && (p.status === 'review' || (activeStatuses.includes(p.status) && new Date(p.expires_at).getTime() > Date.now())));
     if (existing) {
+      if (existing.provider !== 'flow') throw new Error('Existe un pago pendiente con el proveedor anterior. Contacta al organizador para resolverlo antes de pagar con Flow.');
       if (existing.user_id !== registration.userId) throw new Error('Tu equipo ya tiene un pago iniciado. Debe completarlo la persona que lo inició.');
       if (!existing.checkout_url || existing.status === 'review') throw new Error('Existe un pago en preparación o revisión. Contacta al organizador antes de volver a pagar.');
       return { paymentId: existing.id, checkoutUrl: existing.checkout_url, create: false };
     }
     const count = participants.length;
-    const pending = rows.filter(p => activeStatuses.includes(p.status) && new Date(p.expires_at).getTime() > Date.now());
+    const pending = rows.filter(p => p.status === 'review' || (activeStatuses.includes(p.status) && new Date(p.expires_at).getTime() > Date.now()));
     if (count + pending.length >= tournament.max_participants) throw new Error('No quedan cupos disponibles. Algunos pueden estar reservados por pagos pendientes.');
     await assertWaitlistTurn(db,tournament,registration.userId,registration.teamId);
     if (pending.some(p => p.registration.roster.some((member: { userId: string }) => registration.roster.some(candidate => candidate.userId === member.userId)))) throw new Error('Un integrante ya tiene una inscripción pendiente de pago.');
@@ -35,30 +36,28 @@ export async function reserveRegistration(tournamentId: string, registration: Re
       await db.query('DELETE FROM tournament_waitlist WHERE tournament_id=$1 AND (user_id=$2 OR ($3::text IS NOT NULL AND team_id=$3))',[tournamentId,registration.userId,registration.teamId]);
       return { participantId, create: false };
     }
-    virtualposConfig();
-    if (!payer.first_name?.trim() || !payer.last_name?.trim() || !/^[0-9kK.-]{8,12}$/.test(payer.social_id || '') || !/^\d{9,15}$/.test(payer.phone || '')) throw new Error('Completa nombre, apellido, RUT y teléfono del pagador.');
+    flowConfig();
     const user = (await db.query('SELECT email FROM users WHERE id=$1', [registration.userId])).rows[0];
     const paymentId = `pay-${randomUUID()}`;
-    await db.query(`INSERT INTO tournament_payments (id,tournament_id,user_id,registration_key,amount,registration) VALUES ($1,$2,$3,$4,$5,$6)`, [paymentId,tournamentId,registration.userId,key,tournament.entry_fee_amount,JSON.stringify(registration)]);
+    await db.query(`INSERT INTO tournament_payments (id,tournament_id,user_id,registration_key,amount,registration,provider,expires_at) VALUES ($1,$2,$3,$4,$5,$6,'flow',CURRENT_TIMESTAMP + INTERVAL '35 minutes')`, [paymentId,tournamentId,registration.userId,key,tournament.entry_fee_amount,JSON.stringify(registration)]);
     await db.query("UPDATE tournament_waitlist SET status='claimed' WHERE tournament_id=$1 AND (user_id=$2 OR ($3::text IS NOT NULL AND team_id=$3))",[tournamentId,registration.userId,registration.teamId]);
     return { paymentId, amount: tournament.entry_fee_amount, title: tournament.title, email: user.email, create: true };
   });
   if (!reserved.create) return reserved;
   const db = await getDb();
   try {
-    const config = virtualposConfig();
-    const return_url = Buffer.from(`${config.site}/api/payments/virtualpos/return?paymentId=${reserved.paymentId}`).toString('base64');
-    const callback_url = Buffer.from(`${config.site}/api/payments/virtualpos/webhook?paymentId=${reserved.paymentId}`).toString('base64');
-    const result = await virtualposRequest('', { first_name: payer.first_name.trim(), last_name: payer.last_name.trim(), social_id: payer.social_id, phone: payer.phone,
-      email: reserved.email, amount: reserved.amount,
-      description: `Inscripción ${reserved.title}`.slice(0, 200), merchant_internal_code: reserved.paymentId,
-      merchant_internal_channel: 'CAOZ_ARENA', return_url, callback_url });
-    const order = result.payment?.order;
-    if (!order?.uuid || order.merchant_internal_code !== reserved.paymentId || Number(order.amount) !== reserved.amount) throw new Error('La respuesta del proveedor no coincide con el pedido.');
-    await db.query('UPDATE tournament_payments SET provider_uuid=$1 WHERE id=$2', [order.uuid, reserved.paymentId]);
-    const checkout = result.url_redirect ? result : await virtualposRequest(`${encodeURIComponent(order.uuid)}/webcheckout`, { return_url, callback_url, payment_method: 'all' });
-    const checkoutUrl = validateCheckoutUrl(checkout.url_redirect);
-    await db.query("UPDATE tournament_payments SET status='pending',checkout_url=$1 WHERE id=$2 AND status='creating'", [checkoutUrl,reserved.paymentId]);
+    const { site } = flowConfig();
+    const createdAt = Date.now();
+    const order = await flowRequest<{ url: string; token: string; flowOrder: number }>('payment/create', {
+      commerceOrder: reserved.paymentId!, subject: ('Inscripci\u00f3n ' + reserved.title).slice(0, 200),
+      currency: 'CLP', amount: reserved.amount!, email: reserved.email,
+      paymentMethod: 9, timeout: 1800,
+      urlConfirmation: site + '/api/payments/flow/confirmation',
+      urlReturn: site + '/api/payments/flow/return?paymentId=' + reserved.paymentId,
+    }, 'POST');
+    if (!validFlowToken(order.token) || !Number.isSafeInteger(order.flowOrder) || order.flowOrder <= 0) throw new Error('Respuesta de Flow inv\u00e1lida.');
+    const checkoutUrl = flowCheckoutUrl(order.url, order.token);
+    await db.query("UPDATE tournament_payments SET provider_uuid=$1,provider_order=$2,checkout_url=$3,expires_at=$4,status=CASE WHEN status IN ('creating','review') THEN 'pending' ELSE status END WHERE id=$5", [order.token,String(order.flowOrder),checkoutUrl,new Date(createdAt + 1800000),reserved.paymentId]);
     return { paymentId: reserved.paymentId, checkoutUrl };
   } catch (error) {
     // A network error can occur after the gateway created the charge. Never start another automatically.
@@ -67,24 +66,26 @@ export async function reserveRegistration(tournamentId: string, registration: Re
   }
 }
 
-export async function reconcilePayment(uuid: string, paymentId?: string) {
+export async function reconcilePayment(uuid: string | null, paymentId?: string) {
   const db = await getDb();
-  const saved = (await db.query('SELECT * FROM tournament_payments WHERE provider_uuid=$1 OR (id=$2 AND provider_uuid IS NULL)', [uuid,paymentId || ''])).rows[0];
+  if (uuid !== null && !validFlowToken(uuid)) throw new Error('Token de Flow inv\u00e1lido.');
+  if (!uuid && !paymentId) throw new Error('Falta la referencia del pago.');
+  const order = uuid
+    ? await flowRequest<FlowPaymentStatus>('payment/getStatus', { token: uuid })
+    : await flowRequest<FlowPaymentStatus>('payment/getStatusByCommerceId', { commerceId: paymentId! });
+  const saved = (await db.query("SELECT * FROM tournament_payments WHERE id=$1 AND provider='flow'", [order.commerceOrder])).rows[0];
   if (!saved) throw new Error('Pago no encontrado.');
-  if (saved.status === 'confirmed' || saved.status === 'refund_required') return saved;
-  const response = await virtualposRequest(encodeURIComponent(uuid));
-  const order = response.payment?.order;
-  if (order?.uuid !== uuid || order.merchant_internal_code !== saved.id || Number(order.amount) !== saved.amount) throw new Error('El pago no coincide con la inscripción.');
+  if ((paymentId && saved.id !== paymentId) || order.amount !== saved.amount || order.currency !== 'CLP' || !Number.isSafeInteger(order.flowOrder) || order.flowOrder <= 0 || ![1,2,3,4].includes(order.status)) throw new Error('El pago no coincide con la inscripci\u00f3n.');
   return withDbTransaction(async tx => {
     // All registration paths lock tournament first, then payment, to serialize capacity and callbacks.
     const tournament = (await tx.query('SELECT * FROM tournaments WHERE id=$1 FOR UPDATE', [saved.tournament_id])).rows[0];
     const payment = (await tx.query('SELECT * FROM tournament_payments WHERE id=$1 FOR UPDATE', [saved.id])).rows[0];
-    if (payment.provider_uuid && payment.provider_uuid !== uuid) throw new Error('Referencia de pago inválida.');
-    await tx.query('UPDATE tournament_payments SET provider_uuid=$1 WHERE id=$2', [uuid,saved.id]);
+    if ((uuid && payment.provider_uuid && payment.provider_uuid !== uuid) || (payment.provider_order && payment.provider_order !== String(order.flowOrder))) throw new Error('Referencia de pago inválida.');
+    await tx.query('UPDATE tournament_payments SET provider_uuid=COALESCE($1,provider_uuid),provider_order=$2 WHERE id=$3', [uuid,String(order.flowOrder),saved.id]);
     if (['confirmed', 'refund_required'].includes(payment.status)) return payment;
-    if (order.status === 'pagado') {
+    if (order.status === 2) {
       const count = Number((await tx.query('SELECT COUNT(*) AS count FROM tournament_participants WHERE tournament_id=$1', [saved.tournament_id])).rows[0].count);
-      if (new Date(payment.expires_at).getTime() < Date.now() || tournament.status !== 'registration_open' || tournament.is_hidden || count >= tournament.max_participants) {
+      if (tournament.status !== 'registration_open' || tournament.is_hidden || count >= tournament.max_participants) {
         await tx.query("UPDATE tournament_payments SET status='refund_required' WHERE id=$1", [saved.id]);
         return { ...payment, status: 'refund_required' };
       }
@@ -100,7 +101,7 @@ export async function reconcilePayment(uuid: string, paymentId?: string) {
         return { ...payment, status: 'refund_required' };
       }
     }
-    const status = ['rechazado', 'cancelado', 'expirado'].includes(order.status) ? 'failed' : 'pending';
+    const status = [3,4].includes(order.status) ? 'failed' : payment.checkout_url ? 'pending' : 'review';
     await tx.query('UPDATE tournament_payments SET status=$1 WHERE id=$2', [status,saved.id]);
     return { ...payment, status };
   });

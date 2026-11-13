@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const Module = require('node:module');
 const ts = require('typescript');
-const jwt = require('jsonwebtoken');
+const { createHmac } = require('node:crypto');
 const { PGlite } = require('@electric-sql/pglite');
 const root = path.resolve(__dirname, '..');
 const resolve = Module._resolveFilename;
@@ -13,9 +13,9 @@ require.extensions['.ts'] = (module, filename) => module._compile(ts.transpileMo
 
 async function main() {
   delete process.env.DATABASE_URL;
-  process.env.VIRTUALPOS_ENV = 'sandbox';
-  process.env.VIRTUALPOS_API_KEY = 'test-key';
-  process.env.VIRTUALPOS_SECRET_KEY = 'test-secret';
+  process.env.FLOW_ENV = 'sandbox';
+  process.env.FLOW_API_KEY = 'test-key';
+  process.env.FLOW_SECRET_KEY = 'test-secret';
   process.env.APP_URL = 'https://arena.example.test';
   const memory = new PGlite();
   global.__pgliteInstance = memory;
@@ -24,29 +24,27 @@ async function main() {
   let creates = 0;
   let failNextCreate = false;
   global.fetch = async (url, options) => {
-    assert(String(url).startsWith('https://api.virtualpos-sandbox.com/v3/payment/'));
-    const signature = jwt.verify(options.headers.Signature,'test-secret');
-    assert.equal(signature.api_key,'test-key');
-    assert.equal(options.headers.Authorization,'test-key');
-    if (options.method === 'POST') {
-      const body = JSON.parse(options.body);
-      for (const key of Object.keys(body)) assert.deepEqual(signature[key],body[key]);
-      assert.equal(body.amount,5000,'Server must use the stored CLP price');
-      assert(Buffer.from(body.callback_url,'base64').toString().startsWith('https://arena.example.test/api/payments/virtualpos/webhook?paymentId='));
-      const uuid = `uuid${String(++creates).padStart(12,'0')}`;
-      const order = {uuid,amount:body.amount,status:'pendiente',merchant_internal_code:body.merchant_internal_code};
+    assert(String(url).startsWith('https://sandbox.flow.cl/api/payment/'));
+    const params=options.method==='POST'?new URLSearchParams(options.body):new URL(url).searchParams;
+    const toSign=[...params.keys()].filter(key=>key!=='s').sort().map(key=>key+params.get(key)).join('');
+    assert.equal(params.get('s'),createHmac('sha256','test-secret').update(toSign).digest('hex'));
+    assert.equal(params.get('apiKey'),'test-key');
+    if(options.method==='POST') {
+      assert.equal(Number(params.get('amount')),5000);
+      assert.equal(params.get('urlConfirmation'),'https://arena.example.test/api/payments/flow/confirmation');
+      const uuid='flow-token-'+String(++creates).padStart(12,'0');
+      const order={uuid,flowOrder:creates,amount:5000,currency:'CLP',status:1,commerceOrder:params.get('commerceOrder')};
       orders.set(uuid,order);
-      if (failNextCreate) { failNextCreate=false; throw new Error('Simulated network timeout after provider creation'); }
-      return Response.json({status:'OK',payment:{order},url_redirect:`https://pay.virtualpos-sandbox.com/preview/${uuid}`});
+      if(failNextCreate){failNextCreate=false;throw new Error('Simulated network timeout after provider creation');}
+      return Response.json({token:uuid,flowOrder:creates,url:'https://sandbox.flow.cl/checkout'});
     }
-    const uuid = String(url).split('/').pop();
-    return Response.json({status:'OK',payment:{order:orders.get(uuid)}});
+    return Response.json(orders.get(params.get('token')) || [...orders.values()].find(order=>order.commerceOrder===params.get('commerceId')));
   };
   try {
     const { initDb } = require('../src/lib/db.ts');
     const { signToken } = require('../src/lib/auth.ts');
     const registration = require('../src/app/api/tournaments/[id]/register/route.ts');
-    const webhook = require('../src/app/api/payments/virtualpos/webhook/route.ts');
+    const webhook = require('../src/app/api/payments/flow/confirmation/route.ts');
     const status = require('../src/app/api/payments/[id]/route.ts');
     const { reconcilePayment, reserveRegistration } = require('../src/lib/tournamentPayments.ts');
     await Promise.all([initDb(),initDb()]);
@@ -82,11 +80,11 @@ async function main() {
     assert.equal((await status.GET(request('three'),params)).status,404,'Other users cannot inspect a payment');
     const pending = await status.GET(request('one'),params);
     assert.equal((await pending.json()).payment.status,'pending');
-    const fakeApproval = await webhook.POST(new Request('https://arena.example.test/api/payments/virtualpos/webhook',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({uuid:payment.provider_uuid,status:'pagado'})}));
+    const fakeApproval = await webhook.POST(new Request('https://arena.example.test/api/payments/flow/confirmation',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({token:payment.provider_uuid,status:'2'})}));
     assert.equal(fakeApproval.status,200);
     assert.equal(await count('paid'),0,'Browser/webhook-supplied status cannot approve a payment');
-    orders.get(payment.provider_uuid).status = 'pagado';
-    const notify = () => webhook.POST(new Request('https://arena.example.test/api/payments/virtualpos/webhook',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({uuid:payment.provider_uuid,status:'fake'})}));
+    orders.get(payment.provider_uuid).status = 2;
+    const notify = () => webhook.POST(new Request('https://arena.example.test/api/payments/flow/confirmation',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({token:payment.provider_uuid,status:'fake'})}));
     const notifications = await Promise.all([notify(),notify()]);
     assert(notifications.every(response=>response.status===200));
     assert.equal(await count('paid'),1,'Repeated callbacks produce one registration');
@@ -101,16 +99,17 @@ async function main() {
       const local = (await memory.query('SELECT * FROM tournament_payments WHERE id=$1',[created.paymentId])).rows[0];
       const provider = orders.get(local.provider_uuid);
       if (id === 'late') {
+        await memory.query("UPDATE torneos SET status='completed' WHERE id=$1",[id]);
         await memory.query("UPDATE tournament_payments SET expires_at=CURRENT_TIMESTAMP-INTERVAL '1 minute' WHERE id=$1",[local.id]);
-        provider.status='pagado';
+        provider.status=2;
         assert.equal((await reconcilePayment(local.provider_uuid)).status,'refund_required');
         assert.equal(await count(id),0);
       } else if (id === 'mismatch') {
-        provider.status='pagado'; provider.amount=1;
+        provider.status=2; provider.amount=1;
         await assert.rejects(()=>reconcilePayment(local.provider_uuid));
         assert.equal(await count(id),0);
       } else {
-        provider.status='rechazado';
+        provider.status=3;
         assert.equal((await reconcilePayment(local.provider_uuid)).status,'failed');
         assert.equal(await count(id),0);
       }
@@ -121,7 +120,7 @@ async function main() {
     const teamResult = await (await register('two','team-paid')).json();
     assert(teamResult.checkoutUrl);
     const teamPayment = (await memory.query('SELECT * FROM tournament_payments WHERE id=$1',[teamResult.paymentId])).rows[0];
-    orders.get(teamPayment.provider_uuid).status='pagado';
+    orders.get(teamPayment.provider_uuid).status=2;
     await reconcilePayment(teamPayment.provider_uuid);
     assert.equal(await count('team-paid'),1,'A single payment registers the whole team');
     const registeredTeam = (await memory.query("SELECT team_id,roster FROM participantes_torneo WHERE tournament_id='team-paid'")).rows[0];
@@ -135,11 +134,11 @@ async function main() {
     const attempts = creates;
     assert.notEqual((await register('seven','network-failure')).status,200);
     assert.equal(creates,attempts,'Unknown network result must not create another charge');
-    const recovered = [...orders.values()].find(order=>order.merchant_internal_code===review.id);
-    recovered.status='pagado';
+    const recovered = [...orders.values()].find(order=>order.commerceOrder===review.id);
+    recovered.status=2;
     assert.equal((await reconcilePayment(recovered.uuid,review.id)).status,'confirmed','Provider callback recovers an interrupted creation');
     assert.equal(await count('network-failure'),1);
-    delete process.env.VIRTUALPOS_API_KEY;
+    delete process.env.FLOW_API_KEY;
     const disabled = await register('seven','missing-config');
     assert.notEqual(disabled.status,200);
     assert.equal(await count('missing-config'),0);

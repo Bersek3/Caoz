@@ -14,16 +14,16 @@ require.extensions['.ts'] = (module,filename) => module._compile(ts.transpileMod
 
 async function main() {
   delete process.env.DATABASE_URL;
-  process.env.VIRTUALPOS_ENV='sandbox'; process.env.VIRTUALPOS_API_KEY='test-key'; process.env.VIRTUALPOS_SECRET_KEY='test-secret';
+  process.env.FLOW_ENV='sandbox'; process.env.FLOW_API_KEY='test-key'; process.env.FLOW_SECRET_KEY='test-secret';
   process.env.APP_URL='https://arena.example.test';
   const memory=new PGlite(); global.__pgliteInstance=memory;
   const originalFetch=global.fetch;
   let calls=0;
   global.fetch=async (url,options)=>{
-    assert(String(url).startsWith('https://api.virtualpos-sandbox.com/v3/payment/'));
+    assert(String(url).startsWith('https://sandbox.flow.cl/api/payment/'));
     assert.equal(options.method,'POST');
-    const body=JSON.parse(options.body),uuid=`waitlist-payment-${++calls}`;
-    return Response.json({status:'OK',payment:{order:{uuid,amount:body.amount,merchant_internal_code:body.merchant_internal_code,status:'pendiente'}},url_redirect:`https://pay.virtualpos-sandbox.com/checkout/${uuid}`});
+    const body=new URLSearchParams(options.body),token='waitlist-payment-'+(++calls);
+    return Response.json({flowOrder:calls,token,url:'https://sandbox.flow.cl/checkout'});
   };
   try {
     const {initDb}=require('../src/lib/db.ts');

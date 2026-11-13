@@ -15,7 +15,7 @@ const statusLabels: Record<string, string> = {
   failed: 'Pago rechazado, cancelado o expirado',
   refund_required: 'Pago recibido sin inscripción confirmada: devolución pendiente'
 };
-interface Payment { id:string;status:string;amount:number;tournamentSlug:string;expiresAt:string;checkoutUrl?:string }
+interface Payment { provider:string;id:string;status:string;amount:number;tournamentSlug:string;expiresAt:string;checkoutUrl?:string }
 export default function PaymentResultPage() {
   return <Suspense fallback={<p className="p-8 text-slate-300">Consultando inscripción…</p>}><PaymentRoute /></Suspense>;
 }
@@ -58,9 +58,10 @@ function PaymentState({paymentId}:{paymentId:string}) {
     {error&&<div role="alert" className="space-y-2 rounded-xl border border-amber-400/30 p-4 text-sm text-amber-200"><p>{error}</p><button onClick={()=>setRetry(value=>value+1)} className="underline">Reintentar ahora</button></div>}
     {payment?<div className="space-y-4 rounded-xl border border-slate-700 bg-slate-900 p-5 sm:p-6">
       <h2 className="text-lg font-semibold">{statusLabels[payment.status]||'Verificando pago'}</h2>
+      {payment.provider !== 'flow' && <p className="text-sm text-amber-300">Pago hist?rico de otro proveedor. Contacta a soporte para verificarlo.</p>}
       <p>{new Intl.NumberFormat('es-CL').format(payment.amount)} CLP</p>
       <p className="break-all text-sm text-slate-400">Referencia: {payment.id}</p>
-      {payment.checkoutUrl&&remaining>0&&<a href={payment.checkoutUrl} className="arena-primary-button w-full">Continuar pago en VirtualPOS</a>}
+      {payment.checkoutUrl&&remaining>0&&<a href={payment.checkoutUrl} className="arena-primary-button w-full">Continuar pago en Flow</a>}
       {['pending','creating'].includes(payment.status)&&<div className="space-y-2 rounded-xl border border-amber-400/25 bg-amber-950/20 p-4">
         <p className="font-semibold text-amber-200">{remaining>0?'Cupo reservado por '+Math.floor(remaining/60)+':'+String(remaining%60).padStart(2,'0')+' min':'La reserva del cupo ha expirado'}</p>
         <p className="text-sm text-slate-300">Vencimiento: {formatTournamentDate(payment.expiresAt)}. Si ya pagaste, espera la verificación antes de iniciar otra operación.</p>

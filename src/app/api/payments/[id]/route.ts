@@ -12,10 +12,11 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   let payment = (await db.query('SELECT * FROM tournament_payments WHERE id=$1', [id])).rows[0];
   if (!payment || (payment.user_id !== viewer.id && viewer.role !== 'admin')) return NextResponse.json({ error: 'Pago no encontrado.' }, { status: 404 });
   let verifying = false;
-  if (payment.provider_uuid && !['confirmed', 'refund_required'].includes(payment.status)) {
-    try { payment = await reconcilePayment(payment.provider_uuid); } catch { verifying = true; }
+  if (payment.provider === 'flow' && !['confirmed', 'refund_required'].includes(payment.status)) {
+    try { payment = await reconcilePayment(payment.provider_uuid || null, payment.id); } catch { verifying = true; }
   }
+
   const tournament = (await db.query('SELECT slug FROM tournaments WHERE id=$1', [payment.tournament_id])).rows[0];
-  const checkoutUrl = payment.user_id === viewer.id && payment.status === 'pending' && new Date(payment.expires_at).getTime() > Date.now() ? payment.checkout_url : undefined;
-  return NextResponse.json({ payment: { id: payment.id, status: payment.status, amount: payment.amount, currency: 'CLP', expiresAt: payment.expires_at, tournamentSlug: tournament.slug, checkoutUrl }, verifying }, { headers: { 'Cache-Control': 'private, no-store' } });
+  const checkoutUrl = payment.provider === 'flow' && payment.user_id === viewer.id && payment.status === 'pending' && new Date(payment.expires_at).getTime() > Date.now() ? payment.checkout_url : undefined;
+  return NextResponse.json({ payment: { id: payment.id, status: payment.status, provider: payment.provider, amount: payment.amount, currency: 'CLP', expiresAt: payment.expires_at, tournamentSlug: tournament.slug, checkoutUrl }, verifying }, { headers: { 'Cache-Control': 'private, no-store' } });
 }

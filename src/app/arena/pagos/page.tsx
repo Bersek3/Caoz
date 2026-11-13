@@ -14,7 +14,7 @@ export default function PaymentsPage() {
     {isLoading?<p role="status">Cargando tu sesión…</p>:!user?<button onClick={()=>openAuthModal('login')} className="arena-primary-button">Iniciar sesión</button>:<PaymentsTable key={user.id} />}
     <Link href="/arena/ayuda" className="inline-block text-sm text-red-300 underline">Ayuda para revisar un pago o solicitar una devolución</Link>
     <Link href="/arena" className="block text-sm text-slate-300 underline">Volver a torneos</Link>
-    {user?.role==='admin'&&<p className="text-sm text-slate-400">Las devoluciones y los pagos en revisión se gestionan desde VirtualPOS. No vuelvas a cobrar mientras una operación esté en revisión.</p>}
+    {user?.role==='admin'&&<p className="text-sm text-slate-400">Las devoluciones y los pagos en revisión se gestionan desde Flow. No vuelvas a cobrar mientras una operación esté en revisión.</p>}
   </section>;
 }
 function PaymentsTable() {

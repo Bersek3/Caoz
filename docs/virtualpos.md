@@ -1,3 +1,5 @@
+> Integración anterior, conservada como referencia histórica. Para pagos nuevos utiliza [Flow](../FLOW.md). Las rutas de VirtualPOS ya no están activas.
+
 # VirtualPOS en CAOZ ARENA
 
 La integración utiliza la API v3 de Payments. Las inscripciones gratuitas se confirman directamente; las pagadas reservan un cupo durante 15 minutos y solo generan participante y bracket tras consultar el estado `pagado` en la API autenticada del proveedor. La tarifa es un monto entero en CLP por inscripción (un pago por equipo en torneos por equipos).

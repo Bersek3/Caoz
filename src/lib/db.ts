@@ -230,6 +230,9 @@ async function initializeDatabase() {
     expires_at TIMESTAMPTZ NOT NULL DEFAULT (CURRENT_TIMESTAMP + INTERVAL '15 minutes'),
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
   )`);
+  // Preserve historical provider references when migrating payment providers.
+  await db.query("ALTER TABLE tournament_payments ADD COLUMN IF NOT EXISTS provider VARCHAR(32) NOT NULL DEFAULT 'virtualpos'");
+  await db.query('ALTER TABLE tournament_payments ADD COLUMN IF NOT EXISTS provider_order TEXT');
   await db.query(`CREATE INDEX IF NOT EXISTS tournament_payments_reservations ON tournament_payments(tournament_id, status, expires_at)`);
 
   // 6. Tabla: participantes_torneo
