@@ -84,7 +84,10 @@ async function main() {
     const params = {params:Promise.resolve({id:first.paymentId})};
     assert.equal((await status.GET(request('three'),params)).status,404,'Other users cannot inspect a payment');
     const pending = await status.GET(request('one'),params);
-    assert.equal((await pending.json()).payment.status,'pending');
+    const pendingData = await pending.json();
+    assert.equal(pendingData.payment.status,'pending');
+    assert.equal(pendingData.payment.flowOrder,String(orders.get(payment.provider_uuid).flowOrder));
+    assert.equal(pendingData.payment.provider_uuid,undefined,'Detail does not expose a raw provider token');
     const fakeApproval = await webhook.POST(new Request('https://arena.example.test/api/payments/flow/confirmation',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({token:payment.provider_uuid,status:'2'})}));
     assert.equal(fakeApproval.status,200);
     assert.equal(await count('paid'),0,'Browser/webhook-supplied status cannot approve a payment');
@@ -171,6 +174,9 @@ async function main() {
     assert.equal((await cancel.POST(request('five','POST'),{params:Promise.resolve({id:raced.paymentId})})).status,409,'A payment already made cannot be cancelled as unpaid');
     assert.equal(await count('paid-before-cancel'),1);
     await memory.query("UPDATE usuarios SET role='admin' WHERE id='seven'");
+    const administratorDetail=await (await status.GET(request('seven'),params)).json();
+    assert.equal(administratorDetail.payment.flowOrder,pendingData.payment.flowOrder,'Administrator and payer see the same Flow order');
+    assert.equal(administratorDetail.payment.checkoutUrl,undefined,'Administrator sees the order without the payer checkout URL');
     const orphan='pay-orphan';
     await memory.query(`INSERT INTO tournament_payments(id,tournament_id,user_id,registration_key,amount,registration,provider,status,created_at)
       VALUES($1,'missing-config','one','one',10,'{}','flow','review',CURRENT_TIMESTAMP-INTERVAL '5 minutes')`,[orphan]);
@@ -190,6 +196,8 @@ async function main() {
     assert(overview.tournaments.some(t=>t.id==='paid'));
     overview=await (await list.GET(listRequest('seven','?tournamentId=paid'))).json();
     assert(overview.payments.length>0);assert(overview.payments.every(p=>p.tournament_id==='paid'));
+    assert.equal(overview.payments.find(p=>p.id===first.paymentId).flow_order,pendingData.payment.flowOrder);
+    assert(overview.payments.every(p=>p.provider_uuid===undefined&&p.checkout_url===undefined),'History exposes the order number, not tokens or checkout URLs');
     overview=await (await list.GET(listRequest('one','?includeArchived=1'))).json();
     assert.equal(overview.payments.some(p=>p.id===orphan),false,'Players cannot enable the administrator archive view');
     assert(overview.payments.every(p=>p.username==='one'),'Tournament filtering never bypasses ownership');

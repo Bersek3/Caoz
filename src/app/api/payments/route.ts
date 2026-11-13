@@ -11,7 +11,8 @@ export async function GET(request: Request) {
   const tournamentId = query.get('tournamentId') || '';
   const archived = viewer.role === 'admin' && query.get('includeArchived') === '1';
   const page = Math.min(10000, Math.max(0, Number.parseInt(query.get('page') || '0', 10) || 0));
-  const result = await db.query(`SELECT p.id,p.tournament_id,p.amount,p.status,p.provider,p.created_at,p.expires_at,p.archived_at,t.title,t.slug,u.username
+  const result = await db.query(`SELECT p.id,p.tournament_id,p.amount,p.status,p.provider,p.created_at,p.expires_at,p.archived_at,
+    CASE WHEN p.provider='flow' THEN p.provider_order ELSE NULL END AS flow_order,t.title,t.slug,u.username
     FROM tournament_payments p JOIN tournaments t ON t.id=p.tournament_id JOIN users u ON u.id=p.user_id
     WHERE ($1 = 'admin' OR p.user_id=$2) AND ($3='' OR p.tournament_id=$3)
       AND ($4::boolean OR p.archived_at IS NULL OR p.status IN ('confirmed','refund_required'))

@@ -4,8 +4,9 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { formatTournamentDate } from '@/lib/dateUtils';
+import { FlowOrder } from '@/components/FlowOrder';
 
-interface Payment { id:string;tournament_id:string;title:string;slug:string;username:string;status:string;provider:string;amount:number;created_at:string;archived_at:string|null }
+interface Payment { id:string;tournament_id:string;title:string;slug:string;username:string;status:string;provider:string;amount:number;created_at:string;archived_at:string|null;flow_order?:string|null }
 interface Tournament { id:string;title:string;slug:string }
 const labels:Record<string,string> = { confirmed:'Confirmado',pending:'Pendiente',creating:'Preparando',review:'Revisión manual',failed:'Rechazado / cancelado',cancelled:'Inscripción cancelada',refund_required:'Devolución pendiente' };
 const money = (amount:number) => new Intl.NumberFormat('es-CL').format(amount)+' CLP';
@@ -65,9 +66,9 @@ function PaymentResults({token,admin,tournamentId,includeArchived,page,selectTou
     {notice&&<p role="status" className="rounded-xl border border-amber-400/30 p-4 text-sm text-amber-200">{notice}</p>}
     {loading?<p role="status" className="py-6 text-slate-300">Consultando pagos…</p>:[...groups].map(([id,group])=><section key={id} className="overflow-hidden rounded-2xl border border-slate-700">
       {admin&&<div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-700 bg-slate-900/80 p-4 sm:p-5"><div><h2 className="text-xl font-bold"><Link href={'/tournament/'+group.slug} className="hover:text-red-300">{group.title}</Link></h2><p className="mt-1 text-xs text-slate-400">{group.slug} · {group.payments.length} operaciones en esta página</p></div><p className="text-sm text-emerald-300">Confirmado en esta página: <strong>{money(group.payments.filter(p=>p.status==='confirmed').reduce((total,p)=>total+p.amount,0))}</strong></p></div>}
-      <div className="overflow-x-auto"><table className="w-full text-left text-sm"><caption className="sr-only">{admin?'Pagos de '+group.title:'Historial de pagos'}</caption><thead className="bg-slate-900"><tr>{[...(!admin?['Torneo']:[]),'Participante','Monto','Estado','Fecha','Acciones'].map(title=><th key={title} scope="col" className="whitespace-nowrap p-3">{title}</th>)}</tr></thead>
+      <div className="overflow-x-auto"><table className="w-full text-left text-sm"><caption className="sr-only">{admin?'Pagos de '+group.title:'Historial de pagos'}</caption><thead className="bg-slate-900"><tr>{[...(!admin?['Torneo']:[]),'Participante','Orden Flow','Monto','Estado','Fecha','Acciones'].map(title=><th key={title} scope="col" className="whitespace-nowrap p-3">{title}</th>)}</tr></thead>
         <tbody>{group.payments.map(payment=><tr key={payment.id} className="border-t border-slate-800">
-          {!admin&&<td className="p-3">{payment.title}</td>}<td className="p-3">{payment.username}</td><td className="whitespace-nowrap p-3">{money(payment.amount)}</td><td className="p-3">{labels[payment.status]||payment.status}{payment.archived_at&&<span className="mt-1 block text-xs text-slate-400">Archivado</span>}</td><td className="p-3">{formatTournamentDate(payment.created_at)}</td>
+          {!admin&&<td className="p-3">{payment.title}</td>}<td className="p-3">{payment.username}</td><td className="min-w-36 p-3"><FlowOrder order={payment.flow_order} showLabel={false} /></td><td className="whitespace-nowrap p-3">{money(payment.amount)}</td><td className="p-3">{labels[payment.status]||payment.status}{payment.archived_at&&<span className="mt-1 block text-xs text-slate-400">Archivado</span>}</td><td className="p-3">{formatTournamentDate(payment.created_at)}</td>
           <td className="p-3"><div className="flex flex-col items-start gap-2"><Link href={'/arena/pago?paymentId='+encodeURIComponent(payment.id)} className="text-red-300 underline">Consultar</Link>{admin&&!payment.archived_at&&payment.provider==='flow'&&['review','creating','failed'].includes(payment.status)&&<button disabled={!!archiving} onClick={()=>archive(payment)} className="text-left text-xs text-slate-300 underline disabled:opacity-50">{archiving===payment.id?'Verificando con Flow…':'Revisar y archivar'}</button>}</div></td>
         </tr>)}</tbody>
       </table></div>

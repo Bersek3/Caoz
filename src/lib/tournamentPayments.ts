@@ -84,6 +84,7 @@ export async function reconcilePayment(uuid: string | null, paymentId?: string) 
     const payment = (await tx.query('SELECT * FROM tournament_payments WHERE id=$1 FOR UPDATE', [saved.id])).rows[0];
     if ((uuid && payment.provider_uuid && payment.provider_uuid !== uuid) || (payment.provider_order && payment.provider_order !== String(order.flowOrder))) throw new Error('Referencia de pago inválida.');
     await tx.query('UPDATE tournament_payments SET provider_uuid=COALESCE($1,provider_uuid),provider_order=$2 WHERE id=$3', [uuid,String(order.flowOrder),saved.id]);
+    payment.provider_order = String(order.flowOrder);
     if (['confirmed', 'refund_required'].includes(payment.status)) return payment;
     if (order.status === 2) {
       const count = Number((await tx.query('SELECT COUNT(*) AS count FROM tournament_participants WHERE tournament_id=$1', [saved.tournament_id])).rows[0].count);

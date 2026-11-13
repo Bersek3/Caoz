@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { formatTournamentDate } from '@/lib/dateUtils';
 import { SUPPORT_EMAIL } from '@/components/TournamentSupport';
+import { FlowOrder } from '@/components/FlowOrder';
 
 const statusLabels: Record<string, string> = {
   confirmed: 'Pago aprobado: inscripción confirmada',
@@ -16,7 +17,7 @@ const statusLabels: Record<string, string> = {
   cancelled: 'Inscripción cancelada por el usuario',
   refund_required: 'Pago recibido sin inscripción confirmada: devolución pendiente'
 };
-interface Payment { provider:string;id:string;status:string;amount:number;tournamentSlug:string;expiresAt:string;checkoutUrl?:string;canCancel?:boolean }
+interface Payment { provider:string;id:string;status:string;amount:number;tournamentSlug:string;expiresAt:string;checkoutUrl?:string;canCancel?:boolean;flowOrder?:string|null }
 export default function PaymentResultPage() {
   return <Suspense fallback={<p className="p-8 text-slate-300">Consultando inscripción…</p>}><PaymentRoute /></Suspense>;
 }
@@ -79,7 +80,8 @@ function PaymentState({paymentId}:{paymentId:string}) {
       <h2 className="text-lg font-semibold">{statusLabels[payment.status]||'Verificando pago'}</h2>
       {payment.provider !== 'flow' && <p className="text-sm text-amber-300">Pago histórico de otro proveedor. Contacta a soporte para verificarlo.</p>}
       <p>{new Intl.NumberFormat('es-CL').format(payment.amount)} CLP</p>
-      <p className="break-all text-sm text-slate-400">Referencia: {payment.id}</p>
+      <p className="break-all text-sm text-slate-400">Referencia CAOZ: {payment.id}</p>
+      {payment.provider==='flow' && <><FlowOrder order={payment.flowOrder} /><p className="text-xs text-slate-400">Usa el número de orden Flow para identificar esta operación al consultar un pago o solicitar su devolución.</p></>}
       {payment.checkoutUrl&&remaining>0&&<a href={payment.checkoutUrl} className="arena-primary-button w-full">Continuar pago en Flow</a>}
       {payment.canCancel && payment.status==='pending' && <button type="button" onClick={cancelRegistration} disabled={cancelling} className="arena-secondary-button w-full disabled:opacity-50">{cancelling?'Verificando pago…':'Cancelar inscripción pendiente'}</button>}
       {cancelMessage && <p role="status" className="text-sm text-amber-200">{cancelMessage}</p>}
@@ -88,7 +90,7 @@ function PaymentState({paymentId}:{paymentId:string}) {
         <p className="font-semibold text-amber-200">{remaining>0?'Cupo reservado por '+Math.floor(remaining/60)+':'+String(remaining%60).padStart(2,'0')+' min':'La reserva del cupo ha expirado'}</p>
         <p className="text-sm text-slate-300">Vencimiento: {formatTournamentDate(payment.expiresAt)}. Si ya pagaste, espera la verificación antes de iniciar otra operación.</p>
       </div>}
-      {['review','refund_required'].includes(payment.status)&&<a href={'mailto:'+SUPPORT_EMAIL+'?subject='+encodeURIComponent('Revisión de pago CZ ARENA · '+payment.id)+'&body='+encodeURIComponent('Hola, solicito revisar esta operación.\nReferencia: '+payment.id+'\nEstado: '+payment.status+'\nMotivo: ')} className="arena-secondary-button">{payment.status==='refund_required'?'Solicitar devolución por correo':'Contactar soporte con esta referencia'}</a>}
+      {['review','refund_required'].includes(payment.status)&&<a href={'mailto:'+SUPPORT_EMAIL+'?subject='+encodeURIComponent('Revisión de pago CZ ARENA · '+payment.id)+'&body='+encodeURIComponent('Hola, solicito revisar esta operación.\nReferencia: '+payment.id+'\nOrden Flow: '+(payment.flowOrder||'No disponible')+'\nMonto: '+payment.amount+' CLP\nEstado: '+payment.status+'\nMotivo: ')} className="arena-secondary-button">{payment.status==='refund_required'?'Solicitar devolución por correo':'Contactar soporte con esta referencia'}</a>}
       <Link href={'/tournament/'+payment.tournamentSlug} className="inline-block text-red-300 underline">Volver al torneo</Link>
     </div>:!error&&<p role="status">Consultando el pago…</p>}
   </>;
