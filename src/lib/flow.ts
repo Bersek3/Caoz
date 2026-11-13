@@ -1,6 +1,9 @@
 import { createHmac } from 'node:crypto';
 
 type FlowParams = Record<string, string | number>;
+export class FlowApiError extends Error {
+  constructor(message: string, public httpStatus: number, public code: number | null, public path: string) { super(message); }
+}
 export interface FlowPaymentStatus {
   flowOrder: number;
   commerceOrder: string;
@@ -49,7 +52,7 @@ export async function flowRequest<T>(path: 'payment/create' | 'payment/getStatus
     }
     detail = detail.replace(/[\r\n\t]/g, ' ').replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, '[correo oculto]').slice(0, 250);
     console.error('Flow API rechazó solicitud', { path, environment: config.environment, httpStatus: response.status, code, detail });
-    throw new Error(`Flow rechazó la solicitud (HTTP ${response.status}, código ${code}). Consulta Mis pagos antes de reintentar y comunica esta referencia al organizador.`);
+    throw new FlowApiError(`Flow rechazó la solicitud (HTTP ${response.status}, código ${code}). Consulta Mis pagos antes de reintentar y comunica esta referencia al organizador.`, response.status, code === 'sin código' ? null : Number(code), path);
   }
   return response.json() as Promise<T>;
 }

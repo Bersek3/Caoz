@@ -233,6 +233,9 @@ async function initializeDatabase() {
   // Preserve historical provider references when migrating payment providers.
   await db.query("ALTER TABLE tournament_payments ADD COLUMN IF NOT EXISTS provider VARCHAR(32) NOT NULL DEFAULT 'virtualpos'");
   await db.query('ALTER TABLE tournament_payments ADD COLUMN IF NOT EXISTS provider_order TEXT');
+  await db.query('ALTER TABLE tournament_payments ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ');
+  await db.query('ALTER TABLE tournament_payments ADD COLUMN IF NOT EXISTS archived_by VARCHAR(64)');
+  await db.query('ALTER TABLE tournament_payments ADD COLUMN IF NOT EXISTS archive_reason TEXT');
   await db.query(`CREATE INDEX IF NOT EXISTS tournament_payments_reservations ON tournament_payments(tournament_id, status, expires_at)`);
 
   // 6. Tabla: participantes_torneo

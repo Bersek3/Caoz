@@ -87,7 +87,7 @@ export async function reconcilePayment(uuid: string | null, paymentId?: string) 
     if (['confirmed', 'refund_required'].includes(payment.status)) return payment;
     if (order.status === 2) {
       const count = Number((await tx.query('SELECT COUNT(*) AS count FROM tournament_participants WHERE tournament_id=$1', [saved.tournament_id])).rows[0].count);
-      if (payment.status === 'cancelled' || tournament.status !== 'registration_open' || tournament.is_hidden || count >= tournament.max_participants) {
+      if (payment.archived_at || payment.status === 'cancelled' || tournament.status !== 'registration_open' || tournament.is_hidden || count >= tournament.max_participants) {
         await tx.query("UPDATE tournament_payments SET status='refund_required' WHERE id=$1", [saved.id]);
         return { ...payment, status: 'refund_required' };
       }
@@ -103,7 +103,7 @@ export async function reconcilePayment(uuid: string | null, paymentId?: string) 
         return { ...payment, status: 'refund_required' };
       }
     }
-    if (payment.status === 'cancelled') return payment;
+    if (payment.archived_at || payment.status === 'cancelled') return payment;
     const status = [3,4].includes(order.status) ? 'failed' : payment.checkout_url ? 'pending' : 'review';
     await tx.query('UPDATE tournament_payments SET status=$1 WHERE id=$2', [status,saved.id]);
     return { ...payment, status };

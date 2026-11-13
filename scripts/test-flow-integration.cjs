@@ -38,7 +38,8 @@ async function main() {
       if(failNextCreate){failNextCreate=false;throw new Error('Simulated network timeout after provider creation');}
       return Response.json({token:uuid,flowOrder:creates,url:'https://sandbox.flow.cl/checkout'});
     }
-    return Response.json(orders.get(params.get('token')) || [...orders.values()].find(order=>order.commerceOrder===params.get('commerceId')));
+    const found=orders.get(params.get('token')) || [...orders.values()].find(order=>order.commerceOrder===params.get('commerceId'));
+    return found?Response.json(found):Response.json({code:1700,message:'Transaction not found'},{status:400});
   };
   try {
     const { initDb } = require('../src/lib/db.ts');
@@ -47,6 +48,8 @@ async function main() {
     const webhook = require('../src/app/api/payments/flow/confirmation/route.ts');
     const status = require('../src/app/api/payments/[id]/route.ts');
     const cancel = require('../src/app/api/payments/[id]/cancel/route.ts');
+    const archive = require('../src/app/api/payments/[id]/archive/route.ts');
+    const list = require('../src/app/api/payments/route.ts');
     const { reconcilePayment, reserveRegistration } = require('../src/lib/tournamentPayments.ts');
     await Promise.all([initDb(),initDb()]);
     for (const user of ['one','two','three','four','five','six','seven']) await memory.query(`INSERT INTO usuarios (id,email,username,password_hash,birth_date) VALUES ($1,$2,$1,'unused','2000-01-01')`,[user,`${user}@example.test`]);
@@ -166,11 +169,42 @@ async function main() {
     orders.get(racedPayment.provider_uuid).status=2;
     assert.equal((await cancel.POST(request('five','POST'),{params:Promise.resolve({id:raced.paymentId})})).status,409,'A payment already made cannot be cancelled as unpaid');
     assert.equal(await count('paid-before-cancel'),1);
+    await memory.query("UPDATE usuarios SET role='admin' WHERE id='seven'");
+    const orphan='pay-orphan';
+    await memory.query(`INSERT INTO tournament_payments(id,tournament_id,user_id,registration_key,amount,registration,provider,status,created_at)
+      VALUES($1,'missing-config','one','one',10,'{}','flow','review',CURRENT_TIMESTAMP-INTERVAL '5 minutes')`,[orphan]);
+    const archiveParams={params:Promise.resolve({id:orphan})};
+    const archiveBody={confirmedOriginalFlowAccount:true};
+    assert.equal((await archive.POST(request(null,'POST',archiveBody),archiveParams)).status,401);
+    assert.equal((await archive.POST(request('one','POST',archiveBody),archiveParams)).status,403,'Players cannot archive attempts');
+    assert.equal((await archive.POST(request('seven','POST',{confirmedOriginalFlowAccount:false}),archiveParams)).status,409,'A missing order needs administrator verification of original account');
+    assert.equal((await archive.POST(request('seven','POST',archiveBody),archiveParams)).status,200);
+    const archived=(await memory.query('SELECT * FROM tournament_payments WHERE id=$1',[orphan])).rows[0];
+    assert.equal(archived.status,'failed');assert(archived.archived_at);assert.equal(archived.archived_by,'seven');
+    const listRequest=(who,query='')=>new Request('https://arena.example.test/api/payments'+query,{headers:headers(who)});
+    let overview=await (await list.GET(listRequest('seven'))).json();
+    assert.equal(overview.payments.some(p=>p.id===orphan),false,'Archived attempts are hidden by default');
+    overview=await (await list.GET(listRequest('seven','?includeArchived=1'))).json();
+    assert(overview.payments.some(p=>p.id===orphan));
+    assert(overview.tournaments.some(t=>t.id==='paid'));
+    overview=await (await list.GET(listRequest('seven','?tournamentId=paid'))).json();
+    assert(overview.payments.length>0);assert(overview.payments.every(p=>p.tournament_id==='paid'));
+    overview=await (await list.GET(listRequest('one','?includeArchived=1'))).json();
+    assert.equal(overview.payments.some(p=>p.id===orphan),false,'Players cannot enable the administrator archive view');
+    assert(overview.payments.every(p=>p.username==='one'),'Tournament filtering never bypasses ownership');
+    assert.equal((await archive.POST(request('seven','POST',archiveBody),{params:Promise.resolve({id:first.paymentId})})).status,409,'Confirmed charges cannot be archived');
+    assert.equal((await archive.POST(request('seven','POST',archiveBody),{params:Promise.resolve({id:newAttempt.paymentId})})).status,409,'Live pending orders cannot be archived');
+    // A later provider recovery must not silently register a formerly archived entry.
+    orders.set('late-orphan-token',{uuid:'late-orphan-token',flowOrder:9999,commerceOrder:orphan,currency:'CLP',amount:10,status:2});
+    assert.equal((await reconcilePayment('late-orphan-token')).status,'refund_required');
+    assert.equal(await count('missing-config'),0);
+    overview=await (await list.GET(listRequest('seven'))).json();
+    assert(overview.payments.some(p=>p.id===orphan&&p.status==='refund_required'),'Late funds reappear in the default view');
     delete process.env.FLOW_API_KEY;
     const disabled = await register('seven','missing-config');
     assert.notEqual(disabled.status,200);
     assert.equal(await count('missing-config'),0);
-    assert.equal(Number((await memory.query("SELECT COUNT(*) AS count FROM tournament_payments WHERE tournament_id='missing-config'")).rows[0].count),0);
+    assert.equal(Number((await memory.query("SELECT COUNT(*) AS count FROM tournament_payments WHERE tournament_id='missing-config' AND id<>$1",[orphan])).rows[0].count),0);
     console.log('PASS: free/paid registration, signed provider API, authoritative amount and identity, reservations, duplicate callbacks, private status, late/refund, mismatch, rejection, missing config.');
   } finally { global.fetch=originalFetch; await memory.close(); }
 }
