@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, ArrowRight, Check, Gamepad2, ShieldCheck, Swords, Trophy, Users } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Gamepad2, ShieldCheck, Swords, Trophy, Users } from '@/components/icons';
 import { useAuth } from '@/context/AuthContext';
 import { AccountForm } from './AccountForm';
 import { accountHref, accountReturnTo, type AccountMode } from '@/lib/accountNavigation';

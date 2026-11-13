@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Crown, Trophy } from 'lucide-react';
+import { Crown, Trophy } from '@/components/icons';
 import { useAuth } from '@/context/AuthContext';
 import { useTournament } from '@/context/TournamentContext';
 import { getTournamentResults } from '@/lib/tournamentPresentation';

@@ -3,7 +3,7 @@
 import React, { Suspense, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { CalendarPlus, CheckCircle2, ChevronLeft, Eye, EyeOff, Layers, LogOut, RefreshCw, Share2, Shield, Trophy } from 'lucide-react';
+import { CalendarPlus, CheckCircle2, ChevronLeft, Eye, EyeOff, Layers, LogOut, RefreshCw, Share2, Shield, Trophy } from '@/components/icons';
 import { useTournament } from '@/context/TournamentContext';
 import { useAuth } from '@/context/AuthContext';
 import { BracketVisualizer } from '@/components/BracketVisualizer';

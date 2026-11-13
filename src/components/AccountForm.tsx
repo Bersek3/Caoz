@@ -2,7 +2,7 @@
 
 import { useId, useRef, useState } from 'react';
 import Link from 'next/link';
-import { AlertCircle, ArrowRight, CalendarDays, Eye, EyeOff, LoaderCircle, LockKeyhole, Mail, UserRound } from 'lucide-react';
+import { AlertCircle, ArrowRight, CalendarDays, Eye, EyeOff, LoaderCircle, LockKeyhole, Mail, UserRound } from '@/components/icons';
 import { useAuth } from '@/context/AuthContext';
 import { accountAge, accountHref, accountToday, type AccountMode } from '@/lib/accountNavigation';
 

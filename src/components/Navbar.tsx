@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Bell, Calendar, CheckCheck, CheckCircle2, Clock, Flame, LogIn, LogOut, PlusCircle, Swords, Trophy, User, Users, X } from 'lucide-react';
+import { Bell, Calendar, CheckCheck, CheckCircle2, Clock, Flame, LogIn, LogOut, PlusCircle, Swords, Trophy, User, Users, X } from '@/components/icons';
 import { useAuth } from '../context/AuthContext';
 import { useTournament } from '../context/TournamentContext';
 import { getCheckInWindow, parseTournamentDate } from '../lib/dateUtils';

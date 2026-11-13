@@ -7,6 +7,7 @@ import { useAuth } from '@/context/AuthContext';
 import { formatTournamentDate } from '@/lib/dateUtils';
 import { SUPPORT_EMAIL } from '@/components/TournamentSupport';
 import { FlowOrder } from '@/components/FlowOrder';
+import { Receipt } from '@/components/icons';
 
 const statusLabels: Record<string, string> = {
   confirmed: 'Pago aprobado: inscripción confirmada',
@@ -25,7 +26,7 @@ function PaymentRoute() {
   const {user,isLoading,openAuthModal}=useAuth();
   const paymentId=useSearchParams().get('paymentId');
   return <section className="mx-auto max-w-2xl space-y-5 px-4 py-10 text-white sm:px-6">
-    <h1 className="text-3xl font-bold">Estado de tu inscripción</h1>
+    <h1 className="flex items-center gap-3 text-3xl font-bold"><Receipt className="h-8 w-8 shrink-0 text-red-300" />Estado de tu inscripción</h1>
     {isLoading ? <p role="status">Cargando tu sesión…</p> : !user ? <button onClick={()=>openAuthModal('login')} className="arena-primary-button">Inicia sesión para consultar tu pago</button> : !paymentId ? <p role="alert" className="text-amber-300">Falta la referencia del pago.</p> : <PaymentState key={user.id+':'+paymentId} paymentId={paymentId} />}
     <Link href="/arena/pagos" className="block text-red-300 underline">Ver historial de pagos</Link>
     <Link href="/arena/ayuda" className="block text-sm text-slate-300 underline">Ayuda con inscripciones y devoluciones</Link>

@@ -12,7 +12,7 @@ import {
   Gamepad2, 
   ChevronLeft,
   LogIn
-} from 'lucide-react';
+} from '@/components/icons';
 import confetti from 'canvas-confetti';
 import { useAuth } from '../../context/AuthContext';
 

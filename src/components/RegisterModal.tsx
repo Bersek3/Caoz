@@ -12,7 +12,7 @@ import {
   AlertTriangle,
   ArrowRight,
   UserCheck
-} from 'lucide-react';
+} from '@/components/icons';
 import { CountryPhoneInput } from './CountryPhoneInput';
 import { validateRegistrationDetails } from '../lib/registrationDetails';
 import confetti from 'canvas-confetti';

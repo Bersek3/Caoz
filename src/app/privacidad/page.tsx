@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { ArrowLeft, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, ShieldCheck } from '@/components/icons';
 
 export const metadata: Metadata = {
   title: 'Política de privacidad | CZ ARENA',

@@ -37,7 +37,7 @@ import {
   Eye,
   EyeOff,
   Archive
-} from 'lucide-react';
+} from '@/components/icons';
 import { EditTournamentModal } from '../../components/EditTournamentModal';
 import type { Tournament } from '../../types/tournament';
 import { useAuth } from '../../context/AuthContext';

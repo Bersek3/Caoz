@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { formatTournamentDate } from '@/lib/dateUtils';
 import { FlowOrder } from '@/components/FlowOrder';
+import { Receipt } from '@/components/icons';
 
 interface Payment { id:string;tournament_id:string;tournament_status:string;title:string;slug:string;username:string;status:string;provider:string;amount:number;created_at:string;expires_at:string;archived_at:string|null;flow_order?:string|null }
 interface Tournament { id:string;title:string;slug:string }
@@ -14,7 +15,7 @@ const money = (amount:number) => new Intl.NumberFormat('es-CL').format(amount)+'
 export default function PaymentsPage() {
   const {user,isLoading,openAuthModal}=useAuth();
   return <section className="mx-auto max-w-6xl space-y-6 px-4 py-10 text-white sm:px-6">
-    <div><h1 className="text-3xl font-bold">{user?.role==='admin'?'Pagos por torneo':'Mis pagos'}</h1>
+    <div><h1 className="flex items-center gap-3 text-3xl font-bold"><Receipt className="h-8 w-8 shrink-0 text-red-300" />{user?.role==='admin'?'Pagos por torneo':'Mis pagos'}</h1>
       {user?.role==='admin' && <p className="mt-2 text-sm text-slate-400">Revisa cada competencia, archiva intentos vencidos y conserva los pagos de torneos finalizados.</p>}
     </div>
     {isLoading?<p role="status">Cargando tu sesión…</p>:!user?<button onClick={()=>openAuthModal('login')} className="arena-primary-button">Iniciar sesión</button>:<PaymentsTable key={user.id} />}

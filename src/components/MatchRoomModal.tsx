@@ -5,6 +5,7 @@ import React, { useState } from 'react';
 import { 
   X, 
   Swords, 
+  Gamepad2,
   Send, 
   ShieldAlert, 
   CheckCircle2, 
@@ -12,7 +13,7 @@ import {
   Trophy, 
   AlertTriangle,
   ExternalLink
-} from 'lucide-react';
+} from '@/components/icons';
 import confetti from 'canvas-confetti';
 import { useTournament } from '../context/TournamentContext';
 import { useAuth } from '../context/AuthContext';
@@ -585,7 +586,7 @@ export const MatchRoomModal: React.FC<MatchRoomModalProps> = ({
                     onClick={() => handleSendMessage(undefined, 'Servidor y lobby creado, solicitando veto.')}
                     className="whitespace-nowrap px-2.5 py-1 rounded-full bg-slate-800/80 hover:bg-slate-700 text-slate-300 text-[10px]"
                   >
-                    🎮 Lobby Creado
+                    <Gamepad2 className="inline h-4 w-4" aria-hidden="true" /> Lobby Creado
                   </button>
                   <button
                     type="button"

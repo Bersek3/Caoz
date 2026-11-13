@@ -10,7 +10,7 @@ import {
   ZoomOut,
   Lock,
   MessageCircle
-} from 'lucide-react';
+} from '@/components/icons';
 import { Tournament, TournamentMatch } from '../types/tournament';
 import { useMatchChatActivity } from '../hooks/useMatchChatActivity';
 import { useAuth } from '@/context/AuthContext';

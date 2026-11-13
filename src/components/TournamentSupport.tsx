@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Mail, LifeBuoy } from 'lucide-react';
+import { Mail, LifeBuoy } from '@/components/icons';
 import type { Tournament } from '@/types/tournament';
 
 export const SUPPORT_EMAIL = 'contacto.caoz@gmail.com';

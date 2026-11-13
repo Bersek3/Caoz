@@ -1,6 +1,6 @@
 'use client';
 
-import { Plus, Trash2, Trophy } from 'lucide-react';
+import { Plus, Trash2, Trophy } from '@/components/icons';
 import { prizePlace, type TournamentPrize } from '../lib/tournamentPrizes';
 
 export function TournamentPrizesEditor({ mode, onModeChange, total, onTotalChange, distribution, onDistributionChange, maxPlaces, teamType }: {

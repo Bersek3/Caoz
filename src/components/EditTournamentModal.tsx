@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Save, X, Plus, Trash2 } from 'lucide-react';
+import { Save, X, Plus, Trash2 } from '@/components/icons';
 import type { Tournament } from '../types/tournament';
 import { useAuth } from '../context/AuthContext';
 import { useTournament } from '../context/TournamentContext';

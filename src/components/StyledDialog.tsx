@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { AlertCircle, X } from 'lucide-react';
+import { AlertCircle, X } from '@/components/icons';
 
 type Dialog = { message: string; confirmation: boolean; resolve: (value: boolean) => void };
 const queue: Dialog[] = [];

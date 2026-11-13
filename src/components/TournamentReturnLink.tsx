@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft } from '@/components/icons';
 export function TournamentReturnLink() {
   const target=useSearchParams().get('returnTo');
   if(!target || !/^\/tournament\/[a-zA-Z0-9_-]+(?:[?#].*)?$/.test(target))return null;
