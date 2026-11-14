@@ -3,7 +3,7 @@
 import { Suspense, useState, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { ArrowRight, Calendar, CheckCircle2, Gamepad2, Heart, RefreshCw, Search, Star, Trophy, Users, X } from 'lucide-react';
+import { ArrowRight, Calendar, CheckCircle2, Gamepad2, Heart, RefreshCw, Search, Star, Trophy, Users, X } from '@/components/icons';
 import { useTournament } from '@/context/TournamentContext';
 import { useAuth } from '@/context/AuthContext';
 import { Tournament, TournamentStatus } from '@/types/tournament';

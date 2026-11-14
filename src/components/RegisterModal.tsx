@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { 
   X, 
   Users, 
@@ -11,7 +12,7 @@ import {
   AlertTriangle,
   ArrowRight,
   UserCheck
-} from 'lucide-react';
+} from '@/components/icons';
 import { CountryPhoneInput } from './CountryPhoneInput';
 import { validateRegistrationDetails } from '../lib/registrationDetails';
 import confetti from 'canvas-confetti';
@@ -20,7 +21,6 @@ import { useAuth } from '../context/AuthContext';
 import { Tournament } from '../types/tournament';
 import { useModalAccessibility } from '@/hooks/useModalAccessibility';
 import { findMyRegistration, formatTournamentMode } from '@/lib/tournamentPresentation';
-import Link from 'next/link';
 
 interface RegisterModalProps {
   tournament: Tournament;
@@ -70,7 +70,6 @@ const RegistrationForm: React.FC<RegisterModalProps> = ({
   const [errorMsg, setErrorMsg] = useState('');
   const [success, setSuccess] = useState(false);
   const [acceptedRules, setAcceptedRules] = useState(false);
-  const [payer, setPayer] = useState({ first_name: '', last_name: '', social_id: '', phone: '' });
   const [personalDetails, setPersonalDetails] = useState({ fullName: user?.fullName || '', birthDate: user?.birthDate?.slice(0, 10) || '', documentNumber: '', phone: '+56' });
   const isPaid = (tournament.entryFeeAmount || 0) > 0;
 
@@ -119,7 +118,6 @@ const RegistrationForm: React.FC<RegisterModalProps> = ({
         teamTag: isSolo ? 'SOLO' : (user.teamTag || 'TEAM'),
         captainDiscord,
         captainInGameId,
-        payer: isPaid ? payer : undefined,
         personalDetails: details
       });
 
@@ -264,6 +262,7 @@ const RegistrationForm: React.FC<RegisterModalProps> = ({
                 <div role="alert" className="p-3 rounded-xl bg-red-950/30 border border-red-500/40 text-red-300 text-xs flex items-center space-x-2">
                   <AlertCircle className="w-4 h-4 shrink-0" />
                   <span>{errorMsg}</span>
+                  {isPaid && <Link href="/arena/pagos" className="underline">Consultar mis pagos</Link>}
                 </div>
               )}
 
@@ -452,17 +451,8 @@ const RegistrationForm: React.FC<RegisterModalProps> = ({
               {isPaid && (
                 <fieldset className="space-y-3 rounded-xl border border-red-500/30 p-4">
                   <legend className="px-2 text-sm font-bold text-red-300">Pagar inscripción: {tournament.entryFee}</legend>
-                  <p className="text-xs text-slate-400">Pago único por {isSolo ? 'jugador' : 'equipo'} mediante VirtualPOS. Reservamos el cupo durante 15 minutos. La inscripción se confirma cuando se aprueba el pago.</p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {([
-                      ['first_name', 'Nombre del pagador'], ['last_name', 'Apellido del pagador'],
-                      ['social_id', 'N° de documento del pagador (RUT para VirtualPOS)'], ['phone', 'Teléfono con código de país (ej. 56912345678)']
-                    ] as const).map(([key, label]) => (
-                      <label key={key} className="block text-xs text-slate-300">{label}
-                        <input required value={payer[key]} onChange={e => setPayer({ ...payer, [key]: e.target.value })} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 p-2 text-white" />
-                      </label>
-                    ))}
-                  </div>
+                  <p className="text-xs text-slate-400">Pago único por {isSolo ? 'jugador' : 'equipo'} mediante Flow. Reservamos el cupo durante 30 minutos. La inscripción se confirma cuando se aprueba el pago.</p>
+                  <p className="text-xs text-slate-400">Elegirás tu medio de pago en el checkout seguro de Flow. Al volver podrás consultar tu inscripción.</p>
                 </fieldset>
               )}
               <div className="pt-2">
@@ -479,7 +469,7 @@ const RegistrationForm: React.FC<RegisterModalProps> = ({
                     : !isSolo && !isTeamComplete
                     ? `EQUIPO INCOMPLETO (${currentTeamMembers}/${requiredTeamSize})`
                     : isPaid
-                    ? `PAGAR ${tournament.entryFee} EN VIRTUALPOS`
+                    ? `PAGAR ${tournament.entryFee} EN FLOW`
                     : isSolo 
                     ? `CONFIRMAR INSCRIPCIÓN COMO @${user.username}` 
                     : `CONFIRMAR INSCRIPCIÓN DE ${(user.teamName || user.team?.name)?.toUpperCase()}`}

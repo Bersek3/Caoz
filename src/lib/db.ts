@@ -230,6 +230,30 @@ async function initializeDatabase() {
     expires_at TIMESTAMPTZ NOT NULL DEFAULT (CURRENT_TIMESTAMP + INTERVAL '15 minutes'),
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
   )`);
+  // Preserve historical provider references when migrating payment providers.
+  await db.query("ALTER TABLE tournament_payments ADD COLUMN IF NOT EXISTS provider VARCHAR(32) NOT NULL DEFAULT 'virtualpos'");
+  await db.query('ALTER TABLE tournament_payments ADD COLUMN IF NOT EXISTS provider_order TEXT');
+  await db.query('ALTER TABLE tournament_payments ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ');
+  await db.query('ALTER TABLE tournament_payments ADD COLUMN IF NOT EXISTS archived_by VARCHAR(64)');
+  await db.query('ALTER TABLE tournament_payments ADD COLUMN IF NOT EXISTS archive_reason TEXT');
+  // No tournament FK: retain the audit of verified, uncreated orders after deleting a test tournament.
+  await db.query(`CREATE TABLE IF NOT EXISTS removed_tournament_payment_attempts (
+    payment_id VARCHAR(64) PRIMARY KEY,
+    tournament_id VARCHAR(64) NOT NULL,
+    tournament_title TEXT NOT NULL,
+    user_id VARCHAR(64) NOT NULL,
+    amount INTEGER NOT NULL,
+    currency VARCHAR(3) NOT NULL,
+    provider VARCHAR(32) NOT NULL,
+    archive_reason TEXT NOT NULL,
+    archived_at TIMESTAMPTZ NOT NULL,
+    archived_by VARCHAR(64),
+    created_at TIMESTAMPTZ NOT NULL,
+    removed_by VARCHAR(64) NOT NULL,
+    removed_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+  )`);
+  await db.query('ALTER TABLE removed_tournament_payment_attempts ADD COLUMN IF NOT EXISTS provider_order TEXT');
+  await db.query('ALTER TABLE removed_tournament_payment_attempts ADD COLUMN IF NOT EXISTS provider_status INTEGER');
   await db.query(`CREATE INDEX IF NOT EXISTS tournament_payments_reservations ON tournament_payments(tournament_id, status, expires_at)`);
 
   // 6. Tabla: participantes_torneo

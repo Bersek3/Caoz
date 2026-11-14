@@ -1,0 +1,277 @@
+// Isolated route/service integration tests. No real network calls or persistent DB.
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const Module = require('node:module');
+const ts = require('typescript');
+const { createHmac } = require('node:crypto');
+const { PGlite } = require('@electric-sql/pglite');
+const root = path.resolve(__dirname, '..');
+const resolve = Module._resolveFilename;
+Module._resolveFilename = function(name, ...args) { return resolve.call(this, name.startsWith('@/') ? path.join(root,'src',name.slice(2)) : name,...args); };
+require.extensions['.ts'] = (module, filename) => module._compile(ts.transpileModule(fs.readFileSync(filename,'utf8'), {compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020,esModuleInterop:true}}).outputText,filename);
+
+async function main() {
+  delete process.env.DATABASE_URL;
+  process.env.FLOW_ENV = 'sandbox';
+  process.env.FLOW_API_KEY = 'test-key';
+  process.env.FLOW_SECRET_KEY = 'test-secret';
+  process.env.APP_URL = 'https://arena.example.test';
+  const memory = new PGlite();
+  global.__pgliteInstance = memory;
+  const originalFetch = global.fetch;
+  const orders = new Map();
+  let creates = 0;
+  let failNextCreate = false;
+  global.fetch = async (url, options) => {
+    assert(String(url).startsWith('https://sandbox.flow.cl/api/payment/'));
+    const params=options.method==='POST'?new URLSearchParams(options.body):new URL(url).searchParams;
+    const toSign=[...params.keys()].filter(key=>key!=='s').sort().map(key=>key+params.get(key)).join('');
+    assert.equal(params.get('s'),createHmac('sha256','test-secret').update(toSign).digest('hex'));
+    assert.equal(params.get('apiKey'),'test-key');
+    if(options.method==='POST') {
+      assert.equal(Number(params.get('amount')),5000);
+      assert.equal(params.get('urlConfirmation'),'https://arena.example.test/api/payments/flow/confirmation');
+      const uuid='flow-token-'+String(++creates).padStart(12,'0');
+      const order={uuid,flowOrder:creates,amount:5000,currency:'CLP',status:1,commerceOrder:params.get('commerceOrder')};
+      orders.set(uuid,order);
+      if(failNextCreate){failNextCreate=false;throw new Error('Simulated network timeout after provider creation');}
+      return Response.json({token:uuid,flowOrder:creates,url:'https://sandbox.flow.cl/checkout'});
+    }
+    const found=orders.get(params.get('token')) || [...orders.values()].find(order=>order.commerceOrder===params.get('commerceId'));
+    // Production Flow returns the amount as text, including for cancelled orders.
+    return found?Response.json({...found,amount:String(found.amount)}):Response.json({code:1700,message:'Transaction not found'},{status:400});
+  };
+  try {
+    const { initDb } = require('../src/lib/db.ts');
+    const { signToken } = require('../src/lib/auth.ts');
+    const registration = require('../src/app/api/tournaments/[id]/register/route.ts');
+    const webhook = require('../src/app/api/payments/flow/confirmation/route.ts');
+    const status = require('../src/app/api/payments/[id]/route.ts');
+    const cancel = require('../src/app/api/payments/[id]/cancel/route.ts');
+    const archive = require('../src/app/api/payments/[id]/archive/route.ts');
+    const list = require('../src/app/api/payments/route.ts');
+    const tournamentRoutes = require('../src/app/api/tournaments/route.ts');
+    const { reconcilePayment, reserveRegistration } = require('../src/lib/tournamentPayments.ts');
+    await Promise.all([initDb(),initDb()]);
+    for (const user of ['one','two','three','four','five','six','seven']) await memory.query(`INSERT INTO usuarios (id,email,username,password_hash,birth_date) VALUES ($1,$2,$1,'unused','2000-01-01')`,[user,`${user}@example.test`]);
+    for (const id of ['paid','late','mismatch','rejected','free','missing-config','team-paid','network-failure','cancelled','paid-before-cancel','rejected-archived','rejection-changed','rejection-unavailable']) {
+      await memory.query(`INSERT INTO torneos (id,title,slug,game_id,game_name,start_date,team_type,team_size,max_participants,entry_fee,entry_fee_amount) VALUES ($1,$1,$1,'fortnite','Fortnite','2026-12-01T20:00','solo',1,2,$2,$3)`,[id,id==='free'?'Gratis':'5.000 CLP',id==='free'?0:5000]);
+      await memory.query(`INSERT INTO rondas_torneo (id,tournament_id,round_index,title) VALUES ($1,$2,0,'Final')`,[`round-${id}`,id]);
+      await memory.query(`INSERT INTO partidas_torneo (id,tournament_id,round_index,round_title,match_index,team1_name,team2_name) VALUES ($1,$2,0,'Final',0,'Empty','Empty')`,[`match-${id}`,id]);
+    }
+    const headers = user => user ? {'Content-Type':'application/json',Authorization:`Bearer ${signToken({userId:user,username:user,role:'player',email:`${user}@example.test`})}`} : {'Content-Type':'application/json'};
+    const payer = {first_name:'Test',last_name:'Player',social_id:'12345678-9',phone:'56912345678'};
+    const request = (user, method='GET', body) => new Request('https://arena.example.test/api/test',{method,headers:headers(user),...(body?{body:JSON.stringify(body)}:{})});
+    const personalDetails = {fullName:'Test Player',birthDate:'2000-01-01',documentNumber:'12345678-9',phone:'+56912345678'};
+    const register = (user,id) => registration.POST(request(user,'POST',{username:'forged',captainInGameId:'Player',personalDetails,payer,amount:1,paid:true}),{params:Promise.resolve({id})});
+    const count = async id => Number((await memory.query('SELECT COUNT(*) AS count FROM participantes_torneo WHERE tournament_id=$1',[id])).rows[0].count);
+    assert.equal((await register(null,'paid')).status,401);
+    assert.equal((await register('one','free')).status,200);
+    assert.equal(await count('free'),1);
+    const free = (await memory.query("SELECT name FROM participantes_torneo WHERE tournament_id='free'")).rows[0];
+    assert.equal(free.name,'one','Authenticated identity overrides a client-supplied username');
+    const first = await (await register('one','paid')).json();
+    assert(first.checkoutUrl);
+    assert.equal(await count('paid'),0,'No participant before verification');
+    const secondTry = await (await register('one','paid')).json();
+    assert.equal(secondTry.paymentId,first.paymentId);
+    assert.equal(creates,1,'Retry reuses the same pending checkout');
+    await register('two','paid');
+    const full = await register('three','paid');
+    assert.notEqual(full.status,200,'Reservations occupy capacity');
+    assert.equal(creates,2);
+    const payment = (await memory.query('SELECT * FROM tournament_payments WHERE id=$1',[first.paymentId])).rows[0];
+    const params = {params:Promise.resolve({id:first.paymentId})};
+    assert.equal((await status.GET(request('three'),params)).status,404,'Other users cannot inspect a payment');
+    const pending = await status.GET(request('one'),params);
+    const pendingData = await pending.json();
+    assert.equal(pendingData.payment.status,'pending');
+    assert.equal(pendingData.payment.flowOrder,String(orders.get(payment.provider_uuid).flowOrder));
+    assert.equal(pendingData.payment.provider_uuid,undefined,'Detail does not expose a raw provider token');
+    const fakeApproval = await webhook.POST(new Request('https://arena.example.test/api/payments/flow/confirmation',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({token:payment.provider_uuid,status:'2'})}));
+    assert.equal(fakeApproval.status,200);
+    assert.equal(await count('paid'),0,'Browser/webhook-supplied status cannot approve a payment');
+    orders.get(payment.provider_uuid).status = 2;
+    const notify = () => webhook.POST(new Request('https://arena.example.test/api/payments/flow/confirmation',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({token:payment.provider_uuid,status:'fake'})}));
+    const notifications = await Promise.all([notify(),notify()]);
+    assert(notifications.every(response=>response.status===200));
+    assert.equal(await count('paid'),1,'Repeated callbacks produce one registration');
+    const beforeDuplicate = creates;
+    await assert.rejects(()=>reserveRegistration('paid',payment.registration,payer));
+    assert.equal(creates,beforeDuplicate,'A concurrent confirmed registration cannot be charged again');
+    const paidMatch = (await memory.query("SELECT team1_participant_id,team2_participant_id FROM partidas_torneo WHERE tournament_id='paid'")).rows[0];
+    const paidParticipant = (await memory.query('SELECT participant_id FROM tournament_payments WHERE id=$1',[first.paymentId])).rows[0].participant_id;
+    assert([paidMatch.team1_participant_id,paidMatch.team2_participant_id].includes(paidParticipant),'The confirmed participant occupies either valid drawn slot');
+    for (const [user,id] of [['four','late'],['five','mismatch'],['six','rejected']]) {
+      const created = await (await register(user,id)).json();
+      const local = (await memory.query('SELECT * FROM tournament_payments WHERE id=$1',[created.paymentId])).rows[0];
+      const provider = orders.get(local.provider_uuid);
+      if (id === 'late') {
+        await memory.query("UPDATE torneos SET status='completed' WHERE id=$1",[id]);
+        await memory.query("UPDATE tournament_payments SET expires_at=CURRENT_TIMESTAMP-INTERVAL '1 minute' WHERE id=$1",[local.id]);
+        provider.status=2;
+        assert.equal((await reconcilePayment(local.provider_uuid)).status,'refund_required');
+        assert.equal(await count(id),0);
+      } else if (id === 'mismatch') {
+        provider.status=2; provider.amount=1;
+        await assert.rejects(()=>reconcilePayment(local.provider_uuid));
+        assert.equal(await count(id),0);
+      } else {
+        provider.status=3;
+        assert.equal((await reconcilePayment(local.provider_uuid)).status,'failed');
+        assert.equal(await count(id),0);
+      }
+    }
+    await memory.query("UPDATE torneos SET team_type='team',team_size=2 WHERE id='team-paid'");
+    await memory.query("INSERT INTO equipos (id,name,tag,captain_id) VALUES ('team','Test Team','TEST','two')");
+    for (const member of ['two','three']) await memory.query('INSERT INTO miembros_equipo (id,team_id,user_id) VALUES ($1,$2,$1)',[member,'team']);
+    const teamResult = await (await register('two','team-paid')).json();
+    assert(teamResult.checkoutUrl);
+    const teamPayment = (await memory.query('SELECT * FROM tournament_payments WHERE id=$1',[teamResult.paymentId])).rows[0];
+    orders.get(teamPayment.provider_uuid).status=2;
+    await reconcilePayment(teamPayment.provider_uuid);
+    assert.equal(await count('team-paid'),1,'A single payment registers the whole team');
+    const registeredTeam = (await memory.query("SELECT team_id,roster FROM participantes_torneo WHERE tournament_id='team-paid'")).rows[0];
+    assert.equal(registeredTeam.team_id,'team');
+    assert.equal(registeredTeam.roster.length,2);
+    failNextCreate = true;
+    assert.notEqual((await register('seven','network-failure')).status,200);
+    const review = (await memory.query("SELECT * FROM tournament_payments WHERE tournament_id='network-failure'")).rows[0];
+    assert.equal(review.status,'review');
+    assert.equal(review.provider_uuid,null);
+    const attempts = creates;
+    assert.notEqual((await register('seven','network-failure')).status,200);
+    assert.equal(creates,attempts,'Unknown network result must not create another charge');
+    const recovered = [...orders.values()].find(order=>order.commerceOrder===review.id);
+    recovered.status=2;
+    assert.equal((await reconcilePayment(recovered.uuid,review.id)).status,'confirmed','Provider callback recovers an interrupted creation');
+    assert.equal(await count('network-failure'),1);
+    const cancellable = await (await register('four','cancelled')).json();
+    const cancelParams = {params:Promise.resolve({id:cancellable.paymentId})};
+    assert.equal((await cancel.POST(request(null,'POST'),cancelParams)).status,401);
+    assert.equal((await cancel.POST(request('five','POST'),cancelParams)).status,404,'Other players cannot cancel this payment');
+    assert.equal((await cancel.POST(request('four','POST'),cancelParams)).status,200);
+    assert.equal((await cancel.POST(request('four','POST'),cancelParams)).status,200,'Cancellation is idempotent');
+    let cancelled = (await memory.query('SELECT * FROM tournament_payments WHERE id=$1',[cancellable.paymentId])).rows[0];
+    assert.equal(cancelled.status,'cancelled');
+    assert.equal(cancelled.checkout_url,null);
+    assert.equal(await count('cancelled'),0);
+    assert.equal((await reconcilePayment(cancelled.provider_uuid)).status,'cancelled','Pending provider callbacks cannot reactivate a cancelled inscription');
+    const cancellationResult = await (await status.GET(request('four'),cancelParams)).json();
+    assert.equal(cancellationResult.payment.checkoutUrl,undefined);
+    const attemptsBeforeRetry = creates;
+    assert.notEqual((await register('four','cancelled')).status,200,'Old link must expire before the same entrant can pay again');
+    assert.equal(creates,attemptsBeforeRetry);
+    await memory.query("UPDATE tournament_payments SET expires_at=CURRENT_TIMESTAMP-INTERVAL '1 minute' WHERE id=$1",[cancellable.paymentId]);
+    const newAttempt = await (await register('four','cancelled')).json();
+    assert(newAttempt.checkoutUrl,'A new attempt is allowed after the previous link expires');
+    orders.get(cancelled.provider_uuid).status=2;
+    assert.equal((await reconcilePayment(cancelled.provider_uuid)).status,'refund_required','A late payment for a cancelled entry must not register the player');
+    assert.equal(await count('cancelled'),0);
+    const raced = await (await register('five','paid-before-cancel')).json();
+    const racedPayment = (await memory.query('SELECT * FROM tournament_payments WHERE id=$1',[raced.paymentId])).rows[0];
+    orders.get(racedPayment.provider_uuid).status=2;
+    assert.equal((await cancel.POST(request('five','POST'),{params:Promise.resolve({id:raced.paymentId})})).status,409,'A payment already made cannot be cancelled as unpaid');
+    assert.equal(await count('paid-before-cancel'),1);
+    await memory.query("UPDATE usuarios SET role='admin' WHERE id='seven'");
+    const administratorDetail=await (await status.GET(request('seven'),params)).json();
+    assert.equal(administratorDetail.payment.flowOrder,pendingData.payment.flowOrder,'Administrator and payer see the same Flow order');
+    assert.equal(administratorDetail.payment.checkoutUrl,undefined,'Administrator sees the order without the payer checkout URL');
+    const orphan='pay-orphan';
+    await memory.query(`INSERT INTO tournament_payments(id,tournament_id,user_id,registration_key,amount,registration,provider,status,created_at)
+      VALUES($1,'missing-config','one','one',10,'{}','flow','review',CURRENT_TIMESTAMP-INTERVAL '5 minutes')`,[orphan]);
+    const archiveParams={params:Promise.resolve({id:orphan})};
+    const archiveBody={confirmedOriginalFlowAccount:true};
+    assert.equal((await archive.POST(request(null,'POST',archiveBody),archiveParams)).status,401);
+    assert.equal((await archive.POST(request('one','POST',archiveBody),archiveParams)).status,403,'Players cannot archive attempts');
+    assert.equal((await archive.POST(request('seven','POST',{confirmedOriginalFlowAccount:false}),archiveParams)).status,409,'A missing order needs administrator verification of original account');
+    assert.equal((await archive.POST(request('seven','POST',archiveBody),archiveParams)).status,200);
+    const archived=(await memory.query('SELECT * FROM tournament_payments WHERE id=$1',[orphan])).rows[0];
+    assert.equal(archived.status,'failed');assert(archived.archived_at);assert.equal(archived.archived_by,'seven');
+    const listRequest=(who,query='')=>new Request('https://arena.example.test/api/payments'+query,{headers:headers(who)});
+    let overview=await (await list.GET(listRequest('seven'))).json();
+    assert.equal(overview.payments.some(p=>p.id===orphan),false,'Archived attempts are hidden by default');
+    overview=await (await list.GET(listRequest('seven','?includeArchived=1'))).json();
+    assert(overview.payments.some(p=>p.id===orphan));
+    assert(overview.tournaments.some(t=>t.id==='paid'));
+    overview=await (await list.GET(listRequest('seven','?tournamentId=paid'))).json();
+    assert(overview.payments.length>0);assert(overview.payments.every(p=>p.tournament_id==='paid'));
+    assert.equal(overview.payments.find(p=>p.id===first.paymentId).flow_order,pendingData.payment.flowOrder);
+    assert(overview.payments.every(p=>p.provider_uuid===undefined&&p.checkout_url===undefined),'History exposes the order number, not tokens or checkout URLs');
+    overview=await (await list.GET(listRequest('one','?includeArchived=1'))).json();
+    assert.equal(overview.payments.some(p=>p.id===orphan),false,'Players cannot enable the administrator archive view');
+    assert(overview.payments.every(p=>p.username==='one'),'Tournament filtering never bypasses ownership');
+    assert.equal((await archive.POST(request('seven','POST',archiveBody),{params:Promise.resolve({id:first.paymentId})})).status,409,'Confirmed charges cannot be archived');
+    assert.equal((await archive.POST(request('seven','POST',archiveBody),{params:Promise.resolve({id:newAttempt.paymentId})})).status,409,'Live pending orders cannot be archived');
+    await memory.query("UPDATE tournament_payments SET expires_at=CURRENT_TIMESTAMP-INTERVAL '1 minute' WHERE id=$1",[newAttempt.paymentId]);
+    assert.equal((await archive.POST(request('seven','POST',archiveBody),{params:Promise.resolve({id:newAttempt.paymentId})})).status,200,'Expired unpaid links can be archived after provider verification');
+    const expiredAttempt=(await memory.query('SELECT * FROM tournament_payments WHERE id=$1',[newAttempt.paymentId])).rows[0];
+    assert.equal(expiredAttempt.status,'failed');assert.equal(expiredAttempt.archive_reason,'flow_expired_unpaid');assert.equal(expiredAttempt.checkout_url,null);
+    overview=await (await list.GET(listRequest('seven'))).json();
+    assert.equal(overview.payments.some(p=>p.id===newAttempt.paymentId),false);
+    orders.get(expiredAttempt.provider_uuid).status=2;
+    assert.equal((await reconcilePayment(expiredAttempt.provider_uuid)).status,'refund_required','A delayed payment on an expired archived order requires refund');
+    overview=await (await list.GET(listRequest('seven'))).json();
+    assert(overview.payments.some(p=>p.id===newAttempt.paymentId&&p.status==='refund_required'));
+    await memory.query("UPDATE tournaments SET status='completed' WHERE id='paid'");
+    assert.equal((await archive.POST(request('seven','POST',archiveBody),{params:Promise.resolve({id:first.paymentId})})).status,200,'Approved payments can be archived after a tournament finishes');
+    const finishedPayment=(await memory.query('SELECT * FROM tournament_payments WHERE id=$1',[first.paymentId])).rows[0];
+    assert.equal(finishedPayment.status,'confirmed');assert.equal(finishedPayment.archive_reason,'completed_tournament_payment');
+    overview=await (await list.GET(listRequest('seven'))).json();
+    assert.equal(overview.payments.some(p=>p.id===first.paymentId),false,'Archived approved receipts leave the admin active view');
+    overview=await (await list.GET(listRequest('seven','?includeArchived=1'))).json();
+    assert(overview.payments.some(p=>p.id===first.paymentId&&p.status==='confirmed'));
+    overview=await (await list.GET(listRequest('one'))).json();
+    assert(overview.payments.some(p=>p.id===first.paymentId&&p.status==='confirmed'),'The payer keeps their approved receipt after admin archives it');
+    // A test tournament can be removed only after its absent Flow orders are verified and archived.
+    await memory.query(`INSERT INTO tournaments(id,title,slug,game_id,game_name,start_date,max_participants) VALUES ('deletable','Test cleanup','deletable-slug','fortnite','Fortnite','2026-12-01T20:00',2)`);
+    await memory.query(`INSERT INTO tournament_payments(id,tournament_id,user_id,registration_key,amount,registration,provider,status,created_at)
+      VALUES('pay-cleanup','deletable','one','one',10,'{}','flow','review',CURRENT_TIMESTAMP-INTERVAL '5 minutes')`);
+    const deleteRequest=(who,query)=>new Request('https://arena.example.test/api/tournaments?'+query,{method:'DELETE',headers:headers(who)});
+    assert.equal((await tournamentRoutes.DELETE(deleteRequest('one','id=deletable'))).status,403);
+    assert.equal((await tournamentRoutes.DELETE(deleteRequest('seven','id=deletable'))).status,409,'Unresolved attempts still protect the tournament');
+    assert.equal((await archive.POST(request('seven','POST',archiveBody),{params:Promise.resolve({id:'pay-cleanup'})})).status,200);
+    assert.equal((await tournamentRoutes.DELETE(deleteRequest('seven','all=true'))).status,409,'Bulk deletion is atomic and refuses any protected payment');
+    assert.equal(Number((await memory.query("SELECT COUNT(*) AS count FROM tournaments WHERE id='deletable'")).rows[0].count),1,'Bulk rollback leaves deletable tournaments intact');
+    assert.equal((await tournamentRoutes.DELETE(deleteRequest('seven','id=deletable-slug'))).status,200,'Deletion also resolves a slug');
+    assert.equal(Number((await memory.query("SELECT COUNT(*) AS count FROM tournaments WHERE id='deletable'")).rows[0].count),0);
+    assert.equal(Number((await memory.query("SELECT COUNT(*) AS count FROM tournament_payments WHERE id='pay-cleanup'")).rows[0].count),0);
+    const audit=(await memory.query("SELECT * FROM removed_tournament_payment_attempts WHERE payment_id='pay-cleanup'")).rows[0];
+    assert.equal(audit.amount,10);assert.equal(audit.removed_by,'seven');assert.equal(audit.tournament_title,'Test cleanup');
+    assert.equal((await tournamentRoutes.DELETE(deleteRequest('seven','id=paid'))).status,409,'Confirmed charges continue protecting their tournament');
+    const rejected=(await memory.query("SELECT id FROM tournament_payments WHERE tournament_id='rejected'")).rows[0];
+    assert.equal((await tournamentRoutes.DELETE(deleteRequest('seven','id=rejected'))).status,200,'A rejected-only tournament can be deleted without manually archiving each payment');
+    const rejectedAudit=(await memory.query('SELECT * FROM removed_tournament_payment_attempts WHERE payment_id=$1',[rejected.id])).rows[0];
+    assert.equal(rejectedAudit.provider_status,3);assert(rejectedAudit.provider_order);
+    for (const id of ['rejected-archived','rejection-changed','rejection-unavailable']) {
+      const created=await (await register('six',id)).json();
+      const record=(await memory.query('SELECT * FROM tournament_payments WHERE id=$1',[created.paymentId])).rows[0];
+      orders.get(record.provider_uuid).status=3;
+      await reconcilePayment(record.provider_uuid);
+      if (id==='rejected-archived') {
+        assert.equal((await archive.POST(request('seven','POST',archiveBody),{params:Promise.resolve({id:record.id})})).status,200);
+        assert.equal((await tournamentRoutes.DELETE(deleteRequest('seven','id='+id))).status,200,'Archived rejected-only tournaments are also deletable');
+      } else {
+        if (id==='rejection-changed') orders.get(record.provider_uuid).status=2;
+        else orders.delete(record.provider_uuid);
+        assert.equal((await tournamentRoutes.DELETE(deleteRequest('seven','id='+id))).status,id==='rejection-changed'?409:503,'A paid or unverifiable provider order must block deletion');
+        assert.equal(Number((await memory.query('SELECT COUNT(*) AS count FROM tournaments WHERE id=$1',[id])).rows[0].count),1);
+        assert.equal(Number((await memory.query('SELECT COUNT(*) AS count FROM removed_tournament_payment_attempts WHERE payment_id=$1',[record.id])).rows[0].count),0,'Failed deletion does not leave partial audit data');
+      }
+    }
+    // A later provider recovery must not silently register a formerly archived entry.
+    orders.set('late-orphan-token',{uuid:'late-orphan-token',flowOrder:9999,commerceOrder:orphan,currency:'CLP',amount:10,status:2});
+    assert.equal((await reconcilePayment('late-orphan-token')).status,'refund_required');
+    assert.equal(await count('missing-config'),0);
+    overview=await (await list.GET(listRequest('seven'))).json();
+    assert(overview.payments.some(p=>p.id===orphan&&p.status==='refund_required'),'Late funds reappear in the default view');
+    delete process.env.FLOW_API_KEY;
+    const disabled = await register('seven','missing-config');
+    assert.notEqual(disabled.status,200);
+    assert.equal(await count('missing-config'),0);
+    assert.equal(Number((await memory.query("SELECT COUNT(*) AS count FROM tournament_payments WHERE tournament_id='missing-config' AND id<>$1",[orphan])).rows[0].count),0);
+    console.log('PASS: free/paid registration, signed provider API, authoritative amount and identity, reservations, duplicate callbacks, private status, late/refund, mismatch, rejection, missing config.');
+  } finally { global.fetch=originalFetch; await memory.close(); }
+}
+main().catch(error=>{console.error(error);process.exitCode=1;});

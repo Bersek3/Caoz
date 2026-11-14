@@ -1,6 +1,6 @@
 'use client';
 
-import { Download, FileText, RefreshCw } from 'lucide-react';
+import { Download, FileText, RefreshCw } from '@/components/icons';
 import { formatRulesDocument, getTournamentRulesPreset, type RulesConfiguration, type RulesMode } from '../lib/tournamentRules';
 
 export function downloadTournamentRules(title: string, rules: string[]) {

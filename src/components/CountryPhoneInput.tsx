@@ -3,7 +3,7 @@
 import { getCountries, getCountryCallingCode, type CountryCode } from 'libphonenumber-js/min';
 import { useEffect, useId, useRef, useState } from 'react';
 import * as flags from 'country-flag-icons/react/3x2';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown } from '@/components/icons';
 
 const countries = getCountries();
 const names = new Intl.DisplayNames(['es'], { type: 'region' });

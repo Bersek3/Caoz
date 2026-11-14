@@ -5,7 +5,7 @@ El catálogo está en `/arena`; `/torneos` redirige allí. Los filtros se guarda
 ## Ciclo de una competencia
 
 1. El administrador crea un torneo de eliminación simple, con fecha y hora de Chile. Los instantes se guardan en UTC y se muestran con la zona indicada.
-2. Los jugadores o capitanes se inscriben. Los pagos reservan el cupo durante 15 minutos; la aprobación confirma la inscripción.
+2. Los jugadores o capitanes se inscriben. Los pagos reservan el cupo durante 30 minutos; la aprobación confirma la inscripción.
 3. El administrador abre el check-in desde la ficha. Esto cierra las inscripciones. Cada participante confirma asistencia dentro de la ventana publicada.
 4. Al cerrar el check-in, el administrador revisa los confirmados y sortea las llaves. Se incluyen únicamente confirmados, con pases libres cuando corresponda.
 5. El staff registra marcadores de series BO1/BO3/BO5. El sistema avanza al ganador y confirma el campeón al guardar la final.
@@ -27,7 +27,7 @@ El correo de contacto publicado es `contacto.caoz@gmail.com`. Las devoluciones s
 - `node scripts/test-tournament-competition.cjs`: fases, permisos, llaves, byes, marcadores y premios.
 - `node scripts/test-tournament-waitlist.cjs`: turnos, expiración, equipos y reservas.
 - `node scripts/test-tournament-experience.cjs`: zonas horarias, acciones y podio.
-- `node scripts/test-virtualpos.cjs`: pagos con proveedor simulado.
+- `node scripts/test-flow-integration.cjs`: pagos con proveedor simulado.
 - `node scripts/test-tournament-ui.cjs`: navegador, requiere Playwright Core disponible mediante `PLAYWRIGHT_CORE_PATH` y servidor local. Opcionalmente `BASE_URL` y `PLAYWRIGHT_EXECUTABLE_PATH`. Todas las llamadas API se interceptan con datos sintéticos y las capturas se guardan en la carpeta temporal `caoz-tournament-review`.
 
 Las pruebas de servicios usan PostgreSQL en memoria; no escriben en la base de datos del proyecto ni realizan cobros reales.

@@ -1,5 +1,7 @@
 # CAOZ | Portal Oficial 🎮✨
 
+Configuración de pagos de torneos: [guía de Flow](FLOW.md).
+
 Sitio web oficial del creador de contenido y streamer **Caoz** (+2.17M de comunidad consolidada).
 
 ---

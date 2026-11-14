@@ -246,7 +246,7 @@ export async function POST(
     const result = await reserveRegistration(tournament.id, {
       userId, teamId: teamObj?.id || null, name: participantName, tag: participantTag,
       captainName, captainDiscord, captainInGameId, roster: candidates, personalDetails
-    }, body.payer || {});
+    });
     return NextResponse.json({ success: true, ...result,
       message: result.checkoutUrl ? 'Contin\u00faa al pago para confirmar tu inscripci\u00f3n.' : 'Inscripci\u00f3n confirmada.'
     });

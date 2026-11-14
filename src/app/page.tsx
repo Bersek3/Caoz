@@ -9,7 +9,7 @@ import {
   Mail,
   CheckCircle2,
   Send
-} from 'lucide-react';
+} from '@/components/icons';
 
 const TYPEWRITER_PHRASES = [
   "Streamer Oficial en Kick & Twitch",

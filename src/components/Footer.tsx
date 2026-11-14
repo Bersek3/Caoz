@@ -1,6 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
-import { Swords } from 'lucide-react';
+import { Swords } from '@/components/icons';
 
 export const Footer: React.FC = () => {
   return (

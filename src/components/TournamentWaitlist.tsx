@@ -1,6 +1,6 @@
 'use client';
 import { useCallback,useEffect,useState } from 'react';
-import { Users,Clock } from 'lucide-react';
+import { Users,Clock } from '@/components/icons';
 import type { Tournament } from '@/types/tournament';
 import { useAuth } from '@/context/AuthContext';
 import { formatTournamentDate } from '@/lib/dateUtils';

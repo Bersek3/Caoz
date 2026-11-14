@@ -16,7 +16,7 @@ import {
   CheckCircle2,
   Trash2,
   Clock
-} from 'lucide-react';
+} from '@/components/icons';
 import { useTournament } from '../context/TournamentContext';
 import { GameId, TournamentFormat } from '../types/tournament';
 import { formatTournamentDate, normalizeTournamentDate, toTournamentDateTimeInput } from '../lib/dateUtils';

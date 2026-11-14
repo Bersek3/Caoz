@@ -1,7 +1,7 @@
 ﻿'use client';
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Plus, Pencil, Settings2, Trash2, X } from 'lucide-react';
+import { Plus, Pencil, Settings2, Trash2, X } from '@/components/icons';
 import { useAuth } from '@/context/AuthContext';
 import { useTournament } from '@/context/TournamentContext';
 import { GameInfo } from '@/types/tournament';

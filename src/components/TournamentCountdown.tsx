@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { CheckCircle2, Clock, Flame } from 'lucide-react';
+import { CheckCircle2, Clock, Flame } from '@/components/icons';
 import { formatTournamentDate, getCheckInWindow, getCountdown } from '@/lib/dateUtils';
 import type { Tournament } from '@/types/tournament';
 

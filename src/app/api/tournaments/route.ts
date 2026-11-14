@@ -1,3 +1,4 @@
+import { deleteTournaments, TournamentDeleteError } from '@/lib/deleteTournament';
 import { NextResponse } from 'next/server';
 import { getDb, initDb, withDbTransaction } from '@/lib/db';
 import { verifyToken } from '@/lib/auth';
@@ -359,50 +360,17 @@ export async function PATCH(request: Request) {
 export async function DELETE(request: Request) {
   try {
     await initDb();
-    const db = await getDb();
-
-    // Verify admin
-    const authHeader = request.headers.get('authorization');
-    let isAdmin = false;
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      const token = authHeader.split(' ')[1];
-      const payload = verifyToken(token);
-      if (payload && payload.role === 'admin') {
-        isAdmin = true;
-      }
-    }
-
-    if (!isAdmin) {
-      return NextResponse.json({ error: 'Solo los administradores pueden eliminar torneos.' }, { status: 403 });
-    }
+    const viewer = await getMatchViewer(request);
+    if (!viewer || viewer.role !== 'admin') return NextResponse.json({ error: 'Solo los administradores pueden eliminar torneos.' }, { status: 403 });
 
     const { searchParams } = new URL(request.url);
     const tournamentId = searchParams.get('id');
     const deleteAll = searchParams.get('all') === 'true';
-    const payments = await db.query(`SELECT id FROM tournament_payments WHERE ($1::boolean OR tournament_id IN (SELECT id FROM tournaments WHERE id=$2 OR slug=$2)) LIMIT 1`, [deleteAll,tournamentId || '']);
-    if (payments.rows.length) return NextResponse.json({ error: 'No se puede eliminar un torneo con historial de pagos. Puedes ocultarlo para conservar los registros.' }, { status: 409 });
-
-    if (deleteAll) {
-      await db.query('DELETE FROM match_messages');
-      await db.query('DELETE FROM tournament_matches');
-      await db.query('DELETE FROM tournament_rounds');
-      await db.query('DELETE FROM tournament_participants');
-      await db.query('DELETE FROM tournaments');
-      return NextResponse.json({ success: true, message: 'Todos los torneos y llaves han sido eliminados correctamente.' });
-    }
-
-    if (!tournamentId) {
-      return NextResponse.json({ error: 'ID de torneo requerido' }, { status: 400 });
-    }
-
-    await db.query('DELETE FROM match_messages WHERE match_id IN (SELECT id FROM tournament_matches WHERE tournament_id = $1)', [tournamentId]);
-    await db.query('DELETE FROM tournament_matches WHERE tournament_id = $1', [tournamentId]);
-    await db.query('DELETE FROM tournament_rounds WHERE tournament_id = $1', [tournamentId]);
-    await db.query('DELETE FROM tournament_participants WHERE tournament_id = $1', [tournamentId]);
-    await db.query('DELETE FROM tournaments WHERE id = $1', [tournamentId]);
-
-    return NextResponse.json({ success: true, message: 'Torneo eliminado con éxito.' });
+    if (!deleteAll && !tournamentId) return NextResponse.json({ error: 'ID de torneo requerido' }, { status: 400 });
+    await deleteTournaments(tournamentId || '', deleteAll, viewer.id);
+    return NextResponse.json({ success: true, message: deleteAll ? 'Todos los torneos y llaves han sido eliminados correctamente.' : 'Torneo eliminado correctamente.' });
   } catch (error: any) {
+    if (error instanceof TournamentDeleteError) return NextResponse.json({ error: error.message }, { status: error.status });
     console.error('Delete tournament error:', error);
     return NextResponse.json({ error: error.message || 'Error al eliminar torneo' }, { status: 500 });
   }
