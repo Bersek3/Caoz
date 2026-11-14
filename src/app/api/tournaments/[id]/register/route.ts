@@ -42,10 +42,8 @@ export async function POST(
     const tournament = trnRes.rows[0];
 
     let personalDetails;
-    if (!Number(tournament.entry_fee_amount)) {
-      try { personalDetails = validateRegistrationDetails(body.personalDetails); }
-      catch (error) { return NextResponse.json({ error: (error as Error).message }, { status: 400 }); }
-    }
+    try { personalDetails = validateRegistrationDetails(body.personalDetails); }
+    catch (error) { return NextResponse.json({ error: (error as Error).message }, { status: 400 }); }
 
     // 2. Check slots
     const countRes = await db.query(
