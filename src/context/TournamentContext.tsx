@@ -33,7 +33,7 @@ interface TournamentContextType {
     captainInGameId: string;
     personalDetails?: { fullName: string; birthDate: string; documentNumber: string; phone: string };
     rosterMembers?: { name: string; inGameId: string; role: 'starter' | 'sub' }[];
-  }) => Promise<{ success: boolean; message: string; participantId?: string; checkoutUrl?: string; paymentId?: string }>;
+  }) => Promise<{ success: boolean; message: string; participantId?: string; checkoutUrl?: string; paymentId?: string; existingPayment?: boolean }>;
   checkInParticipant: (tournamentId: string, participantId: string) => Promise<void>;
   setCheckInPhase: (tournamentId: string, action: 'open' | 'close') => Promise<void>;
   createTournament: (data: Partial<Tournament>) => Promise<string>;
@@ -168,7 +168,7 @@ const TournamentState: React.FC<{ children: React.ReactNode }> = ({ children }) 
       }
 
       await refreshTournaments();
-      return { success: true, message: data.message || '¡Inscripción confirmada!', participantId: data.participantId, checkoutUrl: data.checkoutUrl, paymentId: data.paymentId };
+      return { success: true, message: data.message || '¡Inscripción confirmada!', participantId: data.participantId, checkoutUrl: data.checkoutUrl, paymentId: data.paymentId, existingPayment: data.existingPayment === true };
     } catch (e) {
       return { success: false, message: e instanceof Error ? e.message : 'Error al conectar con el servidor' };
     }

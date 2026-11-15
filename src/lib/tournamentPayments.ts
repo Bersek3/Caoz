@@ -25,7 +25,7 @@ export async function reserveRegistration(tournamentId: string, registration: Re
       if (existing.provider !== 'flow') throw new Error('Existe un pago pendiente con el proveedor anterior. Contacta al organizador para resolverlo antes de pagar con Flow.');
       if (existing.user_id !== registration.userId) throw new Error('Tu equipo ya tiene un pago iniciado. Debe completarlo la persona que lo inició.');
       if (!existing.checkout_url || existing.status === 'review') throw new Error('Existe un pago en preparación o revisión. Contacta al organizador antes de volver a pagar.');
-      return { paymentId: existing.id, checkoutUrl: existing.checkout_url, create: false };
+      return { paymentId: existing.id, checkoutUrl: existing.checkout_url, existingPayment: true, create: false };
     }
     const count = participants.length;
     const pending = rows.filter(p => p.status === 'review' || (activeStatuses.includes(p.status) && new Date(p.expires_at).getTime() > Date.now()));

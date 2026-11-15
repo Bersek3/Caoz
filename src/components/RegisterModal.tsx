@@ -41,7 +41,7 @@ const RegistrationForm: React.FC<RegisterModalProps> = ({
   onRegisteredSuccess
 }) => {
   const router = useRouter();
-  const { user, openAuthModal } = useAuth();
+  const { user, token, openAuthModal } = useAuth();
   const { registerParticipant, games, refreshTournaments } = useTournament();
   const modalRef = useModalAccessibility(isOpen, onClose);
   const titleId = React.useId();
@@ -69,10 +69,24 @@ const RegistrationForm: React.FC<RegisterModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [success, setSuccess] = useState(false);
-  const [pendingPayment, setPendingPayment] = useState<{ id: string; checkoutUrl: string } | null>(null);
+  const [pendingPayment, setPendingPayment] = useState<{ id: string; checkoutUrl?: string } | null>(null);
   const [acceptedRules, setAcceptedRules] = useState(false);
   const [personalDetails, setPersonalDetails] = useState({ fullName: user?.fullName || '', birthDate: user?.birthDate?.slice(0, 10) || '', documentNumber: '', phone: '+56' });
   const isPaid = (tournament.entryFeeAmount || 0) > 0;
+
+  React.useEffect(() => {
+    if (!user || !isPaid) return;
+    const controller = new AbortController();
+    fetch(`/api/payments?tournamentId=${encodeURIComponent(tournament.id)}`, {
+      headers: { Authorization: `Bearer ${token || ''}` }, cache: 'no-store', signal: controller.signal
+    }).then(async response => {
+      const data = await response.json();
+      if (!response.ok || controller.signal.aborted) return;
+      const pending = data.payments?.find((payment: { id: string; status: string }) => ['creating', 'pending', 'review'].includes(payment.status));
+      if (pending) setPendingPayment({ id: pending.id });
+    }).catch(() => { /* The registration endpoint still prevents duplicate payments. */ });
+    return () => controller.abort();
+  }, [isPaid, token, tournament.id, user]);
 
   React.useEffect(() => {
     if (!pendingPayment) return;
@@ -156,6 +170,10 @@ const RegistrationForm: React.FC<RegisterModalProps> = ({
       }
 
       if (result.checkoutUrl && result.paymentId) {
+        if (result.existingPayment) {
+          setPendingPayment({ id: result.paymentId, checkoutUrl: result.checkoutUrl });
+          return;
+        }
         const paymentWindow = window.open(result.checkoutUrl, '_blank');
         if (!paymentWindow) {
           // Keep the existing payment reservation and offer a user-initiated
@@ -223,9 +241,10 @@ const RegistrationForm: React.FC<RegisterModalProps> = ({
           {pendingPayment ? (
             <div className="py-12 flex flex-col items-center text-center space-y-4 animate-fade-in">
               <div className="w-16 h-16 rounded-full bg-amber-500/20 border-2 border-amber-400 flex items-center justify-center text-amber-300"><ShieldCheck className="w-9 h-9" /></div>
-              <h4 className="text-lg font-bold text-white">Completa tu pago en la nueva pestaña</h4>
-              <p className="max-w-md text-sm text-slate-300">Esta ventana verificará el pago automáticamente y recargará Arena cuando Flow lo confirme.</p>
-              <a href={pendingPayment.checkoutUrl} target="_blank" rel="noopener noreferrer" className="arena-secondary-button">Abrir pago nuevamente</a>
+              <h4 className="text-lg font-bold text-white">Tienes un pago pendiente</h4>
+              <p className="max-w-md text-sm text-slate-300">No puedes iniciar otra inscripción para este torneo hasta que Flow confirme, rechace o venza este pago.</p>
+              <Link href={`/arena/pago?paymentId=${encodeURIComponent(pendingPayment.id)}`} className="arena-secondary-button">Consultar estado del pago</Link>
+              {pendingPayment.checkoutUrl && <a href={pendingPayment.checkoutUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-red-300 underline">Continuar pago en Flow</a>}
             </div>
           ) : success ? (
             <div className="py-12 flex flex-col items-center text-center space-y-4 animate-fade-in">

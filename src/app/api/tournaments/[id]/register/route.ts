@@ -248,7 +248,7 @@ export async function POST(
       captainName, captainDiscord, captainInGameId, roster: candidates, personalDetails
     });
     return NextResponse.json({ success: true, ...result,
-      message: result.checkoutUrl ? 'Contin\u00faa al pago para confirmar tu inscripci\u00f3n.' : 'Inscripci\u00f3n confirmada.'
+      message: ('existingPayment' in result && result.existingPayment) ? 'Ya tienes un pago pendiente para esta inscripción. Consulta su estado antes de volver a intentarlo.' : result.checkoutUrl ? 'Continúa al pago para confirmar tu inscripción.' : 'Inscripción confirmada.'
     });
   } catch (error: any) {
     console.error('Register participant API error:', error);
