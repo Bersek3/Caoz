@@ -77,7 +77,11 @@ async function main() {
       '@/lib/tournamentPrizes': prizes,
       '@/lib/tournamentCompetition': competition,
       '@/lib/dateUtils': dates,
-      '@/lib/userAvatar': load('../src/lib/userAvatar.ts')
+      '@/lib/userAvatar': load('../src/lib/userAvatar.ts'),
+      // The route also exposes DELETE, which is outside this creation/rules
+      // scenario. Stub it so the CommonJS harness can load the route without
+      // resolving the application's TypeScript path alias.
+      '@/lib/deleteTournament': { deleteTournaments: async () => {}, TournamentDeleteError: class TournamentDeleteError extends Error {} }
     };
     const api = load('../src/app/api/tournaments/route.ts',overrides);
     const create = body => api.POST(new Request('http://localhost/api/tournaments',{ method: 'POST',headers: { authorization: 'Bearer admin' },body: JSON.stringify(body) }));

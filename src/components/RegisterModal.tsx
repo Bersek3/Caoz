@@ -42,7 +42,7 @@ const RegistrationForm: React.FC<RegisterModalProps> = ({
 }) => {
   const router = useRouter();
   const { user, openAuthModal } = useAuth();
-  const { registerParticipant, games } = useTournament();
+  const { registerParticipant, games, refreshTournaments } = useTournament();
   const modalRef = useModalAccessibility(isOpen, onClose);
   const titleId = React.useId();
 
@@ -69,9 +69,37 @@ const RegistrationForm: React.FC<RegisterModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [success, setSuccess] = useState(false);
+  const [pendingPayment, setPendingPayment] = useState<{ id: string; checkoutUrl: string } | null>(null);
   const [acceptedRules, setAcceptedRules] = useState(false);
   const [personalDetails, setPersonalDetails] = useState({ fullName: user?.fullName || '', birthDate: user?.birthDate?.slice(0, 10) || '', documentNumber: '', phone: '+56' });
   const isPaid = (tournament.entryFeeAmount || 0) > 0;
+
+  React.useEffect(() => {
+    if (!pendingPayment) return;
+    let stopped = false;
+    const checkPayment = async () => {
+      try {
+        const response = await fetch(`/api/payments/${encodeURIComponent(pendingPayment.id)}`, {
+          headers: { Authorization: `Bearer ${localStorage.getItem('caoz_auth_token') || ''}` },
+          cache: 'no-store'
+        });
+        const data = await response.json();
+        if (stopped || !response.ok) return;
+        if (data.payment?.status === 'confirmed') {
+          await refreshTournaments({ silent: true });
+          if (!stopped) window.location.reload();
+        } else if (['failed', 'cancelled', 'refund_required'].includes(data.payment?.status)) {
+          setErrorMsg('El pago no se confirmó. Revisa su estado en Mis pagos antes de intentar nuevamente.');
+          setPendingPayment(null);
+        }
+      } catch {
+        // Keep checking while the player completes the provider checkout.
+      }
+    };
+    void checkPayment();
+    const timer = window.setInterval(() => void checkPayment(), 4000);
+    return () => { stopped = true; window.clearInterval(timer); };
+  }, [pendingPayment, refreshTournaments]);
 
   if (!isOpen) return null;
 
@@ -127,8 +155,17 @@ const RegistrationForm: React.FC<RegisterModalProps> = ({
         return;
       }
 
-      if (result.checkoutUrl) {
-        window.location.assign(result.checkoutUrl);
+      if (result.checkoutUrl && result.paymentId) {
+        const paymentWindow = window.open(result.checkoutUrl, '_blank');
+        if (!paymentWindow) {
+          // Keep the existing payment reservation and offer a user-initiated
+          // link below when the browser blocks programmatic popups.
+          setPendingPayment({ id: result.paymentId, checkoutUrl: result.checkoutUrl });
+          return;
+        }
+        // Flow is third-party content; it must not retain control of Arena.
+        paymentWindow.opener = null;
+        setPendingPayment({ id: result.paymentId, checkoutUrl: result.checkoutUrl });
         return;
       }
       setSuccess(true);
@@ -183,7 +220,14 @@ const RegistrationForm: React.FC<RegisterModalProps> = ({
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           
-          {success ? (
+          {pendingPayment ? (
+            <div className="py-12 flex flex-col items-center text-center space-y-4 animate-fade-in">
+              <div className="w-16 h-16 rounded-full bg-amber-500/20 border-2 border-amber-400 flex items-center justify-center text-amber-300"><ShieldCheck className="w-9 h-9" /></div>
+              <h4 className="text-lg font-bold text-white">Completa tu pago en la nueva pestaña</h4>
+              <p className="max-w-md text-sm text-slate-300">Esta ventana verificará el pago automáticamente y recargará Arena cuando Flow lo confirme.</p>
+              <a href={pendingPayment.checkoutUrl} target="_blank" rel="noopener noreferrer" className="arena-secondary-button">Abrir pago nuevamente</a>
+            </div>
+          ) : success ? (
             <div className="py-12 flex flex-col items-center text-center space-y-4 animate-fade-in">
               <div className="w-16 h-16 rounded-full bg-emerald-500/20 border-2 border-emerald-400 flex items-center justify-center text-emerald-400">
                 <CheckCircle2 className="w-9 h-9" />
