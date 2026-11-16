@@ -10,6 +10,7 @@ import { validateTournamentPrizes } from '@/lib/tournamentPrizes';
 import { getUserAvatar } from '@/lib/userAvatar';
 import { createCompetitionBracket } from '@/lib/tournamentCompetition';
 import { normalizeTournamentDate } from '@/lib/dateUtils';
+import { formatChileanPesos, splitChileanPesos } from '@/lib/currency';
 import { randomUUID } from 'crypto';
 
 function safeParse(val: any, fallback: any = []) {
@@ -254,8 +255,9 @@ export async function POST(request: Request) {
     let prizeSettings;
     let ruleSettings;
     try {
+      const formattedPrizePool = typeof body.prizePool === 'string' ? formatChileanPesos(body.prizePool) : '';
       const prizeDistribution = isBattleRoyale
-        ? Array.from({ length: battleRoyaleRounds }, (_, index) => ({ place: `Ronda ${index + 1}`, prize: `1/${battleRoyaleRounds} del premio total (${typeof body.prizePool === 'string' ? body.prizePool.trim() : ''})` }))
+        ? Array.from({ length: battleRoyaleRounds }, (_, index) => ({ place: `Ronda ${index + 1}`, prize: splitChileanPesos(formattedPrizePool, battleRoyaleRounds) || `1/${battleRoyaleRounds} del premio total (${formattedPrizePool})` }))
         : body.prizeDistribution;
       prizeSettings = validateTournamentPrizes(body.prizePool, prizeDistribution, maxP);
       ruleSettings = resolveTournamentRules({
@@ -300,7 +302,7 @@ export async function POST(request: Request) {
       teamType,
       teamSize,
       body.region || 'LATAM',
-      entryFeeAmount > 0 ? `${new Intl.NumberFormat('es-CL').format(entryFeeAmount)} CLP` : 'Gratis',
+      entryFeeAmount > 0 ? formatChileanPesos(String(entryFeeAmount)) : 'Gratis',
       prizeSettings.prizePool,
       JSON.stringify(prizeSettings.prizeDistribution),
       maxP,

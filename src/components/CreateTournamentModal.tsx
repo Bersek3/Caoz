@@ -26,6 +26,7 @@ import { prizePlace, validateTournamentPrizes, type TournamentPrize } from '../l
 import { TournamentRulesEditor } from './TournamentRulesEditor';
 import { DEFAULT_TOURNAMENT_RULES, resolveTournamentRules, type RulesMode } from '../lib/tournamentRules';
 import { prepareTournamentBanner } from '../lib/tournamentBanner';
+import { formatChileanPesos, splitChileanPesos } from '../lib/currency';
 
 interface CreateTournamentModalProps {
   isOpen: boolean;
@@ -67,8 +68,9 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
     description: ''
   });
 
+  const battleRoyaleRoundPrize = splitChileanPesos(formData.prizePool, formData.battleRoyaleRounds);
   const prizeDistribution = formData.format === 'battle_royale'
-    ? Array.from({ length: formData.battleRoyaleRounds }, (_, index) => ({ place: `Ronda ${index + 1}`, prize: `1/${formData.battleRoyaleRounds} del premio total (${formData.prizePool || 'por definir'})` }))
+    ? Array.from({ length: formData.battleRoyaleRounds }, (_, index) => ({ place: `Ronda ${index + 1}`, prize: battleRoyaleRoundPrize || `1/${formData.battleRoyaleRounds} del premio total (${formData.prizePool ? formatChileanPesos(formData.prizePool) : 'por definir'})` }))
     : prizeMode === 'single' ? [{ place: prizePlace(0),prize: formData.prizePool }] : rankedPrizes;
 
   const [isPreparingBanner, setIsPreparingBanner] = useState(false);
@@ -561,7 +563,7 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
           {/* STEP 3 */}
           {step === 3 && (
             <div className="space-y-5 animate-fade-in">
-              {formData.format === 'battle_royale' ? <fieldset className="space-y-3 rounded-xl border border-red-400/25 bg-red-950/10 p-4"><legend className="px-2 text-sm font-bold text-red-300">Premio por rondas</legend><label className="block text-xs font-semibold text-slate-300">Premio total del torneo *<input required maxLength={100} value={formData.prizePool} onChange={event => setFormData({ ...formData, prizePool: event.target.value })} placeholder="Ej.: 100.000 CLP" className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2.5 text-sm text-white" /></label><p className="text-xs text-slate-300">El premio total se dividirá en {formData.battleRoyaleRounds} partes iguales: cada ganador de ronda recibe 1/{formData.battleRoyaleRounds} del total.</p></fieldset> : <TournamentPrizesEditor mode={prizeMode} onModeChange={setPrizeMode} total={formData.prizePool} onTotalChange={prizePool => setFormData({ ...formData,prizePool })} distribution={rankedPrizes} onDistributionChange={setRankedPrizes} maxPlaces={formData.maxParticipants} teamType={formData.teamType} />}
+              {formData.format === 'battle_royale' ? <fieldset className="space-y-3 rounded-xl border border-red-400/25 bg-red-950/10 p-4"><legend className="px-2 text-sm font-bold text-red-300">Premio por rondas</legend><label className="block text-xs font-semibold text-slate-300">Premio total del torneo (CLP) *<input required inputMode="numeric" maxLength={100} value={formData.prizePool} onChange={event => setFormData({ ...formData, prizePool: event.target.value })} placeholder="Ej.: 100000" className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2.5 text-sm text-white" /></label><p className="text-xs text-slate-300">Se publicará como: <strong>{formData.prizePool ? formatChileanPesos(formData.prizePool) : '$0'}</strong>. {battleRoyaleRoundPrize ? <>Cada ganador de ronda recibirá <strong>{battleRoyaleRoundPrize}</strong>.</> : <>El total se divide en {formData.battleRoyaleRounds} partes iguales.</>}</p></fieldset> : <TournamentPrizesEditor mode={prizeMode} onModeChange={setPrizeMode} total={formData.prizePool} onTotalChange={prizePool => setFormData({ ...formData,prizePool })} distribution={rankedPrizes} onDistributionChange={setRankedPrizes} maxPlaces={formData.maxParticipants} teamType={formData.teamType} />}
               <div>
                 <div>
                   <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">
@@ -577,7 +579,7 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
                     onChange={(e) => setFormData({ ...formData, entryFeeAmount: Number(e.target.value) })}
                     className="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white text-sm focus:outline-none focus:border-red-400"
                   />
-                  <p className="mt-1 text-xs text-slate-400">Pesos chilenos (CLP) por inscripción. 0 = gratis. En equipos, paga una persona por todo el equipo.</p>
+                  <p className="mt-1 text-xs text-slate-400">Se mostrará como <strong>{formData.entryFeeAmount > 0 ? formatChileanPesos(String(formData.entryFeeAmount)) : 'Gratis'}</strong>. Pesos chilenos (CLP) por inscripción. 0 = gratis. En equipos, paga una persona por todo el equipo.</p>
                 </div>
               </div>
 

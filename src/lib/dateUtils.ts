@@ -47,8 +47,10 @@ export function toTournamentDateTimeInput(value?: string | null): string {
   return p.year+'-'+p.month+'-'+p.day+'T'+p.hour+':'+p.minute;
 }
 export function formatTournamentDate(value?: string | null): string {
-  const date = parseTournamentDate(value);
+  const date = parseTournamentDate(value) as Date;
   if (!date) return value || 'Por definir';
+  const parts = chileParts(date!);
+  return `${parts.day}-${parts.month}-${parts.year} ${parts.hour}:${parts.minute}HRS`;
   return new Intl.DateTimeFormat('es-CL', { timeZone: TOURNAMENT_TIME_ZONE,
     day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
   }).format(date) + ' · Chile';

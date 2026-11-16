@@ -3,6 +3,7 @@ import type { Tournament } from '@/types/tournament';
 import { POPULAR_GAMES } from '@/data/mockData';
 import { resolveTournamentRules } from './tournamentRules';
 import { validateTournamentPrizes } from './tournamentPrizes';
+import { formatChileanPesos } from './currency';
 import { createCompetitionBracket } from './tournamentCompetition';
 import { getCheckInWindow, normalizeTournamentDate, parseTournamentDate } from './dateUtils';
 
@@ -68,8 +69,8 @@ export async function editTournament(db: DbSession, id: string, input: unknown) 
     organizer_name: text(data.organizer.name, 'Organizador', 150, true), organizer_avatar: image(data.organizer.avatar, 'Avatar'),
     organizer_verified: data.organizer.verified, organizer_followers: data.organizer.followers,
     status: data.status, format: data.format, team_type: data.teamType, team_size: data.teamSize, region: data.region,
-    entry_fee_amount: data.entryFeeAmount, entry_fee: data.entryFeeAmount ? `${new Intl.NumberFormat('es-CL').format(data.entryFeeAmount)} CLP` : 'Gratis',
-    prize_pool: text(data.prizePool, 'Premio total', 100), prize_distribution: JSON.stringify(prizes), max_participants: data.maxParticipants,
+    entry_fee_amount: data.entryFeeAmount, entry_fee: data.entryFeeAmount ? formatChileanPesos(String(data.entryFeeAmount)) : 'Gratis',
+    prize_pool: prizeSettings.prizePool, prize_distribution: JSON.stringify(prizes), max_participants: data.maxParticipants,
     start_date: startDate, check_in_opens_at: checkInWindow.opensAt.toISOString(),
     check_in_closes_at: checkInWindow.closesAt.toISOString(), check_in_active: data.checkInActive,
     description: text(data.description, 'Descripción', 50000), rules: JSON.stringify(ruleSettings.rules),
