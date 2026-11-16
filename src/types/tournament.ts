@@ -122,6 +122,7 @@ export interface Tournament {
   prizePool: string;
   prizeDistribution: { place: string; prize: string }[];
   maxParticipants: number;
+  battleRoyaleRounds?: number;
   startDate: string;
   checkInOpensAt: string;
   checkInClosesAt: string;

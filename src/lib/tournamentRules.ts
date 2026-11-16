@@ -8,6 +8,7 @@ export interface RulesConfiguration {
   teamType: 'solo' | 'team';
   teamSize: number;
   maxParticipants: number;
+  battleRoyaleRounds?: number;
   region: string;
   title?: string;
   startDate?: string;
@@ -35,7 +36,7 @@ export function getTournamentRulesPreset(config: RulesConfiguration) {
   if (!['solo','team'].includes(config.teamType) || !Number.isInteger(config.teamSize) ||
     (config.teamType === 'solo' ? config.teamSize !== 1 : config.teamSize < 2 || config.teamSize > 4)) throw new Error('Fortnite admite individual, dúos, tríos o escuadras de cuatro.');
   if (config.format === 'battle_royale') {
-    if (config.teamType !== 'solo' || config.teamSize !== 1 || config.maxParticipants !== 100) throw new Error('Battle Royale requiere 100 jugadores individuales.');
+    if (config.teamType !== 'solo' || config.teamSize !== 1 || config.maxParticipants !== 100 || !Number.isInteger(config.battleRoyaleRounds) || (config.battleRoyaleRounds || 0) < 1 || (config.battleRoyaleRounds || 0) > 10) throw new Error('Battle Royale requiere 100 jugadores individuales y entre 1 y 10 rondas.');
   } else if (![8,16,32].includes(config.maxParticipants)) throw new Error('Los cupos de Fortnite deben ser 8, 16 o 32.');
   const solo = config.teamType === 'solo';
   const modality = solo ? 'Individual (Solo)' : config.teamSize === 2 ? 'Dúos' : config.teamSize === 3 ? 'Tríos' : 'Escuadras';
@@ -61,8 +62,8 @@ export function getTournamentRulesPreset(config: RulesConfiguration) {
       'Desempates de tabla: puntos de clasificación, suma de puntos de los rivales enfrentados (Buchholz), diferencia de partidas y partidas ganadas. Un empate que determine premios o campeón se resuelve con una BO1 adicional entre los involucrados, con orden sorteado.'
     ],
     battle_royale: [
-      'Formato: una única partida Battle Royale con 100 jugadores individuales. No hay llaves, enfrentamientos 1v1 ni rondas de eliminación separadas.',
-      'Campeón: gana exclusivamente el último jugador superviviente según la clasificación oficial de la partida. La organización valida el resultado con las pruebas disponibles y publica a un único ganador.'
+      `Formato: ${config.battleRoyaleRounds} rondas Battle Royale con los mismos 100 jugadores individuales en cada partida. No hay llaves ni enfrentamientos 1v1.`,
+      `Campeón de ronda: gana exclusivamente el último jugador superviviente según la clasificación oficial. Cada ronda tiene un único ganador y recibe 1/${config.battleRoyaleRounds} del premio total; la organización valida cada resultado con las pruebas disponibles.`
     ]
   };
   const fee = config.entryFeeAmount || 0;

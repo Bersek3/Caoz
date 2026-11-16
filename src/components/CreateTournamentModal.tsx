@@ -58,6 +58,7 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
     teamType: 'team' as 'solo' | 'team',
     teamSize: 5,
     maxParticipants: 8,
+    battleRoyaleRounds: 1,
     region: 'LATAM' as 'LATAM' | 'NA' | 'EU' | 'GLOBAL',
     entryFee: 'Gratis',
     entryFeeAmount: 0,
@@ -66,7 +67,9 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
     description: ''
   });
 
-  const prizeDistribution = prizeMode === 'single' ? [{ place: prizePlace(0),prize: formData.prizePool }] : rankedPrizes;
+  const prizeDistribution = formData.format === 'battle_royale'
+    ? Array.from({ length: formData.battleRoyaleRounds }, (_, index) => ({ place: `Ronda ${index + 1}`, prize: `1/${formData.battleRoyaleRounds} del premio total (${formData.prizePool || 'por definir'})` }))
+    : prizeMode === 'single' ? [{ place: prizePlace(0),prize: formData.prizePool }] : rankedPrizes;
 
   const [isPreparingBanner, setIsPreparingBanner] = useState(false);
   const bannerVersion = React.useRef(0);
@@ -156,6 +159,7 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
         teamType: formData.teamType,
         teamSize: formData.teamSize,
         maxParticipants: formData.maxParticipants,
+        battleRoyaleRounds: formData.battleRoyaleRounds,
         region: formData.region,
         entryFee: formData.entryFee,
         entryFeeAmount: formData.entryFeeAmount,
@@ -536,6 +540,11 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
                 </select>
               </label>}
 
+              {formData.format === 'battle_royale' && <label className="block text-xs text-slate-300">Cantidad de rondas Battle Royale
+                <input type="number" required min={1} max={10} value={formData.battleRoyaleRounds} onChange={event => setFormData({ ...formData, battleRoyaleRounds: Number(event.target.value) })} className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-900 p-3 text-sm text-white" />
+                <span className="mt-1 block text-slate-400">Los mismos 100 jugadores compiten en cada ronda. Cada partida tiene un único ganador.</span>
+              </label>}
+
               {formData.gameId !== 'fortnite' && formData.teamType === 'team' && <label className="block text-xs text-slate-300">Integrantes por equipo
                 <input type="number" required min={2} max={100} value={formData.teamSize} onChange={event => setFormData({ ...formData, teamSize: Number(event.target.value) })} className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-900 p-3 text-sm text-white" />
               </label>}
@@ -552,7 +561,7 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
           {/* STEP 3 */}
           {step === 3 && (
             <div className="space-y-5 animate-fade-in">
-              <TournamentPrizesEditor mode={prizeMode} onModeChange={setPrizeMode} total={formData.prizePool} onTotalChange={prizePool => setFormData({ ...formData,prizePool })} distribution={rankedPrizes} onDistributionChange={setRankedPrizes} maxPlaces={formData.maxParticipants} teamType={formData.teamType} />
+              {formData.format === 'battle_royale' ? <fieldset className="space-y-3 rounded-xl border border-red-400/25 bg-red-950/10 p-4"><legend className="px-2 text-sm font-bold text-red-300">Premio por rondas</legend><label className="block text-xs font-semibold text-slate-300">Premio total del torneo *<input required maxLength={100} value={formData.prizePool} onChange={event => setFormData({ ...formData, prizePool: event.target.value })} placeholder="Ej.: 100.000 CLP" className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2.5 text-sm text-white" /></label><p className="text-xs text-slate-300">El premio total se dividirá en {formData.battleRoyaleRounds} partes iguales: cada ganador de ronda recibe 1/{formData.battleRoyaleRounds} del total.</p></fieldset> : <TournamentPrizesEditor mode={prizeMode} onModeChange={setPrizeMode} total={formData.prizePool} onTotalChange={prizePool => setFormData({ ...formData,prizePool })} distribution={rankedPrizes} onDistributionChange={setRankedPrizes} maxPlaces={formData.maxParticipants} teamType={formData.teamType} />}
               <div>
                 <div>
                   <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">
@@ -586,7 +595,7 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
                 </div>
                 <div className="flex justify-between text-slate-400">
                   <span>Tipo de competición:</span>
-                  <span className="font-semibold text-white">{formData.format === 'battle_royale' ? '100 jugadores individuales · 1 ganador' : formData.teamType === 'team' ? `Equipos de ${formData.teamSize}` : 'Solo 1v1'}</span>
+                  <span className="font-semibold text-white">{formData.format === 'battle_royale' ? `100 jugadores · ${formData.battleRoyaleRounds} rondas · 1 ganador por ronda` : formData.teamType === 'team' ? `Equipos de ${formData.teamSize}` : 'Solo 1v1'}</span>
                 </div>
               </div>
             </div>

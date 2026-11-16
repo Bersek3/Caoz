@@ -228,11 +228,15 @@ export async function POST(request: Request) {
     const format = body.format || 'single_elimination';
     const isBattleRoyale = format === 'battle_royale';
     const maxP = body.maxParticipants || 8;
+    const battleRoyaleRounds = isBattleRoyale ? Number(body.battleRoyaleRounds ?? 1) : 1;
     if (!['single_elimination', 'battle_royale'].includes(format)) {
       return NextResponse.json({ error: 'Selecciona un formato de torneo válido.' }, { status: 400 });
     }
     if (isBattleRoyale && game.id !== 'fortnite') {
       return NextResponse.json({ error: 'Battle Royale solo está disponible para torneos de Fortnite.' }, { status: 400 });
+    }
+    if (!Number.isInteger(battleRoyaleRounds) || battleRoyaleRounds < 1 || battleRoyaleRounds > 10) {
+      return NextResponse.json({ error: 'Battle Royale admite entre 1 y 10 rondas.' }, { status: 400 });
     }
     const startDate = normalizeTournamentDate(body.startDate);
     if (!startDate || new Date(startDate).getTime() <= Date.now()) return NextResponse.json({ error: 'Selecciona una fecha y hora de inicio futura válida (hora de Chile).' }, { status: 400 });
@@ -250,10 +254,13 @@ export async function POST(request: Request) {
     let prizeSettings;
     let ruleSettings;
     try {
-      prizeSettings = validateTournamentPrizes(body.prizePool, body.prizeDistribution, maxP);
+      const prizeDistribution = isBattleRoyale
+        ? Array.from({ length: battleRoyaleRounds }, (_, index) => ({ place: `Ronda ${index + 1}`, prize: `1/${battleRoyaleRounds} del premio total (${typeof body.prizePool === 'string' ? body.prizePool.trim() : ''})` }))
+        : body.prizeDistribution;
+      prizeSettings = validateTournamentPrizes(body.prizePool, prizeDistribution, maxP);
       ruleSettings = resolveTournamentRules({
         gameId: game.id, format, teamType,
-        teamSize, maxParticipants: maxP, region: body.region || 'LATAM',
+        teamSize, maxParticipants: maxP, battleRoyaleRounds, region: body.region || 'LATAM',
         title: body.title, startDate: body.startDate, entryFeeAmount, ...prizeSettings
       }, body);
     } catch (error) {
@@ -303,7 +310,9 @@ export async function POST(request: Request) {
       false,
       body.description || 'Torneo organizado en CZ ARENA.',
       JSON.stringify(ruleSettings.rules),
-      JSON.stringify(body.schedule || [{ stage: 'Ronda 1', time: startDate, format: 'BO3' }]),
+      JSON.stringify(isBattleRoyale
+        ? Array.from({ length: battleRoyaleRounds }, (_, index) => ({ stage: `Ronda Battle Royale ${index + 1}`, time: index === 0 ? startDate : 'Horario por confirmar', format: '100 jugadores · 1 ganador' }))
+        : body.schedule || [{ stage: 'Ronda 1', time: startDate, format: 'BO3' }]),
       entryFeeAmount,
       ruleSettings.rulesMode,
       ruleSettings.rulesTemplateVersion
