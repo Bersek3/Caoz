@@ -1,16 +1,12 @@
 # Política de privacidad de CZ ARENA
 
-**Borrador para revisión — 30 de octubre de 2026.**
-
-> Antes de publicar: completar la identidad legal y domicilio del responsable, confirmar el canal de privacidad, los proveedores y países de alojamiento, y definir los plazos de conservación y el procedimiento para atender solicitudes. Este documento describe las funciones revisadas en el código; no certifica su cumplimiento legal ni la configuración del servicio en producción.
+**Última actualización: 16 de noviembre de 2026.**
 
 ## 1. Quién es responsable de tus datos
 
 CZ ARENA es una plataforma de la comunidad Caoz que permite crear y gestionar torneos de videojuegos, formar equipos, inscribirse en competencias y coordinar partidas.
 
-El responsable del tratamiento es **[nombre completo o razón social del operador]**, **[RUT u otro identificador aplicable]**, con domicilio en **[domicilio y país]**.
-
-Puedes dirigir consultas y solicitudes sobre tus datos a **contacto.caoz@gmail.com**, correo de contacto publicado en la plataforma. **[Confirmar que este correo también atenderá solicitudes de privacidad antes de publicar.]**
+Puedes dirigir consultas y solicitudes sobre tus datos a **Contacto@pyroprod.cl**.
 
 Esta política explica el tratamiento de datos en CZ ARENA. Los sitios externos a los que accedas desde nuestros enlaces tienen sus propias políticas.
 
@@ -58,7 +54,7 @@ Los datos de tarjeta y claves bancarias se ingresan en el entorno del proveedor 
 
 Utilizamos un token de autenticación guardado en el almacenamiento local del navegador para mantener la sesión y autenticar solicitudes. Al cerrar sesión se elimina ese token del navegador; cerrar sesión no elimina la cuenta ni los registros de torneos.
 
-Al conectarte al servicio o cargar recursos externos, los servidores que reciben la solicitud pueden recibir tu dirección IP y datos técnicos de la conexión. El alcance de los registros de infraestructura depende del proveedor y de la configuración del alojamiento. **[Confirmar proveedores, datos registrados y plazos antes de publicar.]**
+Al conectarte al servicio o cargar recursos externos, los servidores que reciben la solicitud pueden recibir tu dirección IP y datos técnicos de la conexión. El alcance de los registros de infraestructura depende del proveedor y de la configuración del alojamiento.
 
 ## 3. Para qué utilizamos los datos
 
@@ -92,7 +88,7 @@ El correo de acceso, hash de contraseña, fecha de nacimiento, N° de documento,
 
 **Proveedor de pagos.** Al iniciar un pago se envían a Flow el correo electrónico del pagador, importe, descripción y referencia de la operación. El proveedor trata también los datos que ingreses directamente en su entorno conforme a sus condiciones y política de privacidad.
 
-**Proveedores técnicos.** El servicio necesita infraestructura de alojamiento y base de datos. **[Identificar los proveedores contratados, su función y países de tratamiento antes de publicar.]**
+**Proveedores técnicos.** El servicio necesita infraestructura de alojamiento y base de datos.
 
 **Proveedores de imágenes.** La plataforma utiliza recursos externos, entre ellos avatares de DiceBear e imágenes de Unsplash. El avatar predeterminado se genera mediante una dirección de DiceBear que incluye el nombre de usuario como semilla. Según cómo se sirva el recurso, su proveedor puede recibir ese identificador y datos técnicos de la solicitud. Las imágenes alojadas en otras direcciones también pueden generar conexiones con sus respectivos proveedores.
 
@@ -102,7 +98,7 @@ El correo de acceso, hash de contraseña, fecha de nacimiento, N° de documento,
 
 La implementación revisada utiliza almacenamiento local para la autenticación. Puedes eliminarlo desde la configuración de tu navegador; hacerlo puede cerrar tu sesión o impedir funciones que requieren identificarte.
 
-No se identificaron herramientas de publicidad personalizada, píxeles de seguimiento comercial ni analítica de terceros en el código revisado. **[Verificar también la configuración del alojamiento y las integraciones de producción.]** Si se incorporan tecnologías adicionales, se deberá actualizar esta información y solicitar consentimiento cuando corresponda.
+No se identificaron herramientas de publicidad personalizada, píxeles de seguimiento comercial ni analítica de terceros en el código revisado. Si se incorporan tecnologías adicionales, se deberá actualizar esta información y solicitar consentimiento cuando corresponda.
 
 ## 7. Menores de edad
 
@@ -114,11 +110,10 @@ El padre, madre o representante legal puede contactar al responsable para consul
 
 ## 8. Dónde se almacenan y durante cuánto tiempo
 
-La ubicación de los datos depende de la infraestructura contratada. **[Completar países de almacenamiento, posibles accesos desde el extranjero y mecanismos aplicables a transferencias internacionales.]** No se presume una autorización general para transferir datos al extranjero por el simple uso de la plataforma.
+La ubicación de los datos depende de la infraestructura contratada. No se presume una autorización general para transferir datos al extranjero por el simple uso de la plataforma.
 
 La conservación debe limitarse al tiempo necesario para administrar la cuenta, ejecutar la competencia, resolver controversias y cumplir las obligaciones aplicables. Una solicitud de eliminación puede requerir conservar determinados antecedentes por una obligación legal o para atender una reclamación; en ese caso debe explicarse el motivo y limitarse su uso.
 
-**[Antes de publicar, definir e implementar plazos para cuentas inactivas, inscripciones y documentos de identidad, autorizaciones parentales, chats y pruebas, transacciones, registros técnicos y respaldos. La aplicación revisada no acredita una eliminación automática por antigüedad.]**
 
 ## 9. Seguridad
 

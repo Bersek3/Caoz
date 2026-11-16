@@ -52,11 +52,8 @@ export default function PrivacyPage() {
           </div>
           <h1 className="text-4xl font-black tracking-tight text-white sm:text-6xl">Política de privacidad</h1>
           <p className="mt-5 text-lg leading-relaxed text-slate-400">Conoce qué datos tratamos, para qué los utilizamos y cómo ejercer tus derechos.</p>
-          <p className="mt-5 text-sm text-slate-500">Borrador para revisión · 30 de octubre de 2026</p>
+          <p className="mt-5 text-sm text-slate-500">Última actualización: 16 de noviembre de 2026</p>
         </header>
-        <div role="note" className="mb-10 rounded-2xl border border-amber-400/20 bg-amber-400/5 p-5 text-sm leading-7 text-amber-100/80">
-          Este documento está en revisión. Algunos antecedentes del responsable, el alojamiento y los plazos de conservación aún están pendientes de confirmación y aparecen señalados en el texto.
-        </div>
         <div className="grid items-start gap-8 lg:grid-cols-[260px_minmax(0,1fr)] lg:gap-12">
           <nav aria-label="Contenido de la política" className="rounded-2xl border border-slate-800 bg-white/[0.02] p-5 lg:sticky lg:top-28">
             <p className="mb-4 text-xs font-bold uppercase tracking-widest text-slate-500">En esta política</p>
