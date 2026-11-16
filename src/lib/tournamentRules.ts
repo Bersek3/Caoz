@@ -20,7 +20,7 @@ export interface RulesConfiguration {
 
 export const FORMAT_LABELS: Record<TournamentFormat, string> = {
   single_elimination: 'Eliminación simple', double_elimination: 'Doble eliminación',
-  round_robin: 'Round Robin', swiss: 'Sistema suizo'
+  round_robin: 'Round Robin', swiss: 'Sistema suizo', battle_royale: 'Battle Royale'
 };
 export const DEFAULT_TOURNAMENT_RULES = [
   'Check-in obligatorio 30 minutos antes de comenzar.',
@@ -34,7 +34,9 @@ export function getTournamentRulesPreset(config: RulesConfiguration) {
   if (!format) throw new Error('Selecciona un formato válido para las bases de Fortnite.');
   if (!['solo','team'].includes(config.teamType) || !Number.isInteger(config.teamSize) ||
     (config.teamType === 'solo' ? config.teamSize !== 1 : config.teamSize < 2 || config.teamSize > 4)) throw new Error('Fortnite admite individual, dúos, tríos o escuadras de cuatro.');
-  if (![8,16,32].includes(config.maxParticipants)) throw new Error('Los cupos de Fortnite deben ser 8, 16 o 32.');
+  if (config.format === 'battle_royale') {
+    if (config.teamType !== 'solo' || config.teamSize !== 1 || config.maxParticipants !== 100) throw new Error('Battle Royale requiere 100 jugadores individuales.');
+  } else if (![8,16,32].includes(config.maxParticipants)) throw new Error('Los cupos de Fortnite deben ser 8, 16 o 32.');
   const solo = config.teamType === 'solo';
   const modality = solo ? 'Individual (Solo)' : config.teamSize === 2 ? 'Dúos' : config.teamSize === 3 ? 'Tríos' : 'Escuadras';
   const units = solo ? 'jugadores' : 'equipos';
@@ -57,6 +59,10 @@ export function getTournamentRulesPreset(config: RulesConfiguration) {
       `Formato: sistema suizo de ${Math.log2(config.maxParticipants)} rondas para ${config.maxParticipants} ${units}. La primera ronda se sortea y las siguientes emparejan inscritos con igual puntaje o el más cercano disponible; se evitan rivales repetidos. Nadie se elimina antes de finalizar las rondas.`,
       'Encuentros: BO3 sin empate, con tres puntos por serie ganada y cero por perdida. Si queda un inscrito sin rival, recibe un único pase libre con tres puntos, sin partidas ni eliminaciones ficticias; no puede recibir otro si hay candidatos sin pase.',
       'Desempates de tabla: puntos de clasificación, suma de puntos de los rivales enfrentados (Buchholz), diferencia de partidas y partidas ganadas. Un empate que determine premios o campeón se resuelve con una BO1 adicional entre los involucrados, con orden sorteado.'
+    ],
+    battle_royale: [
+      'Formato: una única partida Battle Royale con 100 jugadores individuales. No hay llaves, enfrentamientos 1v1 ni rondas de eliminación separadas.',
+      'Campeón: gana exclusivamente el último jugador superviviente según la clasificación oficial de la partida. La organización valida el resultado con las pruebas disponibles y publica a un único ganador.'
     ]
   };
   const fee = config.entryFeeAmount || 0;

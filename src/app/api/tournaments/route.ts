@@ -225,9 +225,14 @@ export async function POST(request: Request) {
     if (!game || typeof body.title !== 'string' || !body.title.trim() || body.title.length > 255) {
       return NextResponse.json({ error: 'Selecciona un juego válido e ingresa un título de hasta 255 caracteres.' }, { status: 400 });
     }
+    const format = body.format || 'single_elimination';
+    const isBattleRoyale = format === 'battle_royale';
     const maxP = body.maxParticipants || 8;
-    if (body.format && body.format !== 'single_elimination') {
-      return NextResponse.json({ error: 'Por ahora se admite eliminación simple. Los demás formatos estarán disponibles cuando tengan un cuadro completo compatible.' }, { status: 400 });
+    if (!['single_elimination', 'battle_royale'].includes(format)) {
+      return NextResponse.json({ error: 'Selecciona un formato de torneo válido.' }, { status: 400 });
+    }
+    if (isBattleRoyale && game.id !== 'fortnite') {
+      return NextResponse.json({ error: 'Battle Royale solo está disponible para torneos de Fortnite.' }, { status: 400 });
     }
     const startDate = normalizeTournamentDate(body.startDate);
     if (!startDate || new Date(startDate).getTime() <= Date.now()) return NextResponse.json({ error: 'Selecciona una fecha y hora de inicio futura válida (hora de Chile).' }, { status: 400 });
@@ -235,19 +240,19 @@ export async function POST(request: Request) {
     if (!Number.isInteger(entryFeeAmount) || entryFeeAmount < 0 || entryFeeAmount > 10_000_000) {
       return NextResponse.json({ error: 'Ingresa un precio entero entre 0 y 10.000.000 CLP.' }, { status: 400 });
     }
-    if (![8, 16, 32].includes(maxP)) {
-      return NextResponse.json({ error: 'El cupo debe ser de 8, 16 o 32 participantes.' }, { status: 400 });
+    if ((!isBattleRoyale && ![8, 16, 32].includes(maxP)) || (isBattleRoyale && maxP !== 100)) {
+      return NextResponse.json({ error: isBattleRoyale ? 'Battle Royale debe tener exactamente 100 cupos.' : 'El cupo debe ser de 8, 16 o 32 participantes.' }, { status: 400 });
     }
 
-    const teamType = body.teamType ?? (game.defaultTeamSize === 1 ? 'solo' : 'team');
-    const teamSize = body.teamSize ?? (teamType === 'solo' ? 1 : game.id === 'fortnite' ? 2 : game.defaultTeamSize);
+    const teamType = isBattleRoyale ? 'solo' : (body.teamType ?? (game.defaultTeamSize === 1 ? 'solo' : 'team'));
+    const teamSize = isBattleRoyale ? 1 : (body.teamSize ?? (teamType === 'solo' ? 1 : game.id === 'fortnite' ? 2 : game.defaultTeamSize));
     if (!['solo','team'].includes(teamType) || !Number.isInteger(teamSize) || teamSize < 1 || teamSize > 100 || (teamType === 'solo' && teamSize !== 1)) return NextResponse.json({ error: 'Selecciona una modalidad y un tamaño de equipo válidos.' }, { status: 400 });
     let prizeSettings;
     let ruleSettings;
     try {
       prizeSettings = validateTournamentPrizes(body.prizePool, body.prizeDistribution, maxP);
       ruleSettings = resolveTournamentRules({
-        gameId: game.id, format: body.format || 'single_elimination', teamType,
+        gameId: game.id, format, teamType,
         teamSize, maxParticipants: maxP, region: body.region || 'LATAM',
         title: body.title, startDate: body.startDate, entryFeeAmount, ...prizeSettings
       }, body);
@@ -284,7 +289,7 @@ export async function POST(request: Request) {
       false,
       0,
       'registration_open',
-      body.format || 'single_elimination',
+      format,
       teamType,
       teamSize,
       body.region || 'LATAM',
@@ -304,7 +309,7 @@ export async function POST(request: Request) {
       ruleSettings.rulesTemplateVersion
     ]);
 
-    await createCompetitionBracket(db,newId,maxP,startDate);
+    if (!isBattleRoyale) await createCompetitionBracket(db,newId,maxP,startDate);
     });
 
     return NextResponse.json({ success: true, slug, tournamentId: newId });

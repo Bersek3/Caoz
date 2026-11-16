@@ -4,7 +4,8 @@ export type TournamentFormat =
   | 'single_elimination' 
   | 'double_elimination' 
   | 'round_robin' 
-  | 'swiss';
+  | 'swiss'
+  | 'battle_royale';
 
 export type TournamentStatus = 
   | 'registration_open' 

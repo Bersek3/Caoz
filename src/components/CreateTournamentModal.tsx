@@ -84,6 +84,7 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
     setFormData((prev) => ({
       ...prev,
       gameId: gId,
+      format: gId === 'fortnite' ? prev.format : 'single_elimination',
       teamSize: selectedGame?.defaultTeamSize || 5,
       teamType: (selectedGame?.defaultTeamSize || 5) > 1 ? 'team' : 'solo'
     }));
@@ -441,7 +442,7 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
                 </label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div
-                    onClick={() => setFormData({ ...formData, format: 'single_elimination' })}
+                    onClick={() => setFormData({ ...formData, format: 'single_elimination', maxParticipants: formData.format === 'battle_royale' ? 8 : formData.maxParticipants })}
                     className={`cursor-pointer p-4 rounded-xl border text-left transition-all ${
                       formData.format === 'single_elimination'
                         ? 'bg-red-500/15 border-red-400 shadow-lg shadow-red-500/15'
@@ -459,9 +460,24 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
                     </p>
                   </div>
 
-                  <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4 text-sm text-slate-400">
+                  {formData.gameId === 'fortnite' && <div
+                    onClick={() => setFormData({ ...formData, format: 'battle_royale', teamType: 'solo', teamSize: 1, maxParticipants: 100 })}
+                    className={`cursor-pointer p-4 rounded-xl border text-left transition-all ${
+                      formData.format === 'battle_royale'
+                        ? 'bg-red-500/15 border-red-400 shadow-lg shadow-red-500/15'
+                        : 'bg-slate-900/60 border-slate-800 hover:border-slate-700'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-bold text-sm text-white">Battle Royale</span>
+                      {formData.format === 'battle_royale' && <Check className="w-4 h-4 text-red-400" />}
+                    </div>
+                    <p className="text-xs text-slate-400">100 jugadores individuales en una sola partida. Solo el último superviviente gana.</p>
+                  </div>}
+
+                  {formData.format !== 'battle_royale' && <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4 text-sm text-slate-400">
                     El formato disponible es eliminación simple, con avance automático y pases por cupos vacíos.
-                  </div>
+                  </div>}
                 </div>
               </div>
 
@@ -473,15 +489,17 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
                   <select
                     value={formData.maxParticipants}
                     onChange={(e) => setFormData({ ...formData, maxParticipants: parseInt(e.target.value) })}
+                    disabled={formData.format === 'battle_royale'}
                     className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white text-sm focus:outline-none focus:border-red-400"
                   >
                     <option value={8}>8 Participantes (3 Rondas)</option>
                     <option value={16}>16 Participantes (4 Rondas)</option>
                     <option value={32}>32 Participantes (5 Rondas)</option>
+                    {formData.format === 'battle_royale' && <option value={100}>100 Jugadores (Battle Royale)</option>}
                   </select>
                 </div>
 
-                <div>
+                {formData.format !== 'battle_royale' && <div>
                   <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">
                     Modalidad de Inscripción
                   </label>
@@ -509,10 +527,10 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
                       Individual / 1v1 Solo
                     </button>
                   </div>
-                </div>
+                </div>}
               </div>
 
-              {formData.gameId === 'fortnite' && formData.teamType === 'team' && <label className="block text-xs text-slate-300">Integrantes por equipo
+              {formData.gameId === 'fortnite' && formData.teamType === 'team' && formData.format !== 'battle_royale' && <label className="block text-xs text-slate-300">Integrantes por equipo
                 <select value={formData.teamSize} onChange={event => setFormData({ ...formData, teamSize: Number(event.target.value) })} className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-900 p-3 text-sm text-white">
                   <option value={2}>Dúos (2 jugadores)</option><option value={3}>Tríos (3 jugadores)</option><option value={4}>Escuadras (4 jugadores)</option>
                 </select>
@@ -525,7 +543,7 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
               <div className="p-4 rounded-xl bg-red-950/20 border border-red-500/20 flex items-start space-x-3 text-xs text-red-200">
                 <Sparkles className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
                 <p>
-                  El motor generará automáticamente las llaves interactivas, asignación de semillas (seeding) y salas de chat privadas para cada match programado.
+                  {formData.format === 'battle_royale' ? 'Battle Royale no usa llaves: se inscriben hasta 100 jugadores individuales y la organización confirma al único ganador de la partida.' : 'El motor generará automáticamente las llaves interactivas, asignación de semillas (seeding) y salas de chat privadas para cada match programado.'}
                 </p>
               </div>
             </div>
@@ -568,7 +586,7 @@ export const CreateTournamentModal: React.FC<CreateTournamentModalProps> = ({ is
                 </div>
                 <div className="flex justify-between text-slate-400">
                   <span>Tipo de competición:</span>
-                  <span className="font-semibold text-white">{formData.teamType === 'team' ? `Equipos de ${formData.teamSize}` : 'Solo 1v1'}</span>
+                  <span className="font-semibold text-white">{formData.format === 'battle_royale' ? '100 jugadores individuales · 1 ganador' : formData.teamType === 'team' ? `Equipos de ${formData.teamSize}` : 'Solo 1v1'}</span>
                 </div>
               </div>
             </div>

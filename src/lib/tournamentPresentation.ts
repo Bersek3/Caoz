@@ -17,7 +17,7 @@ export function getMyMatches(tournament: Tournament, user: AuthUser | null | und
     .sort((a,b) => Number(a.status === 'completed') - Number(b.status === 'completed') || a.roundIndex - b.roundIndex);
 }
 export function formatTournamentFormat(format: TournamentFormat | string) {
-  return ({ single_elimination: 'Eliminación simple', double_elimination: 'Doble eliminación', round_robin: 'Todos contra todos', swiss: 'Sistema suizo' } as Record<string,string>)[format] || 'Formato por definir';
+  return ({ single_elimination: 'Eliminación simple', double_elimination: 'Doble eliminación', round_robin: 'Todos contra todos', swiss: 'Sistema suizo', battle_royale: 'Battle Royale (100 jugadores)' } as Record<string,string>)[format] || 'Formato por definir';
 }
 export function formatTournamentMode(tournament: Pick<Tournament, 'teamType' | 'teamSize' | 'gameId'>) {
   if (tournament.teamType === 'solo' || tournament.teamSize === 1) return 'Individual';
