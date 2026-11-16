@@ -18,16 +18,17 @@ function subscribeRead(listener: () => void) {
 }
 interface NavbarProps { onOpenCreateModal?: () => void }
 interface TournamentNotification {
-  id: string; title: string; message: string; type: 'check_in' | 'starting_soon' | 'in_progress' | 'completed';
+  id: string; title: string; message: string; type: 'check_in' | 'starting_soon' | 'in_progress' | 'completed' | 'announcement';
   href: string; tournamentTitle: string; timeLabel: string; urgent: boolean;
 }
 
 export function Navbar({ onOpenCreateModal }: NavbarProps) {
   const pathname = usePathname();
-  const { user, logout, openAuthModal } = useAuth();
+  const { user, token, logout, openAuthModal } = useAuth();
   const { tournaments } = useTournament();
   const [showNotifications, setShowNotifications] = useState(false);
   const [now, setNow] = useState(() => Date.now());
+  const [announcementNotifications, setAnnouncementNotifications] = useState<TournamentNotification[]>([]);
   const bellRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const isAdmin = user?.role === 'admin';
@@ -53,6 +54,18 @@ export function Navbar({ onOpenCreateModal }: NavbarProps) {
     document.addEventListener('keydown', onKey);
     return () => { cancelAnimationFrame(frame); document.removeEventListener('keydown', onKey); };
   }, [showNotifications]);
+  useEffect(() => {
+    if (!user?.id || !token) { setAnnouncementNotifications([]); return; }
+    let cancelled = false;
+    const load = async () => {
+      const response = await fetch('/api/notifications/announcements', { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' });
+      const data = await response.json();
+      if (!cancelled && response.ok) setAnnouncementNotifications((data.notifications || []).map((item: { id: string; message: string; senderName: string; tournamentTitle: string; slug: string; timeLabel: string }) => ({ id: `announcement-${item.id}`, title: 'Nuevo anuncio del staff', message: item.message, type: 'announcement', href: `/tournament/${item.slug}?tab=announcements`, tournamentTitle: item.tournamentTitle, timeLabel: item.timeLabel, urgent: true })));
+    };
+    void load();
+    const timer = window.setInterval(() => void load(), 15_000);
+    return () => { cancelled = true; window.clearInterval(timer); };
+  }, [user?.id, token]);
 
   const userNotifications = useMemo(() => {
     if (!user) return [];
@@ -78,8 +91,8 @@ export function Navbar({ onOpenCreateModal }: NavbarProps) {
       if (t.status === 'in_progress') items.push({ ...base, id: `live-${t.id}-${t.startDate}-${action.href}`, title: action.kind === 'match' ? 'Tu partida está disponible' : 'Torneo en juego', message: 'Consulta tu participación, las partidas y los resultados actualizados.', type: 'in_progress', timeLabel: 'En juego', urgent: true });
       if (t.status === 'completed' && registration) items.push({ ...base, id: `results-${t.id}-${t.startDate}`, title: 'Resultados disponibles', message: 'El torneo finalizó. Revisa la clasificación y los premios.', type: 'completed', timeLabel: 'Finalizado', urgent: false });
     });
-    return items.sort((a, b) => Number(b.urgent) - Number(a.urgent));
-  }, [user, tournaments, isAdmin, now]);
+    return [...announcementNotifications, ...items].sort((a, b) => Number(b.urgent) - Number(a.urgent));
+  }, [user, tournaments, isAdmin, now, announcementNotifications]);
   const unreadCount = userNotifications.filter(notification => !readIds.includes(notification.id)).length;
 
   function markRead(ids: string[]) {
@@ -111,7 +124,7 @@ export function Navbar({ onOpenCreateModal }: NavbarProps) {
             {unreadCount > 0 && <button onClick={() => markRead(userNotifications.map(item => item.id))} className="flex min-h-11 w-full items-center justify-end gap-1.5 border-b border-slate-800 px-4 text-xs font-semibold text-red-300 hover:bg-slate-800"><CheckCheck className="h-4 w-4" />Marcar todas como leídas</button>}
             <div className="max-h-[min(65vh,420px)] overflow-y-auto divide-y divide-slate-800">
               {userNotifications.length === 0 ? <div className="space-y-2 px-5 py-8 text-center"><CheckCircle2 className="mx-auto h-8 w-8 text-slate-500" /><p className="text-sm font-semibold text-white">Estás al día</p><p className="text-xs leading-relaxed text-slate-400">Aquí verás los avisos de asistencia, partidas y resultados de tus torneos.</p></div> : userNotifications.map(notification => <Link key={notification.id} href={notification.href} onClick={() => { markRead([notification.id]); setShowNotifications(false); }} className={`flex gap-3 p-4 hover:bg-slate-800/60 ${!readIds.includes(notification.id) ? 'bg-red-950/25' : ''}`}>
-                <span className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${notification.urgent ? 'bg-amber-500/15 text-amber-300' : 'bg-red-500/15 text-red-300'}`}>{notification.type === 'check_in' ? <Clock className="h-4 w-4" /> : notification.type === 'in_progress' ? <Flame className="h-4 w-4" /> : notification.type === 'completed' ? <Trophy className="h-4 w-4" /> : <Calendar className="h-4 w-4" />}</span>
+                <span className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${notification.urgent ? 'bg-amber-500/15 text-amber-300' : 'bg-red-500/15 text-red-300'}`}>{notification.type === 'check_in' ? <Clock className="h-4 w-4" /> : notification.type === 'in_progress' || notification.type === 'announcement' ? <Flame className="h-4 w-4" /> : notification.type === 'completed' ? <Trophy className="h-4 w-4" /> : <Calendar className="h-4 w-4" />}</span>
                 <span className="min-w-0 flex-1"><span className="flex flex-wrap items-center justify-between gap-1"><span className="text-sm font-semibold text-white">{notification.title}</span><span className="text-xs text-red-300">{notification.timeLabel}</span></span><span className="mt-1 block text-xs leading-relaxed text-slate-300">{notification.message}</span><span className="mt-1 block text-xs font-semibold text-slate-400">{notification.tournamentTitle}</span></span>
               </Link>)}
             </div>
