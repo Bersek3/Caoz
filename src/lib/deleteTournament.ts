@@ -13,7 +13,13 @@ export async function deleteTournaments(id: string, all: boolean, administratorI
     for (const tournament of tournaments) {
       const payments = (await tx.query('SELECT * FROM tournament_payments WHERE tournament_id=$1 ORDER BY id FOR UPDATE', [tournament.id])).rows;
       for (const payment of payments) {
-        if (payment.provider !== 'flow' || payment.status !== 'failed' || payment.participant_id) throw new TournamentDeleteError('Este torneo tiene pagos aprobados, pendientes o sin resolver. Puedes ocultarlo; solo se eliminan torneos sin cobros y con intentos fallidos verificados.', 409);
+        // A locally cancelled checkout is not automatically safe to discard: a
+        // player can still complete an already-issued Flow link. Accept it as a
+        // deletion candidate, but require the provider verification below to
+        // confirm its terminal rejected/cancelled status before deleting data.
+        if (payment.provider !== 'flow' || !['failed', 'cancelled'].includes(payment.status) || payment.participant_id) {
+          throw new TournamentDeleteError('Este torneo tiene pagos aprobados, pendientes o sin resolver. Solo se eliminan torneos sin cobros o con intentos rechazados/anulados verificados.', 409);
+        }
         const absentOrder = payment.archived_at && payment.archive_reason === 'flow_order_not_found_admin_verified' && !payment.provider_uuid && !payment.provider_order && !payment.checkout_url;
         let flowOrder: string | null = null;
         let flowStatus: number | null = null;
