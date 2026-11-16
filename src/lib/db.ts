@@ -4,6 +4,7 @@ import fs from 'fs';
 import { PGlite } from '@electric-sql/pglite';
 import { Pool } from 'pg';
 import bcrypt from 'bcryptjs';
+import { runDatabaseMigrations } from './databaseMigrations';
 
 // Global database instance holder for Next.js hot reload
 declare global {
@@ -363,6 +364,10 @@ async function initializeDatabase() {
   )`);
   await db.query('CREATE INDEX IF NOT EXISTS tournament_announcements_idx ON tournament_announcements(tournament_id, created_at)');
 
+  // Versioned, non-destructive indexes and future schema changes.  This runs
+  // only against the application's public tables, never `neon_auth`.
+  await runDatabaseMigrations(db);
+
   // Vistas de compatibilidad en PostgreSQL
   const compatibilityViews = `
     CREATE OR REPLACE VIEW users AS SELECT * FROM usuarios;
@@ -380,42 +385,48 @@ async function initializeDatabase() {
     await db.query(statement);
   }
 
-  // Usuario administrador por defecto
-  const defaultGenericAvatar = getUserAvatar('bersek');
-  const userCheck = await db.query('SELECT id FROM usuarios WHERE email = $1', ['francisco.jm.aguilar1@gmail.com']);
-  if (userCheck.rows.length === 0) {
-    const passwordHash = await bcrypt.hash('Bersek@1106@3200', 10);
-    await db.query(`
-      INSERT INTO usuarios (
-        id, email, password_hash, username, full_name, avatar_url, role, riot_id, discord_tag, bio
-      ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
-      )
-    `, [
-      'user-bersek',
-      'francisco.jm.aguilar1@gmail.com',
-      passwordHash,
-      'bersek',
-      'Francisco Bersek',
-      defaultGenericAvatar,
-      'admin',
-      'Caoz Bersek#LAS',
-      'bersek#1106',
-      'Administrador Oficial de Torneos.'
-    ]);
+  // Optional local-only bootstrap.  Never keep a reusable administrator
+  // password in source control or create an account implicitly in production.
+  const seedAdminEmail = process.env.SEED_DEFAULT_ADMIN_EMAIL;
+  const seedAdminPassword = process.env.SEED_DEFAULT_ADMIN_PASSWORD;
+  if (process.env.SEED_DEFAULT_ADMIN === 'true') {
+    if (!seedAdminEmail || !seedAdminPassword) {
+      throw new Error('SEED_DEFAULT_ADMIN requires SEED_DEFAULT_ADMIN_EMAIL and SEED_DEFAULT_ADMIN_PASSWORD.');
+    }
+    const seedAdminUsername = process.env.SEED_DEFAULT_ADMIN_USERNAME || 'admin';
+    const defaultGenericAvatar = getUserAvatar(seedAdminUsername);
+    const userCheck = await db.query('SELECT id FROM usuarios WHERE email = $1', [seedAdminEmail]);
+    if (userCheck.rows.length === 0) {
+      const passwordHash = await bcrypt.hash(seedAdminPassword, 12);
+      const seedAdminId = `seed-admin-${crypto.randomUUID()}`;
+      await db.query(`
+        INSERT INTO usuarios (
+          id, email, password_hash, username, full_name, avatar_url, role, bio
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      `, [
+        seedAdminId,
+        seedAdminEmail,
+        passwordHash,
+        seedAdminUsername,
+        'Administrador',
+        defaultGenericAvatar,
+        'admin',
+        'Administrador inicial local.'
+      ]);
 
-    const secureCode = 'CZ-BERSEK-2026';
-    await db.query(`
-      INSERT INTO equipos (id, name, tag, logo_url, captain_id, invite_code)
-      VALUES ($1, $2, $3, $4, $5, $6)
-    `, [
-      'team-caoz-wolves',
-      'Caoz Cyber Wolves',
-      'CAOZ',
-      defaultGenericAvatar,
-      'user-bersek',
-      secureCode
-    ]);
+      const inviteCode = `seed-${crypto.randomUUID()}`;
+      await db.query(`
+        INSERT INTO equipos (id, name, tag, logo_url, captain_id, invite_code)
+        VALUES ($1, $2, $3, $4, $5, $6)
+      `, [
+        `seed-team-${crypto.randomUUID()}`,
+        'Equipo local',
+        'LOCAL',
+        defaultGenericAvatar,
+        seedAdminId,
+        inviteCode
+      ]);
+    }
   }
 
   isInitialized = true;
