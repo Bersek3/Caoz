@@ -33,11 +33,17 @@ export function Navbar({ onOpenCreateModal }: NavbarProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const isAdmin = user?.role === 'admin';
   const readKey = `caoz_notifications_read_${user?.id || 'guest'}`;
+  const dismissedKey = `caoz_notifications_dismissed_${user?.id || 'guest'}`;
   const readSnapshot = useSyncExternalStore(subscribeRead, () => {
     try { return localStorage.getItem(readKey) || '[]'; } catch { return '[]'; }
   }, () => '[]');
   let readIds: string[] = [];
   try { const saved: unknown = JSON.parse(readSnapshot); if (Array.isArray(saved)) readIds = saved.filter((id): id is string => typeof id === 'string'); } catch { /* Ignore invalid local preferences. */ }
+  const dismissedSnapshot = useSyncExternalStore(subscribeRead, () => {
+    try { return localStorage.getItem(dismissedKey) || '[]'; } catch { return '[]'; }
+  }, () => '[]');
+  let dismissedIds: string[] = [];
+  try { const saved: unknown = JSON.parse(dismissedSnapshot); if (Array.isArray(saved)) dismissedIds = saved.filter((id): id is string => typeof id === 'string'); } catch { /* Ignore invalid local preferences. */ }
 
   useEffect(() => {
     const tick = () => setNow(Date.now());
@@ -93,11 +99,16 @@ export function Navbar({ onOpenCreateModal }: NavbarProps) {
     });
     return [...announcementNotifications, ...items].sort((a, b) => Number(b.urgent) - Number(a.urgent));
   }, [user, tournaments, isAdmin, now, announcementNotifications]);
-  const unreadCount = userNotifications.filter(notification => !readIds.includes(notification.id)).length;
+  const visibleNotifications = userNotifications.filter(notification => !dismissedIds.includes(notification.id));
+  const unreadCount = visibleNotifications.filter(notification => !readIds.includes(notification.id)).length;
 
   function markRead(ids: string[]) {
     try { localStorage.setItem(readKey, JSON.stringify([...new Set([...readIds, ...ids])].slice(-500))); window.dispatchEvent(new Event(readEvent)); }
     catch { /* Notifications remain available when browser storage is disabled. */ }
+  }
+  function dismissAll() {
+    try { localStorage.setItem(dismissedKey, JSON.stringify([...new Set([...dismissedIds, ...userNotifications.map(item => item.id)])].slice(-500))); window.dispatchEvent(new Event(readEvent)); }
+    catch { /* Notifications remain visible when browser storage is disabled. */ }
   }
   function closeNotifications() { setShowNotifications(false); bellRef.current?.focus(); }
 
@@ -121,9 +132,9 @@ export function Navbar({ onOpenCreateModal }: NavbarProps) {
           <button ref={bellRef} onClick={() => setShowNotifications(!showNotifications)} aria-label={`Notificaciones: ${unreadCount} sin leer`} aria-expanded={showNotifications} aria-controls="tournament-notifications" className="relative flex h-11 w-11 items-center justify-center rounded-xl text-slate-200 hover:bg-slate-800"><Bell className="h-5 w-5" />{unreadCount > 0 && <span className="absolute right-0.5 top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white">{unreadCount > 9 ? '9+' : unreadCount}</span>}</button>
           {showNotifications && <><div className="fixed inset-0 z-40" onClick={closeNotifications} /><div ref={panelRef} id="tournament-notifications" role="region" aria-labelledby="notification-title" className="fixed left-4 right-4 top-28 z-50 overflow-hidden rounded-2xl border border-slate-700 bg-[#1c1417] shadow-2xl sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-96">
             <div className="flex items-center justify-between gap-2 border-b border-slate-800 p-4"><h2 id="notification-title" className="text-sm font-bold text-white">Tus notificaciones</h2><button onClick={closeNotifications} aria-label="Cerrar notificaciones" className="rounded-lg p-2 text-slate-300 hover:bg-slate-800"><X className="h-4 w-4" /></button></div>
-            {unreadCount > 0 && <button onClick={() => markRead(userNotifications.map(item => item.id))} className="flex min-h-11 w-full items-center justify-end gap-1.5 border-b border-slate-800 px-4 text-xs font-semibold text-red-300 hover:bg-slate-800"><CheckCheck className="h-4 w-4" />Marcar todas como leídas</button>}
+            {visibleNotifications.length > 0 && <div className="flex border-b border-slate-800"><button onClick={() => markRead(visibleNotifications.map(item => item.id))} className="flex min-h-11 flex-1 items-center justify-center gap-1.5 px-3 text-xs font-semibold text-red-300 hover:bg-slate-800"><CheckCheck className="h-4 w-4" />Marcar leídas</button><button onClick={dismissAll} className="flex min-h-11 flex-1 items-center justify-center gap-1.5 border-l border-slate-800 px-3 text-xs font-semibold text-slate-300 hover:bg-slate-800"><X className="h-4 w-4" />Eliminar todas</button></div>}
             <div className="max-h-[min(65vh,420px)] overflow-y-auto divide-y divide-slate-800">
-              {userNotifications.length === 0 ? <div className="space-y-2 px-5 py-8 text-center"><CheckCircle2 className="mx-auto h-8 w-8 text-slate-500" /><p className="text-sm font-semibold text-white">Estás al día</p><p className="text-xs leading-relaxed text-slate-400">Aquí verás los avisos de asistencia, partidas y resultados de tus torneos.</p></div> : userNotifications.map(notification => <Link key={notification.id} href={notification.href} onClick={() => { markRead([notification.id]); setShowNotifications(false); }} className={`flex gap-3 border-l-2 p-4 transition-colors hover:bg-slate-800/60 ${!readIds.includes(notification.id) ? 'border-amber-300 bg-amber-500/15' : 'border-transparent bg-slate-950/35 opacity-65'}`}>
+              {visibleNotifications.length === 0 ? <div className="space-y-2 px-5 py-8 text-center"><CheckCircle2 className="mx-auto h-8 w-8 text-slate-500" /><p className="text-sm font-semibold text-white">Estás al día</p><p className="text-xs leading-relaxed text-slate-400">Aquí verás los avisos de asistencia, partidas y resultados de tus torneos.</p></div> : visibleNotifications.map(notification => <Link key={notification.id} href={notification.href} onClick={() => { markRead([notification.id]); setShowNotifications(false); }} className={`flex gap-3 border-l-2 p-4 transition-colors hover:bg-slate-800/60 ${!readIds.includes(notification.id) ? 'border-amber-300 bg-amber-500/15' : 'border-transparent bg-slate-950/35 opacity-65'}`}>
                 <span className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${notification.urgent ? 'bg-amber-500/15 text-amber-300' : 'bg-red-500/15 text-red-300'}`}>{notification.type === 'check_in' ? <Clock className="h-4 w-4" /> : notification.type === 'in_progress' || notification.type === 'announcement' ? <Flame className="h-4 w-4" /> : notification.type === 'completed' ? <Trophy className="h-4 w-4" /> : <Calendar className="h-4 w-4" />}</span>
                 <span className="min-w-0 flex-1"><span className="flex flex-wrap items-center justify-between gap-1"><span className="text-sm font-semibold text-white">{notification.title}</span><span className="text-xs text-red-300">{notification.timeLabel}</span></span><span className="mt-1 block text-xs leading-relaxed text-slate-300">{notification.message}</span><span className="mt-1 block text-xs font-semibold text-slate-400">{notification.tournamentTitle}</span></span>
               </Link>)}
