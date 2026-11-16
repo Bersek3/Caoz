@@ -66,7 +66,7 @@ export async function editTournament(db: DbSession, id: string, input: unknown) 
   catch (error) { throw new TournamentEditError((error as Error).message); }
   const prizes = prizeSettings.prizeDistribution;
   if (!Array.isArray(data.schedule) || data.schedule.length > 100) throw new TournamentEditError('Cronograma inválido.');
-  const schedule = isBattleRoyale ? Array.from({ length: battleRoyaleRounds }, (_, index) => ({ stage: `Ronda Battle Royale ${index + 1}`, time: index === 0 ? startDate : data.schedule?.[index]?.time || 'Horario por confirmar', format: '100 jugadores · 1 ganador' })) : data.schedule.map(row => ({ stage: text(row?.stage, 'Etapa', 150, true), time: text(row?.time, 'Horario', 100, true), format: text(row?.format ?? '', 'Formato de serie', 100) }));
+  const schedule = isBattleRoyale ? Array.from({ length: battleRoyaleRounds }, (_, index) => ({ stage: `Ronda Battle Royale ${index + 1}`, time: index === 0 ? startDate : data.schedule?.[index]?.time || 'Por confirmar', format: '100 jugadores · 1 ganador' })) : data.schedule.map(row => ({ stage: text(row?.stage, 'Etapa', 150, true), time: typeof row?.time === 'string' && row.time.trim() ? text(row.time, 'Horario', 100, true) : 'Por confirmar', format: text(row?.format ?? '', 'Formato de serie', 100) }));
   if (!data.organizer || typeof data.organizer.verified !== 'boolean' || !Number.isInteger(data.organizer.followers) || data.organizer.followers < 0 || data.organizer.followers > 2147483647) throw new TournamentEditError('Organizador inválido.');
   const columns: Record<string, unknown> = {
     title: text(data.title, 'Título', 255, true), game_id: game.id, game_name: game.name,

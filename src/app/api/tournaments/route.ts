@@ -313,7 +313,7 @@ export async function POST(request: Request) {
       body.description || 'Torneo organizado en CZ ARENA.',
       JSON.stringify(ruleSettings.rules),
       JSON.stringify(isBattleRoyale
-        ? Array.from({ length: battleRoyaleRounds }, (_, index) => ({ stage: `Ronda Battle Royale ${index + 1}`, time: index === 0 ? startDate : 'Horario por confirmar', format: '100 jugadores · 1 ganador' }))
+        ? Array.from({ length: battleRoyaleRounds }, (_, index) => ({ stage: `Ronda Battle Royale ${index + 1}`, time: index === 0 ? startDate : 'Por confirmar', format: '100 jugadores · 1 ganador' }))
         : body.schedule || [{ stage: 'Ronda 1', time: startDate, format: 'BO3' }]),
       entryFeeAmount,
       ruleSettings.rulesMode,

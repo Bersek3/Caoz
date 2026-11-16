@@ -47,6 +47,7 @@ export function toTournamentDateTimeInput(value?: string | null): string {
   return p.year+'-'+p.month+'-'+p.day+'T'+p.hour+':'+p.minute;
 }
 export function formatTournamentDate(value?: string | null): string {
+  if (/^horario por confirmar$/i.test(value?.trim() || '')) return 'Por confirmar';
   const date = parseTournamentDate(value) as Date;
   if (!date) return value || 'Por definir';
   const parts = chileParts(date!);

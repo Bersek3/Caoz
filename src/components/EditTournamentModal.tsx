@@ -6,7 +6,6 @@ import type { Tournament } from '../types/tournament';
 import { useAuth } from '../context/AuthContext';
 import { useTournament } from '../context/TournamentContext';
 import { prepareTournamentBanner, MAX_TOURNAMENT_REQUEST_BYTES } from '../lib/tournamentBanner';
-import { TournamentRulesEditor } from './TournamentRulesEditor';
 import { showAlert, showConfirm } from './StyledDialog';
 import { normalizeTournamentDate, toTournamentDateTimeInput } from '../lib/dateUtils';
 import { formatChileanPesos, splitChileanPesos } from '../lib/currency';
@@ -59,7 +58,7 @@ export function EditTournamentModal({ tournament, onClose }: { tournament: Tourn
       if (structural && !await showConfirm('Cambiaste el juego, formato, modalidad o cupos. Se reconstruirán y sortearán las llaves. Se conservarán las inscripciones, pero se borrarán los resultados y chats de las partidas actuales. Revisa que los inscritos cumplan la nueva modalidad. ¿Guardar estos cambios?')) return;
       const startDate = normalizeTournamentDate(data.startDate);
       if (!startDate) throw new Error('Indica una fecha y hora válida en horario de Chile.');
-      const body = JSON.stringify({ ...data, startDate, rules: data.rules.map(rule => rule.trim()).filter(Boolean), participants: undefined, rounds: undefined, losersRounds: undefined, grandFinal: undefined, rebuildBracket: structural });
+      const body = JSON.stringify({ ...data, startDate, rulesMode: 'automatic', rules: undefined, participants: undefined, rounds: undefined, losersRounds: undefined, grandFinal: undefined, rebuildBracket: structural });
       if (new Blob([body]).size > MAX_TOURNAMENT_REQUEST_BYTES) throw new Error('Las imágenes o el texto superan el tamaño permitido. Reduce las imágenes.');
       const response = await fetch(`/api/tournaments/${tournament.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body });
       const result = await response.json();
@@ -130,10 +129,10 @@ export function EditTournamentModal({ tournament, onClose }: { tournament: Tourn
             </div>)}
             <button type="button" disabled={data.prizeDistribution.length >= 100} onClick={() => change('prizeDistribution', [...data.prizeDistribution,{ place: '', prize: '' }])} className="flex items-center gap-2 text-xs text-red-300"><Plus size={14} />Agregar premio</button>
           </div>
-          <TournamentRulesEditor config={data} mode={data.rulesMode} customRules={data.rules} onChange={(mode,rules) => setData(previous => ({ ...previous, rulesMode: mode, rules }))} />
+          <p className="rounded-xl border border-cyan-400/25 bg-cyan-950/15 p-3 text-xs leading-relaxed text-cyan-100">Las reglas se actualizan automáticamente al guardar, usando la información actual del torneo: formato, cupos, rondas, premios, fechas y check-in.</p>
           <div className="space-y-2"><h3 className="text-sm font-bold text-white">Cronograma</h3>
             {data.schedule.map((row,index) => <div key={index} className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
-              {(['stage','time','format'] as const).map((field) => <input key={field} type={field === 'time' ? 'datetime-local' : 'text'} required={field !== 'format'} maxLength={field === 'stage' ? 150 : 100} aria-label={`${field === 'stage' ? 'Etapa' : field === 'time' ? 'Fecha y hora' : 'Formato'} ${index+1}`} placeholder={field === 'stage' ? 'Etapa' : field === 'time' ? 'Selecciona fecha y hora' : 'BO3'} value={field === 'time' ? toTournamentDateTimeInput(row.time) : row[field] || ''} onChange={e => change('schedule', data.schedule.map((p,i) => i === index ? { ...p,[field]: field === 'time' ? normalizeTournamentDate(e.target.value) || '' : e.target.value } : p))} className={`${inputClass} flex-1 basis-24`} />)}
+              {(['stage','time','format'] as const).map((field) => <input key={field} type={field === 'time' ? 'datetime-local' : 'text'} required={field === 'stage' || (field === 'time' && index === 0)} maxLength={field === 'stage' ? 150 : 100} aria-label={`${field === 'stage' ? 'Etapa' : field === 'time' ? 'Fecha y hora' : 'Formato'} ${index+1}`} placeholder={field === 'stage' ? 'Etapa' : field === 'time' ? 'Por confirmar' : 'BO3'} value={field === 'time' ? toTournamentDateTimeInput(row.time) : row[field] || ''} onChange={e => change('schedule', data.schedule.map((p,i) => i === index ? { ...p,[field]: field === 'time' ? normalizeTournamentDate(e.target.value) || '' : e.target.value } : p))} className={`${inputClass} flex-1 basis-24`} />)}
               <button type="button" aria-label={`Eliminar etapa ${index+1}`} onClick={() => change('schedule', data.schedule.filter((_,i) => i !== index))} className="p-2 text-red-300"><Trash2 size={16} /></button>
             </div>)}
             <button type="button" disabled={data.schedule.length >= 100} onClick={() => change('schedule', [...data.schedule,{ stage: '', time: '', format: '' }])} className="flex items-center gap-2 text-xs text-red-300"><Plus size={14} />Agregar etapa</button>
