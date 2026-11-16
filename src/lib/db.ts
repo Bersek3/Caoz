@@ -110,6 +110,8 @@ async function initializeDatabase() {
       bio TEXT,
       birth_date DATE,
       rut VARCHAR(20),
+      document_number VARCHAR(80),
+      phone VARCHAR(30),
       account_status VARCHAR(32) DEFAULT 'activa',
       epic_games_username VARCHAR(100),
       psn_id VARCHAR(100),
@@ -117,6 +119,8 @@ async function initializeDatabase() {
       created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     );
   `);
+  await db.query('ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS document_number VARCHAR(80)');
+  await db.query('ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS phone VARCHAR(30)');
 
   // 2. Tabla: autorizaciones_parentales
   await db.query(`

@@ -32,7 +32,10 @@ export async function insertRegistration(db: DbSession, tournamentId: string, ma
   if (data.personalDetails) {
     await db.query(`INSERT INTO tournament_registration_details (participant_id, full_name, birth_date, document_number, phone)
       VALUES ($1,$2,$3,$4,$5)`, [participantId, data.personalDetails.fullName, data.personalDetails.birthDate, data.personalDetails.documentNumber, data.personalDetails.phone]);
-    await db.query('UPDATE users SET full_name=$1, birth_date=$2 WHERE id=$3', [data.personalDetails.fullName, data.personalDetails.birthDate, data.userId]);
+    // Keep a private, reusable participant record; public tournament views never select these fields.
+    await db.query('UPDATE users SET full_name=$1, birth_date=$2, document_number=$3, phone=$4 WHERE id=$5', [
+      data.personalDetails.fullName, data.personalDetails.birthDate, data.personalDetails.documentNumber, data.personalDetails.phone, data.userId
+    ]);
   }
   const side = seed % 2 === 1 ? 'team1' : 'team2';
   await db.query(`UPDATE tournament_matches SET ${side}_participant_id=$1, ${side}_name=$2, ${side}_avatar=$3, ${side}_seed=$4
