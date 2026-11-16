@@ -133,22 +133,18 @@ export function EditTournamentModal({ tournament, onClose }: { tournament: Tourn
           <TournamentRulesEditor config={data} mode={data.rulesMode} customRules={data.rules} onChange={(mode,rules) => setData(previous => ({ ...previous, rulesMode: mode, rules }))} />
           <div className="space-y-2"><h3 className="text-sm font-bold text-white">Cronograma</h3>
             {data.schedule.map((row,index) => <div key={index} className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
-              {(['stage','time','format'] as const).map((field) => <input key={field} required={field !== 'format'} maxLength={field === 'stage' ? 150 : 100} aria-label={`${field === 'stage' ? 'Etapa' : field === 'time' ? 'Horario' : 'Formato'} ${index+1}`} placeholder={field === 'stage' ? 'Etapa' : field === 'time' ? 'Horario' : 'BO3'} value={row[field] || ''} onChange={e => change('schedule', data.schedule.map((p,i) => i === index ? { ...p,[field]: e.target.value } : p))} className={`${inputClass} flex-1 basis-24`} />)}
+              {(['stage','time','format'] as const).map((field) => <input key={field} type={field === 'time' ? 'datetime-local' : 'text'} required={field !== 'format'} maxLength={field === 'stage' ? 150 : 100} aria-label={`${field === 'stage' ? 'Etapa' : field === 'time' ? 'Fecha y hora' : 'Formato'} ${index+1}`} placeholder={field === 'stage' ? 'Etapa' : field === 'time' ? 'Selecciona fecha y hora' : 'BO3'} value={field === 'time' ? toTournamentDateTimeInput(row.time) : row[field] || ''} onChange={e => change('schedule', data.schedule.map((p,i) => i === index ? { ...p,[field]: field === 'time' ? normalizeTournamentDate(e.target.value) || '' : e.target.value } : p))} className={`${inputClass} flex-1 basis-24`} />)}
               <button type="button" aria-label={`Eliminar etapa ${index+1}`} onClick={() => change('schedule', data.schedule.filter((_,i) => i !== index))} className="p-2 text-red-300"><Trash2 size={16} /></button>
             </div>)}
             <button type="button" disabled={data.schedule.length >= 100} onClick={() => change('schedule', [...data.schedule,{ stage: '', time: '', format: '' }])} className="flex items-center gap-2 text-xs text-red-300"><Plus size={14} />Agregar etapa</button>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
-            <label className="text-xs text-slate-300">Apertura del check-in<input maxLength={100} value={data.checkInOpensAt || ''} onChange={e => change('checkInOpensAt', e.target.value)} className={inputClass} /></label>
-            <label className="text-xs text-slate-300">Cierre del check-in<input maxLength={100} value={data.checkInClosesAt || ''} onChange={e => change('checkInClosesAt', e.target.value)} className={inputClass} /></label>
-            <label className="text-xs text-slate-300">Nombre del organizador<input required maxLength={150} value={data.organizer.name} onChange={e => change('organizer',{ ...data.organizer,name: e.target.value })} className={inputClass} /></label>
-            <label className="text-xs text-slate-300">Avatar del organizador (URL)<input value={data.organizer.avatar} onChange={e => change('organizer',{ ...data.organizer,avatar: e.target.value })} className={inputClass} /></label>
-            <label className="text-xs text-slate-300">Seguidores del organizador<input type="number" required min={0} max={2147483647} step={1} value={data.organizer.followers} onChange={e => change('organizer',{ ...data.organizer,followers: Number(e.target.value) })} className={inputClass} /></label>
+            <label className="text-xs text-slate-300">Apertura del check-in<input type="datetime-local" required value={toTournamentDateTimeInput(data.checkInOpensAt)} onChange={e => change('checkInOpensAt', normalizeTournamentDate(e.target.value) || '')} className={inputClass} /></label>
+            <label className="text-xs text-slate-300">Cierre del check-in<input type="datetime-local" required value={toTournamentDateTimeInput(data.checkInClosesAt)} onChange={e => change('checkInClosesAt', normalizeTournamentDate(e.target.value) || '')} className={inputClass} /></label>
           </div>
           <div className="flex flex-wrap gap-5 text-xs text-slate-300">
             <span className="text-slate-400">El check-in se abre y cierra desde la ficha del torneo.</span>
             <label className="flex items-center gap-2"><input type="checkbox" checked={data.isHidden} onChange={e => change('isHidden',e.target.checked)} />Torneo oculto</label>
-            <label className="flex items-center gap-2"><input type="checkbox" checked={data.organizer.verified} onChange={e => change('organizer',{ ...data.organizer,verified: e.target.checked })} />Organizador verificado</label>
           </div>
         </fieldset>
         {uploading && <p role="status" className="mt-4 text-sm text-red-300">Preparando imagen…</p>}
