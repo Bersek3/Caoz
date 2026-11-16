@@ -23,10 +23,12 @@ export const FORMAT_LABELS: Record<TournamentFormat, string> = {
   single_elimination: 'Eliminación simple', double_elimination: 'Doble eliminación',
   round_robin: 'Round Robin', swiss: 'Sistema suizo', battle_royale: 'Battle Royale'
 };
+export const HONORARIA_PAYMENT_RULE = 'Los pagos de premios se realizarán mediante boleta de honorarios, a más tardar dentro de 30 días hábiles una vez concluido el evento.';
 export const DEFAULT_TOURNAMENT_RULES = [
   'Check-in obligatorio 30 minutos antes de comenzar.',
   'Subir captura de pantalla del resultado final a la sala de partida.',
-  'Tolerancia de 10 minutos por partida antes de considerar abandono.'
+  'Tolerancia de 10 minutos por partida antes de considerar abandono.',
+  HONORARIA_PAYMENT_RULE
 ];
 
 export function getTournamentRulesPreset(config: RulesConfiguration) {
@@ -87,6 +89,7 @@ export function getTournamentRulesPreset(config: RulesConfiguration) {
     'Reclamaciones: se presentan en la sala mediante la solicitud de árbitro dentro de los quince minutos siguientes a la publicación del resultado, con identificación de la partida y pruebas. La organización comunica su resolución y permite aportar antecedentes antes de aplicar una sanción.',
     'Sanciones: según la gravedad y las pruebas, pueden consistir en advertencia, pérdida de una partida, pérdida de serie o exclusión. Se documentan la conducta y la decisión; una sanción individual no se extiende sin fundamento a rivales ajenos al hecho.',
     `Premios: el premio total anunciado es ${config.prizePool?.trim() || 'el indicado en la ficha'}. ${config.prizeDistribution?.length ? `Distribución: ${config.prizeDistribution.map(row => `${row.place}: ${row.prize.trim() || 'por definir'}`).join('; ')}.` : 'La distribución por puestos se consulta en la ficha.'} Los premios se fijan antes del inicio y corresponden al ${solo ? 'jugador' : 'equipo'} que obtenga cada puesto. La organización informa por un canal privado la verificación y entrega; los datos de documentos y teléfono no se publican.`,
+    HONORARIA_PAYMENT_RULE,
     'Cambios: las bases se publican antes de abrir la competición. Los cambios posteriores se anuncian a todos los inscritos antes de aplicarse y no alteran retroactivamente resultados validados. Al inscribirse se aceptan estas bases y las condiciones de uso del juego.',
     'Independencia: este evento no está patrocinado, respaldado ni administrado por Epic Games. La información de inscripción se entrega a la organización del evento y no a Epic Games.'
   ] };
@@ -99,7 +102,9 @@ export function resolveTournamentRules(config: RulesConfiguration, input: { rule
   const preset = getTournamentRulesPreset(config);
   if (mode === 'automatic') return { rules: preset.rules, rulesMode: mode, rulesTemplateVersion: preset.version };
   if (!Array.isArray(input.rules) || input.rules.length < 1 || input.rules.length > 100 || input.rules.some(rule => typeof rule !== 'string' || !rule.trim() || rule.length > 5000)) throw new Error('Ingresa entre 1 y 100 reglas válidas de hasta 5000 caracteres.');
-  return { rules: input.rules.map(rule => rule.trim()), rulesMode: mode, rulesTemplateVersion: null };
+  const rules = input.rules.map(rule => rule.trim());
+  if (!rules.includes(HONORARIA_PAYMENT_RULE)) rules.push(HONORARIA_PAYMENT_RULE);
+  return { rules, rulesMode: mode, rulesTemplateVersion: null };
 }
 
 export function formatRulesDocument(title: string, rules: string[]) {
