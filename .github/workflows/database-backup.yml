@@ -1,0 +1,38 @@
+name: Respaldo de base de datos
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    name: Exportar PostgreSQL
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
+    steps:
+      - name: Validar configuración
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "Falta configurar el secreto NEON_DATABASE_URL."
+            exit 1
+          fi
+
+      - name: Crear respaldo de PostgreSQL
+        run: |
+          backup_name="caoz-postgres-$(date -u +%Y%m%dT%H%M%SZ).dump"
+          pg_dump --format=custom --no-owner --no-privileges --file="$backup_name" "$DATABASE_URL"
+          echo "BACKUP_FILE=$backup_name" >> "$GITHUB_ENV"
+
+      - name: Guardar respaldo privado
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.BACKUP_FILE }}
+          path: ${{ env.BACKUP_FILE }}
+          if-no-files-found: error
+          retention-days: 30
