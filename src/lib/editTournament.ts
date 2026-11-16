@@ -3,7 +3,7 @@ import type { Tournament } from '@/types/tournament';
 import { POPULAR_GAMES } from '@/data/mockData';
 import { resolveTournamentRules } from './tournamentRules';
 import { validateTournamentPrizes } from './tournamentPrizes';
-import { formatChileanPesos } from './currency';
+import { formatChileanPesos, splitChileanPesos } from './currency';
 import { createCompetitionBracket } from './tournamentCompetition';
 import { getCheckInWindow, normalizeTournamentDate, parseTournamentDate } from './dateUtils';
 
@@ -13,7 +13,7 @@ export class TournamentEditError extends Error {
 
 export async function editTournament(db: DbSession, id: string, input: unknown) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) throw new TournamentEditError('Datos del torneo inválidos.');
-  const data = input as Tournament & { rebuildBracket?: boolean; isFeatured?: boolean; prizeDeliveryStatus?: string };
+  const data = input as Tournament & { rebuildBracket?: boolean; isFeatured?: boolean; prizeDeliveryStatus?: string; battleRoyaleRounds?: number };
   const current = (await db.query('SELECT * FROM tournaments WHERE id=$1 OR slug=$1 FOR UPDATE', [id])).rows[0];
   if (!current) throw new TournamentEditError('Torneo no encontrado.', 404);
   const text = (value: unknown, name: string, max: number, required = false) => {
@@ -29,11 +29,15 @@ export async function editTournament(db: DbSession, id: string, input: unknown) 
   const officialGames = catalogExists ? (await db.query('SELECT games FROM official_game_catalog WHERE id=1')).rows[0]?.games || POPULAR_GAMES : POPULAR_GAMES;
   const game = officialGames.find((g: { id: string }) => g.id === data.gameId);
   if (!game) throw new TournamentEditError('Selecciona un juego válido.');
-  if (data.format !== 'single_elimination') throw new TournamentEditError('Por ahora solo está disponible eliminación simple. Selecciona ese formato y confirma la reconstrucción de las llaves si el torneo usa otro.');
+  if (!['single_elimination','battle_royale'].includes(data.format)) throw new TournamentEditError('Selecciona un formato válido.');
+  const isBattleRoyale = data.format === 'battle_royale';
+  const battleRoyaleRounds = isBattleRoyale ? Number(data.battleRoyaleRounds ?? data.schedule?.length ?? data.prizeDistribution?.length ?? 1) : 1;
+  if (isBattleRoyale && game.id !== 'fortnite') throw new TournamentEditError('Battle Royale solo está disponible para Fortnite.');
+  if (isBattleRoyale && (!Number.isInteger(battleRoyaleRounds) || battleRoyaleRounds < 1 || battleRoyaleRounds > 10)) throw new TournamentEditError('Battle Royale admite entre 1 y 10 rondas.');
   if (!['registration_open','check_in','in_progress','completed'].includes(data.status)) throw new TournamentEditError('Estado inválido.');
   if (!['LATAM','NA','EU','GLOBAL'].includes(data.region)) throw new TournamentEditError('Región inválida.');
   if (!['solo','team'].includes(data.teamType) || !Number.isInteger(data.teamSize) || data.teamSize < 1 || data.teamSize > 100 || (data.teamType === 'solo' && data.teamSize !== 1)) throw new TournamentEditError('Modalidad o tamaño de equipo inválido.');
-  if (![8,16,32].includes(data.maxParticipants)) throw new TournamentEditError('El cupo debe ser 8, 16 o 32.');
+  if ((isBattleRoyale && (data.teamType !== 'solo' || data.teamSize !== 1 || data.maxParticipants !== 100)) || (!isBattleRoyale && ![8,16,32].includes(data.maxParticipants))) throw new TournamentEditError(isBattleRoyale ? 'Battle Royale requiere 100 jugadores individuales.' : 'El cupo debe ser 8, 16 o 32.');
   if (!Number.isInteger(data.entryFeeAmount) || data.entryFeeAmount! < 0 || data.entryFeeAmount! > 10_000_000) throw new TournamentEditError('El costo debe estar entre 0 y 10.000.000 CLP.');
   if (typeof data.checkInActive !== 'boolean' || typeof data.isHidden !== 'boolean') throw new TournamentEditError('Visibilidad o check-in inválidos.');
   if (data.isFeatured !== undefined && typeof data.isFeatured !== 'boolean') throw new TournamentEditError('Estado de destacado inválido.');
@@ -53,15 +57,16 @@ export async function editTournament(db: DbSession, id: string, input: unknown) 
   if (!checkInWindow.opensAt || !checkInWindow.closesAt || checkInWindow.opensAt >= checkInWindow.closesAt || checkInWindow.closesAt > new Date(startDate)) throw new TournamentEditError('El check-in debe abrir antes de cerrar y finalizar a más tardar al inicio del torneo.');
   let ruleSettings;
   try {
-    ruleSettings = resolveTournamentRules(data, { rulesMode: data.rulesMode ?? current.rules_mode ?? 'custom', rules: data.rules });
+    ruleSettings = resolveTournamentRules({ ...data, battleRoyaleRounds }, { rulesMode: data.rulesMode ?? current.rules_mode ?? 'custom', rules: data.rules });
   } catch (error) { throw new TournamentEditError((error as Error).message); }
   if (!Array.isArray(data.prizeDistribution) || data.prizeDistribution.length > 100) throw new TournamentEditError('Distribución de premios inválida.');
   let prizeSettings;
-  try { prizeSettings = validateTournamentPrizes(data.prizePool,data.prizeDistribution,data.maxParticipants); }
+  const battleRoyalePrizeDistribution = isBattleRoyale ? Array.from({ length: battleRoyaleRounds }, (_, index) => ({ place: `Ronda ${index + 1}`, prize: splitChileanPesos(formatChileanPesos(data.prizePool), battleRoyaleRounds) || `1/${battleRoyaleRounds} del premio total (${formatChileanPesos(data.prizePool)})` })) : data.prizeDistribution;
+  try { prizeSettings = validateTournamentPrizes(data.prizePool,battleRoyalePrizeDistribution,data.maxParticipants); }
   catch (error) { throw new TournamentEditError((error as Error).message); }
   const prizes = prizeSettings.prizeDistribution;
   if (!Array.isArray(data.schedule) || data.schedule.length > 100) throw new TournamentEditError('Cronograma inválido.');
-  const schedule = data.schedule.map(row => ({ stage: text(row?.stage, 'Etapa', 150, true), time: text(row?.time, 'Horario', 100, true), format: text(row?.format ?? '', 'Formato de serie', 100) }));
+  const schedule = isBattleRoyale ? Array.from({ length: battleRoyaleRounds }, (_, index) => ({ stage: `Ronda Battle Royale ${index + 1}`, time: index === 0 ? startDate : data.schedule?.[index]?.time || 'Horario por confirmar', format: '100 jugadores · 1 ganador' })) : data.schedule.map(row => ({ stage: text(row?.stage, 'Etapa', 150, true), time: text(row?.time, 'Horario', 100, true), format: text(row?.format ?? '', 'Formato de serie', 100) }));
   if (!data.organizer || typeof data.organizer.verified !== 'boolean' || !Number.isInteger(data.organizer.followers) || data.organizer.followers < 0 || data.organizer.followers > 2147483647) throw new TournamentEditError('Organizador inválido.');
   const columns: Record<string, unknown> = {
     title: text(data.title, 'Título', 255, true), game_id: game.id, game_name: game.name,
@@ -104,7 +109,7 @@ export async function editTournament(db: DbSession, id: string, input: unknown) 
       participant.seed = index + 1;
       await db.query('UPDATE tournament_participants SET seed=$1 WHERE id=$2', [participant.seed, participant.id]);
     }
-    await createCompetitionBracket(db,current.id,data.maxParticipants,startDate,participants);
+    if (!isBattleRoyale) await createCompetitionBracket(db,current.id,data.maxParticipants,startDate,participants);
   }
   return { success: true, slug: current.slug, tournamentId: current.id };
 }

@@ -9,6 +9,7 @@ import { prepareTournamentBanner, MAX_TOURNAMENT_REQUEST_BYTES } from '../lib/to
 import { TournamentRulesEditor } from './TournamentRulesEditor';
 import { showAlert, showConfirm } from './StyledDialog';
 import { normalizeTournamentDate, toTournamentDateTimeInput } from '../lib/dateUtils';
+import { formatChileanPesos, splitChileanPesos } from '../lib/currency';
 
 export function EditTournamentModal({ tournament, onClose }: { tournament: Tournament; onClose: () => void }) {
   const { user, token } = useAuth();
@@ -21,6 +22,7 @@ export function EditTournamentModal({ tournament, onClose }: { tournament: Tourn
     checkInOpensAt: tournament.checkInOpensAt || '', checkInClosesAt: tournament.checkInClosesAt || '',
     checkInActive: Boolean(tournament.checkInActive),
     entryFeeAmount: tournament.entryFeeAmount || 0, isHidden: Boolean(tournament.isHidden),
+    battleRoyaleRounds: tournament.format === 'battle_royale' ? Math.max(1, tournament.schedule?.length || tournament.prizeDistribution?.length || 1) : 1,
     rulesMode: tournament.rulesMode || 'custom', rules: tournament.rules || [], prizeDistribution: tournament.prizeDistribution || [],
     schedule: (tournament.schedule || []).map(row => ({ ...row, format: row.format || '' })),
     organizer: { ...tournament.organizer, avatar: tournament.organizer.avatar || '', verified: Boolean(tournament.organizer.verified), followers: tournament.organizer.followers || 0 }
@@ -37,6 +39,7 @@ export function EditTournamentModal({ tournament, onClose }: { tournament: Tourn
     return () => { document.body.style.overflow = overflow; previous?.focus(); };
   }, []);
   if (user?.role !== 'admin') return null;
+  const isBattleRoyale = data.format === 'battle_royale';
   const structural = data.gameId !== tournament.gameId || data.format !== tournament.format || data.teamType !== tournament.teamType || data.teamSize !== tournament.teamSize || data.maxParticipants !== tournament.maxParticipants;
   const inputClass = 'mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-red-400';
   const change = <K extends keyof typeof data>(key: K, value: typeof data[K]) => setData(previous => ({ ...previous, [key]: value }));
@@ -105,18 +108,19 @@ export function EditTournamentModal({ tournament, onClose }: { tournament: Tourn
           <div className="space-y-4 rounded-xl border border-slate-800 p-4">
             <h3 className="text-sm font-bold text-red-300">Configuración competitiva</h3>
             <div className="grid gap-4 sm:grid-cols-2">
-              <label className="text-xs text-slate-300">Formato<select value={data.format} onChange={e => change('format', e.target.value as Tournament['format'])} className={inputClass}>
-                <option value="single_elimination">Eliminación simple</option>{tournament.format !== 'single_elimination' && <option disabled value={tournament.format}>Formato anterior: cambia a eliminación simple</option>}
+              <label className="text-xs text-slate-300">Formato<select value={data.format} onChange={e => { const format = e.target.value as Tournament['format']; setData(previous => format === 'battle_royale' ? { ...previous, format, teamType: 'solo', teamSize: 1, maxParticipants: 100, battleRoyaleRounds: Math.max(1, previous.battleRoyaleRounds) } : { ...previous, format, maxParticipants: previous.maxParticipants === 100 ? 8 : previous.maxParticipants }); }} className={inputClass}>
+                <option value="single_elimination">Eliminación simple</option>{data.gameId === 'fortnite' && <option value="battle_royale">Battle Royale</option>}
               </select></label>
-              <label className="text-xs text-slate-300">Cupos<select value={data.maxParticipants} onChange={e => change('maxParticipants', Number(e.target.value))} className={inputClass}>{[8,16,32].map(size => <option key={size} value={size}>{size}</option>)}</select></label>
-              <label className="text-xs text-slate-300">Modalidad<select value={data.teamType} onChange={e => setData(previous => ({ ...previous, teamType: e.target.value as 'solo' | 'team', teamSize: e.target.value === 'solo' ? 1 : (data.gameId === 'fortnite' ? 2 : games.find(g => g.id === data.gameId)?.defaultTeamSize || 5) }))} className={inputClass}><option value="solo">Individual</option><option value="team">Por equipos</option></select></label>
-              <label className="text-xs text-slate-300">Jugadores por equipo<input type="number" required min={1} max={data.gameId === 'fortnite' ? 4 : 100} step={1} disabled={data.teamType === 'solo'} value={data.teamSize} onChange={e => change('teamSize', Number(e.target.value))} className={inputClass} /></label>
+              <label className="text-xs text-slate-300">Cupos<select value={data.maxParticipants} disabled={isBattleRoyale} onChange={e => change('maxParticipants', Number(e.target.value))} className={inputClass}>{isBattleRoyale ? <option value={100}>100 jugadores</option> : [8,16,32].map(size => <option key={size} value={size}>{size}</option>)}</select></label>
+              <label className="text-xs text-slate-300">Modalidad<select value={data.teamType} disabled={isBattleRoyale} onChange={e => setData(previous => ({ ...previous, teamType: e.target.value as 'solo' | 'team', teamSize: e.target.value === 'solo' ? 1 : (data.gameId === 'fortnite' ? 2 : games.find(g => g.id === data.gameId)?.defaultTeamSize || 5) }))} className={inputClass}><option value="solo">Individual</option><option value="team">Por equipos</option></select></label>
+              <label className="text-xs text-slate-300">Jugadores por equipo<input type="number" required min={1} max={data.gameId === 'fortnite' ? 4 : 100} step={1} disabled={isBattleRoyale || data.teamType === 'solo'} value={data.teamSize} onChange={e => change('teamSize', Number(e.target.value))} className={inputClass} /></label>
             </div>
+            {isBattleRoyale && <label className="block text-xs text-slate-300">Rondas Battle Royale<input type="number" required min={1} max={10} value={data.battleRoyaleRounds} onChange={e => { const rounds = Number(e.target.value); setData(previous => ({ ...previous, battleRoyaleRounds: rounds, prizeDistribution: Array.from({ length: rounds }, (_, index) => ({ place: `Ronda ${index + 1}`, prize: splitChileanPesos(previous.prizePool, rounds) || `1/${rounds} del premio total (${formatChileanPesos(previous.prizePool)})` })) })); }} className={inputClass} /><span className="mt-1 block text-slate-400">Los mismos 100 jugadores participan en cada ronda.</span></label>}
             {structural && <p role="status" className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-200">Este cambio requiere reconstruir las llaves. Al guardar se pedirá confirmar la eliminación de los resultados y chats actuales. Las inscripciones se conservan.</p>}
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="text-xs text-slate-300">Costo de inscripción (CLP; 0 = gratis)<input type="number" required min={0} max={10000000} step={1} value={data.entryFeeAmount} onChange={e => change('entryFeeAmount', Number(e.target.value))} className={inputClass} /></label>
-            <label className="text-xs text-slate-300">Premio total<input maxLength={100} value={data.prizePool} onChange={e => change('prizePool', e.target.value)} className={inputClass} /></label>
+            <label className="text-xs text-slate-300">Premio total<input maxLength={100} value={data.prizePool} onChange={e => { const prizePool = e.target.value; setData(previous => ({ ...previous, prizePool, prizeDistribution: isBattleRoyale ? Array.from({ length: previous.battleRoyaleRounds }, (_, index) => ({ place: `Ronda ${index + 1}`, prize: splitChileanPesos(prizePool, previous.battleRoyaleRounds) || `1/${previous.battleRoyaleRounds} del premio total (${formatChileanPesos(prizePool)})` })) : previous.prizeDistribution })); }} className={inputClass} /></label>
           </div>
           <div className="space-y-2"><h3 className="text-sm font-bold text-white">Distribución de premios</h3>
             {data.prizeDistribution.map((row,index) => <div key={index} className="flex items-center gap-2">
