@@ -1,0 +1,23 @@
+name: arena-cloudbeaver
+
+services:
+  cloudbeaver:
+    image: dbeaver/cloudbeaver:26.2.4
+    container_name: arena-cloudbeaver
+    restart: unless-stopped
+    # CloudBeaver no queda abierto a Internet: Nginx lo publica con HTTPS.
+    ports:
+      - "127.0.0.1:8978:8978"
+    volumes:
+      - arena_cloudbeaver_workspace:/opt/cloudbeaver/workspace
+    networks:
+      - arena_internal
+
+volumes:
+  arena_cloudbeaver_workspace:
+
+networks:
+  # Red ya creada por /srv/web/arena/compose.yml. Permite conectar a host "db".
+  arena_internal:
+    external: true
+    name: arena_default
