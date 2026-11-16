@@ -35,7 +35,7 @@ export function BattleRoyaleAnnouncements({ tournament }: { tournament: Tourname
     const response = await fetch(`/api/tournaments/${tournament.id}/announcements`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ message: draft }) });
     const data = await response.json();
     if (!response.ok) { setError(data.error || 'No se pudo publicar el anuncio.'); return; }
-    setMessages(previous => [...previous, data.message]); setDraft('');
+    setMessages(previous => [data.message, ...previous]); setDraft('');
   }
 
   if (!isAdmin && !registered) return null;

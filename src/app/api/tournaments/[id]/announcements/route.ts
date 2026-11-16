@@ -22,7 +22,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     const { id } = await params;
     const access = await getAnnouncementAccess(request, id);
     if ('error' in access) return NextResponse.json({ error: access.error }, { status: access.status });
-    const messages = await access.db.query(`SELECT id, sender_name AS "senderName", message, TO_CHAR(created_at, 'HH24:MI') AS timestamp FROM tournament_announcements WHERE tournament_id=$1 ORDER BY created_at ASC`, [access.tournament.id]);
+    const messages = await access.db.query(`SELECT id, sender_name AS "senderName", message, TO_CHAR(created_at, 'HH24:MI') AS timestamp FROM tournament_announcements WHERE tournament_id=$1 ORDER BY created_at DESC`, [access.tournament.id]);
     return NextResponse.json({ messages: messages.rows }, { headers: { 'Cache-Control': 'private, no-store' } });
   } catch { return NextResponse.json({ error: 'No se pudieron cargar los anuncios.' }, { status: 500 }); }
 }

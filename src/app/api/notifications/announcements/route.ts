@@ -15,7 +15,7 @@ export async function GET(request: Request) {
       JOIN tournaments t ON t.id=a.tournament_id
       JOIN tournament_payments p ON p.tournament_id=a.tournament_id AND p.user_id=$1
       WHERE p.status='confirmed' AND p.archived_at IS NULL
-      ORDER BY a.id DESC
+      ORDER BY a.created_at DESC
       LIMIT 100
     `, [viewer.id]);
     return NextResponse.json({ notifications: result.rows }, { headers: { 'Cache-Control': 'private, no-store' } });
