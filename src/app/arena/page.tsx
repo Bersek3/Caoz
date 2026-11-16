@@ -196,7 +196,7 @@ function TournamentDirectory() {
           <button aria-pressed={selectedView === 'favorites'} onClick={() => updateFilters({ view: 'favorites' })} className={`arena-filter-button ${selectedView === 'favorites' ? 'is-selected' : ''}`}><Heart className="h-4 w-4" />Favoritos ({visible.filter(t => favorites.includes(t.id)).length})</button>
         </div>
 
-        <OfficialGamesEditor><div className="mb-6 space-y-4" aria-label="Filtrar por videojuego">
+        {selectedView !== 'mine' && <OfficialGamesEditor><div className="mb-6 space-y-4" aria-label="Filtrar por videojuego">
           <button onClick={() => updateFilters({ game: 'all' })} aria-pressed={selectedGame === 'all'} className={`arena-filter-button ${selectedGame === 'all' ? 'is-selected' : ''}`}><Gamepad2 className="h-4 w-4" />Todos los juegos</button>
           <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 xl:grid-cols-4">
             {games.map(game => {
@@ -206,7 +206,7 @@ function TournamentDirectory() {
               <div className="space-y-2 p-3 sm:p-4"><span className="block break-words text-base font-bold text-white">{game.name}</span><span className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-xs"><span className="text-slate-400">{game.genre}</span><span className="font-semibold text-red-300">{count} {count === 1 ? 'torneo' : 'torneos'}</span></span></div>
             </button>;})}
           </div>
-        </div></OfficialGamesEditor>
+        </div></OfficialGamesEditor>}
 
         <div className="mb-5 space-y-4 rounded-2xl border border-slate-800 bg-slate-900/65 p-4">
           <label className="relative block"><span className="sr-only">Buscar torneo, juego u organizador</span><Search className="pointer-events-none absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" /><input type="search" value={searchQuery} onChange={event => updateFilters({ q: event.target.value }, true)} placeholder="Buscar torneo, juego u organizador…" className="min-h-11 w-full rounded-xl border border-slate-700 bg-slate-950 py-2.5 pl-10 pr-4 text-sm text-white placeholder:text-slate-400" /></label>
