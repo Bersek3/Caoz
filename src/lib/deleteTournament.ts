@@ -13,17 +13,25 @@ export async function deleteTournaments(id: string, all: boolean, administratorI
     for (const tournament of tournaments) {
       const payments = (await tx.query('SELECT * FROM tournament_payments WHERE tournament_id=$1 ORDER BY id FOR UPDATE', [tournament.id])).rows;
       for (const payment of payments) {
+        // The archive workflow already verifies that these attempts reached a
+        // terminal unpaid state. Do not query Flow a second time with today's
+        // account/environment: historical test or migrated orders may belong
+        // to a different Flow account.
+        const archivedTerminalAttempt = Boolean(payment.archived_at) && [
+          'flow_rejected_or_cancelled',
+          'flow_expired_unpaid',
+          'flow_order_not_found_admin_verified',
+        ].includes(payment.archive_reason);
         // A locally cancelled checkout is not automatically safe to discard: a
         // player can still complete an already-issued Flow link. Accept it as a
         // deletion candidate, but require the provider verification below to
         // confirm its terminal rejected/cancelled status before deleting data.
-        if (payment.provider !== 'flow' || !['failed', 'cancelled'].includes(payment.status) || payment.participant_id) {
+        if (payment.provider !== 'flow' || payment.participant_id || (!archivedTerminalAttempt && !['failed', 'cancelled'].includes(payment.status))) {
           throw new TournamentDeleteError('Este torneo tiene pagos aprobados, pendientes o sin resolver. Solo se eliminan torneos sin cobros o con intentos rechazados/anulados verificados.', 409);
         }
-        const absentOrder = payment.archived_at && payment.archive_reason === 'flow_order_not_found_admin_verified' && !payment.provider_uuid && !payment.provider_order && !payment.checkout_url;
         let flowOrder: string | null = null;
         let flowStatus: number | null = null;
-        if (!absentOrder) {
+        if (!archivedTerminalAttempt) {
           let order: FlowPaymentStatus;
           try {
             if (payment.provider_uuid && !validFlowToken(payment.provider_uuid)) throw new Error('Invalid token');
@@ -43,7 +51,7 @@ export async function deleteTournaments(id: string, all: boolean, administratorI
         await tx.query(`INSERT INTO removed_tournament_payment_attempts
           (payment_id,tournament_id,tournament_title,user_id,amount,currency,provider,archive_reason,archived_at,archived_by,created_at,removed_by,provider_order,provider_status)
           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,COALESCE($9::timestamptz,CURRENT_TIMESTAMP),$10,$11,$12,$13,$14)`,
-        [payment.id,tournament.id,tournament.title,payment.user_id,payment.amount,payment.currency,payment.provider,absentOrder?payment.archive_reason:'flow_unpaid_terminal_verified_on_delete',payment.archived_at,payment.archived_by||administratorId,payment.created_at,administratorId,flowOrder,flowStatus]);
+        [payment.id,tournament.id,tournament.title,payment.user_id,payment.amount,payment.currency,payment.provider,archivedTerminalAttempt?payment.archive_reason:'flow_unpaid_terminal_verified_on_delete',payment.archived_at,payment.archived_by||administratorId,payment.created_at,administratorId,flowOrder,flowStatus]);
       }
       await tx.query('DELETE FROM tournament_payments WHERE tournament_id=$1', [tournament.id]);
       await tx.query('DELETE FROM match_messages WHERE match_id IN (SELECT id FROM tournament_matches WHERE tournament_id=$1)', [tournament.id]);
