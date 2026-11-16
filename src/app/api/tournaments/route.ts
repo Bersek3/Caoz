@@ -5,7 +5,7 @@ import { verifyToken } from '@/lib/auth';
 import { getOfficialGames } from '@/lib/games';
 import { getMatchViewer, ownsMatchParticipant } from '@/lib/matchAccess';
 import { MAX_TOURNAMENT_REQUEST_BYTES } from '@/lib/tournamentBanner';
-import { resolveTournamentRules } from '@/lib/tournamentRules';
+import { normalizeTournamentRulesForDisplay, resolveTournamentRules } from '@/lib/tournamentRules';
 import { validateTournamentPrizes } from '@/lib/tournamentPrizes';
 import { getUserAvatar } from '@/lib/userAvatar';
 import { createCompetitionBracket } from '@/lib/tournamentCompetition';
@@ -170,7 +170,7 @@ export async function GET(request: Request) {
         checkInClosesAt: t.check_in_closes_at,
         checkInActive: t.check_in_active,
         description: t.description,
-        rules: safeParse(t.rules, ['Reglas oficiales del torneo']),
+        rules: normalizeTournamentRulesForDisplay(safeParse(t.rules, ['Reglas oficiales del torneo'])),
         rulesMode: t.rules_mode || 'custom',
         rulesTemplateVersion: t.rules_template_version,
         schedule: safeParse(t.schedule, [{ stage: 'Fase Principal', time: t.start_date, format: 'BO3' }]),

@@ -1,4 +1,5 @@
 import type { GameId, TournamentFormat } from '../types/tournament';
+import { formatTournamentDate } from './dateUtils';
 
 export const RULES_TEMPLATE_VERSION = 'CAOZ-FN-1.1';
 export type RulesMode = 'automatic' | 'custom';
@@ -30,6 +31,13 @@ export const DEFAULT_TOURNAMENT_RULES = [
   'Tolerancia de 10 minutos por partida antes de considerar abandono.',
   HONORARIA_PAYMENT_RULE
 ];
+
+/** Keeps legacy saved rules current when they are displayed or downloaded. */
+export function normalizeTournamentRulesForDisplay(rules: string[]): string[] {
+  const normalized = rules.map(rule => rule.replace(/\b\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})\b/g, date => formatTournamentDate(date)));
+  if (!normalized.some(rule => rule.includes('boleta de honorarios'))) normalized.push(HONORARIA_PAYMENT_RULE);
+  return normalized;
+}
 
 export function getTournamentRulesPreset(config: RulesConfiguration) {
   if (config.gameId !== 'fortnite') return { title: 'Reglas generales CAOZ Arena', version: 'CAOZ-GENERAL-1.0', rules: [...DEFAULT_TOURNAMENT_RULES] };
@@ -71,14 +79,14 @@ export function getTournamentRulesPreset(config: RulesConfiguration) {
   const fee = config.entryFeeAmount || 0;
   return { title, version: RULES_TEMPLATE_VERSION, rules: [
     `${title}. Versión ${RULES_TEMPLATE_VERSION}. Evento: ${config.title?.trim() || 'Torneo CAOZ Arena'}. La organización responsable es la indicada en la ficha del torneo.`,
-    `Convocatoria: ${config.maxParticipants} ${units}; ${solo ? 'una persona por inscripción' : `${config.teamSize} titulares por equipo, ${config.maxParticipants * config.teamSize} plazas de jugador en total`}. Región de convocatoria: ${config.region}. Inicio: ${config.startDate || 'el horario publicado en la ficha del torneo'}.`,
+    `Convocatoria: ${config.maxParticipants} ${units}; ${solo ? 'una persona por inscripción' : `${config.teamSize} titulares por equipo, ${config.maxParticipants * config.teamSize} plazas de jugador en total`}. Región de convocatoria: ${config.region}. Inicio: ${config.startDate ? formatTournamentDate(config.startDate) : 'el horario publicado en la ficha del torneo'}.`,
     'Modalidad de juego: Battle Royale con construcción, en salas privadas habilitadas por la organización. Todos los rivales de un encuentro juegan en el mismo lobby, región de servidor y versión del juego. No se mezclan partidas públicas, Cero Construcción ni islas creativas con esta convocatoria.',
     solo
       ? 'Participación individual: cada jugador utiliza su propia cuenta de Epic Games y el Epic Games ID registrado. No se permite ayuda en partida, compartir cuenta, sustituir al titular ni formar alianzas con otro inscrito.'
       : `Participación por equipos: ${config.teamSize} titulares inscritos forman un ${modality.toLowerCase()}. El capitán coordina la sala y presenta los resultados. La alineación se cierra al finalizar el check-in; solo un reemplazo autorizado por la organización antes del siguiente encuentro puede cambiarla. No se comparten jugadores entre equipos.`,
     'Acceso: edad mínima de la plataforma, 14 años, sin perjuicio de una exigencia mayor aplicable al evento. Los menores requieren autorización de su representante. Se usa una sola cuenta personal por jugador, sin sanción competitiva vigente que impida participar. Los datos de identidad se entregan a la organización, nunca en el chat de la partida.',
     `Inscripción: ${fee > 0 ? `${new Intl.NumberFormat('es-CL').format(fee)} CLP por ${solo ? 'jugador' : 'equipo'}, conforme a la ficha y sujeto a las autorizaciones necesarias para un evento con cobro` : 'gratuita, sin compra dentro del juego como requisito'}. Solo se confirma al completar el formulario y, cuando corresponda, la confirmación de pago. Una persona no puede ocupar dos inscripciones del mismo torneo.`,
-    `Check-in: abre ${config.checkInOpensAt || '45 min antes'} y cierra ${config.checkInClosesAt || '10 min antes'} del inicio. El participante debe estar disponible en su sala al menos diez minutos antes del encuentro. La ausencia se revisa con el árbitro; nadie puede adjudicarse un abandono por cuenta propia.`,
+    `Check-in: abre ${config.checkInOpensAt ? formatTournamentDate(config.checkInOpensAt) : '45 min antes'} y cierra ${config.checkInClosesAt ? formatTournamentDate(config.checkInClosesAt) : '10 min antes'} del inicio. El participante debe estar disponible en su sala al menos diez minutos antes del encuentro. La ausencia se revisa con el árbitro; nadie puede adjudicarse un abandono por cuenta propia.`,
     ...structure[config.format],
     'Ganador de cada partida: se compara la posición final oficial de los dos rivales del encuentro; vence el jugador o equipo mejor ubicado. Para equipos se usa la posición de equipo, no la de un integrante aislado. Las eliminaciones sirven como evidencia y no suman puntos adicionales a la serie. Una partida anulada no otorga victoria.',
     'Empate o resultado ilegible: si ambos rivales aparecen con la misma posición o falta evidencia suficiente, el árbitro revisa capturas y repetición. Si no puede determinar un ganador, ordena repetir únicamente esa partida; no se decide por orden de inscripción ni por un sorteo.',
