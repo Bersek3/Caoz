@@ -8,6 +8,7 @@ import { TournamentProvider } from '../context/TournamentContext';
 import { Navbar } from './Navbar';
 import { Footer } from './Footer';
 import { CreateTournamentModal } from './CreateTournamentModal';
+import { ArenaLoader } from './ArenaLoader';
 
 export const Providers: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -28,5 +29,12 @@ export const Providers: React.FC<{ children: React.ReactNode }> = ({ children })
     {!isAccountRoute && <CreateTournamentModal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} />}
     <StyledDialog />
   </div>;
-  return <AuthProvider>{isAccountRoute ? content : <TournamentProvider>{content}</TournamentProvider>}</AuthProvider>;
+  const app = isAccountRoute ? content : <TournamentProvider>{content}</TournamentProvider>;
+
+  return (
+    <AuthProvider>
+      {(isArenaRoute || isAccountRoute) && <ArenaLoader />}
+      {app}
+    </AuthProvider>
+  );
 };

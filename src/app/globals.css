@@ -55,6 +55,57 @@
   background: #344665;
 }
 
+/* Pantalla de inicio de CZ Arena */
+.arena-loader {
+  position: fixed;
+  z-index: 100;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: #120c0d;
+  animation: arena-loader-exit 300ms ease 850ms forwards;
+}
+
+.arena-loader__content {
+  display: grid;
+  justify-items: center;
+  gap: 20px;
+  animation: arena-loader-enter 420ms ease-out both;
+}
+
+.arena-loader__logo {
+  width: min(40vw, 180px);
+  height: auto;
+  filter: drop-shadow(0 12px 28px rgba(216, 130, 140, 0.18));
+}
+
+.arena-loader__powered {
+  margin: 0;
+  color: rgba(245, 240, 237, 0.7);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.arena-loader__powered span {
+  color: #f28a35;
+}
+
+@keyframes arena-loader-enter {
+  from { opacity: 0; transform: scale(0.92); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes arena-loader-exit {
+  to { opacity: 0; visibility: hidden; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .arena-loader, .arena-loader__content { animation: none; }
+}
+
 /* Glassmorphic utilities */
 .glass-panel {
   background: rgba(14, 19, 29, 0.85);
