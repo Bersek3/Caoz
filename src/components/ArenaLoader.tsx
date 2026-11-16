@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Image from 'next/image';
+import czArenaLoader from '../assets/cz-arena-loader.png';
 
 export function ArenaLoader() {
   const [visible, setVisible] = useState(true);
@@ -19,10 +21,12 @@ export function ArenaLoader() {
       aria-label="Cargando CZ Arena"
     >
       <div className="arena-loader__content">
-        <img
-          src="/assets/cz-arena-loader.png"
+        <Image
+          src={czArenaLoader}
           alt="CZ Arena"
           className="arena-loader__logo"
+          priority
+          unoptimized
         />
         <p className="arena-loader__powered">
           Powered by <span>Pyro Producciones</span>
