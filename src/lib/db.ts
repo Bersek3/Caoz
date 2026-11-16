@@ -354,6 +354,15 @@ async function initializeDatabase() {
   await db.query(`CREATE INDEX IF NOT EXISTS match_chat_activity_idx ON mensajes_partida(match_id, created_at)
     WHERE sender_role IN ('team1', 'team2')`);
 
+  await db.query(`CREATE TABLE IF NOT EXISTS tournament_announcements (
+    id VARCHAR(64) PRIMARY KEY,
+    tournament_id VARCHAR(64) NOT NULL REFERENCES torneos(id) ON DELETE CASCADE,
+    sender_name VARCHAR(150) NOT NULL,
+    message TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+  )`);
+  await db.query('CREATE INDEX IF NOT EXISTS tournament_announcements_idx ON tournament_announcements(tournament_id, created_at)');
+
   // Vistas de compatibilidad en PostgreSQL
   const compatibilityViews = `
     CREATE OR REPLACE VIEW users AS SELECT * FROM usuarios;
