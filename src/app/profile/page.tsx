@@ -97,6 +97,8 @@ export default function ProfilePage() {
   const [avatarZoom, setAvatarZoom] = useState(1);
   const [avatarX, setAvatarX] = useState(0);
   const [avatarY, setAvatarY] = useState(0);
+  const [showAvatarModal, setShowAvatarModal] = useState(false);
+  const [savingAvatar, setSavingAvatar] = useState(false);
 
   // Parental authorization modal & form
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -257,10 +259,8 @@ export default function ProfilePage() {
     setSaving(true);
     setSavedSuccess(false);
 
-    const avatarUrl = avatarSource.startsWith('data:image/') ? await croppedAvatar() : undefined;
     const res = await updateProfile({
       fullName,
-      avatarUrl,
       bio,
       riotId,
       steamId,
@@ -279,6 +279,17 @@ export default function ProfilePage() {
     } else {
       showAlert(res.error || 'Error al guardar cambios');
     }
+  };
+
+  const saveAvatar = async () => {
+    if (!avatarSource.startsWith('data:image/')) { setShowAvatarModal(false); return; }
+    try {
+      setSavingAvatar(true);
+      const result = await updateProfile({ avatarUrl: await croppedAvatar() });
+      if (!result.success) throw new Error(result.error);
+      await refreshUser(); setShowAvatarModal(false);
+    } catch (error) { showAlert(error instanceof Error ? error.message : 'No se pudo guardar la foto.'); }
+    finally { setSavingAvatar(false); }
   };
 
   const handleSubmitAuthorization = async (e: React.FormEvent) => {
@@ -604,14 +615,15 @@ export default function ProfilePage() {
         <div className="absolute top-0 right-0 w-80 h-80 bg-red-500/10 rounded-full blur-[100px] pointer-events-none" />
 
         <div className="flex items-center space-x-5 relative">
-          <div className="relative">
+          <button type="button" onClick={() => setShowAvatarModal(true)} className="group relative rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400">
             <img
               src={avatarSource || getUserAvatar(user.username)}
               alt={user.username}
               className="w-20 h-20 rounded-2xl object-cover border-2 border-red-400 shadow-lg"
             />
+            <span className="absolute inset-0 grid place-items-center rounded-2xl bg-black/65 text-xs font-bold text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">Cambiar<br />foto</span>
             <span className="absolute bottom-1 right-1 w-4 h-4 bg-emerald-500 border-2 border-[#0d1320] rounded-full" />
-          </div>
+          </button>
 
           <div className="space-y-1">
             <div className="flex items-center space-x-2">
@@ -671,10 +683,6 @@ export default function ProfilePage() {
                 </div>
               )}
 
-              <div className="rounded-xl border border-slate-700 bg-slate-900/60 p-4">
-                <div className="flex flex-wrap items-center gap-4"><div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-full border-2 border-red-400 bg-slate-950"><img src={avatarSource || getUserAvatar(user.username)} alt="Vista previa" className="h-full w-full object-cover" style={{ transform: `translate(${avatarX}%, ${avatarY}%) scale(${avatarZoom})` }} /></div><div><label className="cursor-pointer rounded-lg bg-red-400 px-3 py-2 text-xs font-bold text-black"><input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={event => chooseAvatar(event.target.files?.[0])} />Subir imagen</label><p className="mt-2 text-[11px] text-slate-400">JPG, PNG o WEBP. Ajusta la posición dentro del círculo.</p></div></div>
-                {avatarSource.startsWith('data:image/') && <div className="mt-4 grid gap-3 text-xs text-slate-300"><label>Zoom<input type="range" min="1" max="2.5" step="0.05" value={avatarZoom} onChange={event => setAvatarZoom(Number(event.target.value))} className="ml-2 w-40 accent-red-400" /></label><label>Horizontal<input type="range" min="-100" max="100" value={avatarX} onChange={event => setAvatarX(Number(event.target.value))} className="ml-2 w-40 accent-red-400" /></label><label>Vertical<input type="range" min="-100" max="100" value={avatarY} onChange={event => setAvatarY(Number(event.target.value))} className="ml-2 w-40 accent-red-400" /></label></div>}
-              </div>
 
               <div>
                 <label className="block text-xs text-slate-400 mb-1">Nombre Completo</label>
@@ -1614,6 +1622,7 @@ export default function ProfilePage() {
         </div>
       )}
 
+      {showAvatarModal && <div className="fixed inset-0 z-50 grid place-items-center bg-black/75 p-4 backdrop-blur-sm"><div role="dialog" aria-modal="true" aria-labelledby="avatar-editor-title" className="w-full max-w-md rounded-2xl border border-slate-700 bg-[#191213] p-6 shadow-2xl"><div className="mb-5 flex items-center justify-between"><h2 id="avatar-editor-title" className="text-xl font-bold text-white">Cambiar foto</h2><button type="button" onClick={() => setShowAvatarModal(false)} className="text-2xl text-slate-400 hover:text-white" aria-label="Cerrar">×</button></div><div className="flex flex-col items-center gap-4"><div className="h-48 w-48 overflow-hidden rounded-full border border-slate-600 bg-slate-950"><img src={avatarSource || getUserAvatar(user.username)} alt="Vista previa" className="h-full w-full object-cover" style={{ transform: `translate(${avatarX}%, ${avatarY}%) scale(${avatarZoom})` }} /></div><label className="cursor-pointer rounded-xl bg-red-400 px-4 py-2 text-sm font-bold text-black"><input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={event => chooseAvatar(event.target.files?.[0])} />Elegir foto</label>{avatarSource.startsWith('data:image/') && <div className="w-full space-y-3 text-xs text-slate-300"><label className="block">Zoom<input type="range" min="1" max="2.5" step="0.05" value={avatarZoom} onChange={event => setAvatarZoom(Number(event.target.value))} className="mt-1 w-full accent-red-400" /></label><label className="block">Horizontal<input type="range" min="-100" max="100" value={avatarX} onChange={event => setAvatarX(Number(event.target.value))} className="mt-1 w-full accent-red-400" /></label><label className="block">Vertical<input type="range" min="-100" max="100" value={avatarY} onChange={event => setAvatarY(Number(event.target.value))} className="mt-1 w-full accent-red-400" /></label></div>}</div><div className="mt-6 flex justify-end gap-3"><button type="button" onClick={() => setShowAvatarModal(false)} className="px-4 py-2 text-sm text-slate-300">Cancelar</button><button type="button" disabled={savingAvatar || !avatarSource.startsWith('data:image/')} onClick={() => void saveAvatar()} className="rounded-xl bg-red-400 px-5 py-2 text-sm font-bold text-black disabled:opacity-40">{savingAvatar ? 'Guardando…' : 'Guardar foto'}</button></div></div></div>}
       {user?.role === 'admin' && editingTournament && <EditTournamentModal key={editingTournament.id} tournament={editingTournament} onClose={() => setEditingTournament(null)} />}
     </div>
   );
