@@ -163,14 +163,14 @@ const RegistrationForm: React.FC<RegisterModalProps> = ({
       }
     }
 
-    if ((!isSolo || payerIsSelected) && !captainInGameId.trim()) {
+    if ((!isSolo || (payerIsSelected && !canManageSoloRoster)) && !captainInGameId.trim()) {
       setErrorMsg(`Por favor ingresa tu ${game?.tagFieldLabel || 'In-Game ID'}`);
       return;
     }
 
     try {
       setIsSubmitting(true);
-      const details = payerIsSelected ? validateRegistrationDetails(personalDetails) : undefined;
+      const details = canManageSoloRoster ? undefined : validateRegistrationDetails(personalDetails);
       const result = await registerParticipant(tournament.id, {
         username: user.username,
         teamName: isSolo ? user.username : user.teamName!,
@@ -463,7 +463,7 @@ const RegistrationForm: React.FC<RegisterModalProps> = ({
               )}
 
               {/* Player In-Game Data */}
-              <div className="p-4 rounded-xl bg-slate-900/70 border border-slate-800 space-y-4">
+              {!canManageSoloRoster && <div className="p-4 rounded-xl bg-slate-900/70 border border-slate-800 space-y-4">
                 <div className="flex items-center space-x-2 text-xs font-bold text-red-400 uppercase tracking-wider">
                   <ShieldCheck className="w-4 h-4" />
                   <span>{isSolo ? 'Datos de tu Cuenta de Juego' : 'Datos del Capitán en el Juego'}</span>
@@ -499,7 +499,7 @@ const RegistrationForm: React.FC<RegisterModalProps> = ({
                     />
                   </div>
                 </div>
-              </div>
+              </div>}
 
               {/* Already Registered Alert */}
               {(selectedAlreadyRegistered || (!canManageSoloRoster && isAlreadyRegistered)) && (
@@ -511,7 +511,7 @@ const RegistrationForm: React.FC<RegisterModalProps> = ({
                 </div>
               )}
 
-              {payerIsSelected && <fieldset className="space-y-3 rounded-xl border border-red-400/30 bg-red-950/10 p-4">
+              {!canManageSoloRoster && payerIsSelected && <fieldset className="space-y-3 rounded-xl border border-red-400/30 bg-red-950/10 p-4">
                   <legend className="px-2 text-sm font-bold text-red-300">Datos del jugador</legend>
                   <p className="text-xs text-slate-400">Completa tus datos para confirmar tu inscripción. Estos datos son privados y no se muestran en las llaves.</p>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

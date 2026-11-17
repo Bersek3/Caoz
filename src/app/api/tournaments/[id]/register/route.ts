@@ -44,7 +44,7 @@ export async function POST(
     const selectedMemberIds = Array.isArray(body.selectedMemberIds) ? [...new Set(body.selectedMemberIds.filter((value: unknown): value is string => typeof value === 'string' && value.length > 0))] : [];
     const payerIsSelected = selectedMemberIds.length === 0 || selectedMemberIds.includes(userId);
     let personalDetails: { fullName: string; birthDate: string; documentNumber: string; phone: string } | undefined;
-    if (payerIsSelected) {
+    if (selectedMemberIds.length === 0 && payerIsSelected) {
       try { personalDetails = validateRegistrationDetails(body.personalDetails); }
       catch (error) { return NextResponse.json({ error: (error as Error).message }, { status: 400 }); }
     }
@@ -68,15 +68,9 @@ export async function POST(
     if (isSolo && selectedMemberIds.length > 0) {
       const team = (await db.query('SELECT id FROM teams WHERE captain_id=$1 LIMIT 1', [userId])).rows[0];
       if (!team) return NextResponse.json({ error: 'Solo el capitán de un equipo puede pagar inscripciones de su roster.' }, { status: 403 });
-      const members = (await db.query(`SELECT u.id,u.username,u.birth_date,u.full_name,u.document_number,u.phone,tm.in_game_id FROM team_members tm JOIN users u ON u.id=tm.user_id WHERE tm.team_id=$1 AND tm.user_id = ANY($2::text[])`, [team.id, selectedMemberIds])).rows;
+      const members = (await db.query(`SELECT u.id,u.username,tm.in_game_id FROM team_members tm JOIN users u ON u.id=tm.user_id WHERE tm.team_id=$1 AND tm.user_id = ANY($2::text[])`, [team.id, selectedMemberIds])).rows;
       if (members.length !== selectedMemberIds.length) return NextResponse.json({ error: 'Solo puedes seleccionar usernames de tu propio roster.' }, { status: 400 });
-      for (const member of members) {
-        if (!member.birth_date || !member.full_name || !member.document_number || !member.phone) return NextResponse.json({ error: `@${member.username} debe completar sus datos de perfil antes de poder ser inscrito.` }, { status: 400 });
-        if (!member.in_game_id) return NextResponse.json({ error: `@${member.username} debe completar su ID de juego en el equipo antes de poder ser inscrito.` }, { status: 400 });
-        const birth = new Date(member.birth_date); const today = new Date(); let age = today.getFullYear() - birth.getFullYear(); const month = today.getMonth() - birth.getMonth(); if (month < 0 || (month === 0 && today.getDate() < birth.getDate())) age--;
-        if (age < 14) return NextResponse.json({ error: `@${member.username} no cumple la edad mínima para participar.` }, { status: 400 });
-      }
-      const registrations = members.map(member => ({ userId: member.id, teamId: null, name: member.username, tag: 'SOLO', captainName: member.username, captainDiscord: '', captainInGameId: member.in_game_id, roster: [{ userId: member.id, username: member.username }], personalDetails: member.id === userId ? personalDetails : undefined }));
+      const registrations = members.map(member => ({ userId: member.id, teamId: null, name: member.username, tag: 'SOLO', captainName: member.username, captainDiscord: '', captainInGameId: member.in_game_id || '', roster: [{ userId: member.id, username: member.username }] }));
       const result = await reserveSoloRosterRegistration(tournament.id, userId, registrations);
       return NextResponse.json({ success: true, ...result, message: result.checkoutUrl ? 'Continúa al pago para confirmar las inscripciones seleccionadas.' : 'Inscripciones confirmadas.' });
     }
