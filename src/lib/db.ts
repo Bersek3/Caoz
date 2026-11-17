@@ -50,9 +50,15 @@ export async function withDbTransaction<T>(work: (db: DbSession) => Promise<T>):
 export async function getDb() {
   if (process.env.DATABASE_URL) {
     if (!global.__pgPoolInstance) {
+      const databaseUrl = process.env.DATABASE_URL;
+      let databaseHost = '';
+      try { databaseHost = new URL(databaseUrl).hostname; } catch { /* Pool reports malformed URLs itself. */ }
+      // PostgreSQL in the private Docker network deliberately has no TLS.
+      // Public/managed hosts (for example Neon) continue to use TLS.
+      const isPrivateDatabase = ['localhost', '127.0.0.1', '::1', 'db', 'arena-db'].includes(databaseHost);
       global.__pgPoolInstance = new Pool({
-        connectionString: process.env.DATABASE_URL,
-        ssl: process.env.DATABASE_URL.includes('localhost') ? false : { rejectUnauthorized: false }
+        connectionString: databaseUrl,
+        ssl: isPrivateDatabase ? false : { rejectUnauthorized: false }
       });
     }
     return {
