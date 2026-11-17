@@ -82,7 +82,7 @@ export default function ProfilePage() {
   const router = useRouter();
   const [editingTournament, setEditingTournament] = useState<Tournament | null>(null);
   const { user, token, logout, updateProfile, refreshUser, isLoading } = useAuth();
-  const { tournaments, withdrawFromTournament, toggleHideTournament, deleteTournament } = useTournament();
+  const { tournaments, withdrawFromTournament, toggleHideTournament, deleteTournament, refreshTournaments } = useTournament();
 
   const [fullName, setFullName] = useState('');
   const [bio, setBio] = useState('');
@@ -199,6 +199,13 @@ export default function ProfilePage() {
     }
   }, [user]);
 
+  useEffect(() => {
+    if (!showAvatarModal) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = previousOverflow; };
+  }, [showAvatarModal]);
+
   const chooseAvatar = (file?: File) => {
     if (!file) return;
     if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024) {
@@ -288,7 +295,9 @@ export default function ProfilePage() {
       setSavingAvatar(true);
       const result = await updateProfile({ avatarUrl: await croppedAvatar() });
       if (!result.success) throw new Error(result.error);
-      await refreshUser(); setShowAvatarModal(false);
+      await refreshUser();
+      await refreshTournaments({ silent: true });
+      setShowAvatarModal(false);
     } catch (error) { showAlert(error instanceof Error ? error.message : 'No se pudo guardar la foto.'); }
     finally { setSavingAvatar(false); }
   };
@@ -1080,7 +1089,7 @@ export default function ProfilePage() {
                           <div className="flex items-center space-x-2.5 truncate">
                             <span className="font-mono text-slate-500 text-[11px]">#{idx + 1}</span>
                             <img
-                              src={getUserAvatar(m.username)}
+                              src={m.avatarUrl || getUserAvatar(m.username)}
                               alt={m.username}
                               className="w-6 h-6 rounded-md object-cover border border-slate-700"
                             />

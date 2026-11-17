@@ -34,6 +34,11 @@ export async function GET(request: Request) {
     // 2. Fetch all participants
     const partRes = await db.query(`SELECT p.*, u.username AS account_username
       FROM tournament_participants p LEFT JOIN users u ON u.id=p.user_id ORDER BY p.seed ASC`);
+    const userAvatarRes = await db.query('SELECT id, username, avatar_url FROM users');
+    const avatarsByUserId = new Map(userAvatarRes.rows.map((user) => [user.id, user.avatar_url || getUserAvatar(user.username)]));
+    const avatarsByUsername = new Map(userAvatarRes.rows.map((user) => [user.username, user.avatar_url || getUserAvatar(user.username)]));
+    const getCurrentAvatar = (userId?: string, username?: string) =>
+      (userId && avatarsByUserId.get(userId)) || (username && avatarsByUsername.get(username)) || getUserAvatar(username || 'participante');
 
     // 3. Fetch all rounds
     const roundRes = await db.query('SELECT * FROM tournament_rounds ORDER BY round_index ASC');
@@ -60,7 +65,7 @@ export async function GET(request: Request) {
           userId: p.user_id,
           name: p.name,
           tag: p.tag,
-          avatar: p.team_id ? p.avatar : getUserAvatar(p.account_username || p.name),
+          avatar: p.team_id ? p.avatar : getCurrentAvatar(p.user_id, p.account_username || p.name),
           seed: p.seed,
           checkedIn: p.checked_in,
           registeredAt: p.registered_at,
@@ -68,14 +73,14 @@ export async function GET(request: Request) {
             name: p.captain_name,
             discord: p.captain_discord,
             inGameId: p.captain_in_game_id,
-            avatar: getUserAvatar(p.account_username || p.captain_name || p.name)
+            avatar: getCurrentAvatar(p.user_id, p.account_username || p.captain_name || p.name)
           },
           roster: (() => {
             const members = safeParse(p.roster,[]);
             return Array.isArray(members) ? members.map((member: { id?:string; userId?:string; username?:string; name?:string; role?:string; inGameId?:string },index:number) => {
               const name = member.name || member.username || 'Participante';
               return { ...member,id:member.id || member.userId || `roster-${p.id}-${index}`,name,
-                avatar:getUserAvatar(member.username || name),inGameId:member.inGameId || (member.userId===p.user_id?p.captain_in_game_id:'') || '',
+                avatar:getCurrentAvatar(member.userId, member.username || name),inGameId:member.inGameId || (member.userId===p.user_id?p.captain_in_game_id:'') || '',
                 role:member.role==='sub'?'sub':member.role==='captain' || member.userId===p.user_id?'captain':'starter' };
             }) : [];
           })()

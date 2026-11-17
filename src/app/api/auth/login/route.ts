@@ -68,7 +68,7 @@ export async function POST(request: Request) {
       email: userRow.email,
       username: userRow.username,
       fullName: userRow.full_name,
-      avatarUrl: getUserAvatar(userRow.username),
+      avatarUrl: userRow.avatar_url || getUserAvatar(userRow.username),
       role: userRow.role,
       riotId: userRow.riot_id || '',
       steamId: userRow.steam_id || '',
