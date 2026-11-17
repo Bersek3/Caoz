@@ -2,7 +2,7 @@ import { validateRegistrationDetails } from '@/lib/registrationDetails';
 import { NextResponse } from 'next/server';
 import { getDb, initDb, withDbTransaction } from '@/lib/db';
 import { verifyToken } from '@/lib/auth';
-import { reserveRegistration } from '@/lib/tournamentPayments';
+import { reserveRegistration, reserveSoloRosterRegistration } from '@/lib/tournamentPayments';
 
 function getAuthUserId(request: Request): string | null {
   const authHeader = request.headers.get('authorization');
@@ -41,9 +41,13 @@ export async function POST(
 
     const tournament = trnRes.rows[0];
 
-    let personalDetails;
-    try { personalDetails = validateRegistrationDetails(body.personalDetails); }
-    catch (error) { return NextResponse.json({ error: (error as Error).message }, { status: 400 }); }
+    const selectedMemberIds = Array.isArray(body.selectedMemberIds) ? [...new Set(body.selectedMemberIds.filter((value: unknown): value is string => typeof value === 'string' && value.length > 0))] : [];
+    const payerIsSelected = selectedMemberIds.length === 0 || selectedMemberIds.includes(userId);
+    let personalDetails: { fullName: string; birthDate: string; documentNumber: string; phone: string } | undefined;
+    if (payerIsSelected) {
+      try { personalDetails = validateRegistrationDetails(body.personalDetails); }
+      catch (error) { return NextResponse.json({ error: (error as Error).message }, { status: 400 }); }
+    }
 
     // 2. Check slots
     const countRes = await db.query(
@@ -58,6 +62,24 @@ export async function POST(
 
     const requiredTeamSize = Number(tournament.team_size) || (tournament.team_type === 'team' ? 5 : 1);
     const isSolo = tournament.team_type === 'solo' || requiredTeamSize === 1;
+
+    // A captain can pay a single checkout for one or more usernames from their own roster.
+    // Each selected account becomes an individual participant; the payment remains owned by the captain.
+    if (isSolo && selectedMemberIds.length > 0) {
+      const team = (await db.query('SELECT id FROM teams WHERE captain_id=$1 LIMIT 1', [userId])).rows[0];
+      if (!team) return NextResponse.json({ error: 'Solo el capitán de un equipo puede pagar inscripciones de su roster.' }, { status: 403 });
+      const members = (await db.query(`SELECT u.id,u.username,u.birth_date,u.full_name,u.document_number,u.phone,tm.in_game_id FROM team_members tm JOIN users u ON u.id=tm.user_id WHERE tm.team_id=$1 AND tm.user_id = ANY($2::text[])`, [team.id, selectedMemberIds])).rows;
+      if (members.length !== selectedMemberIds.length) return NextResponse.json({ error: 'Solo puedes seleccionar usernames de tu propio roster.' }, { status: 400 });
+      for (const member of members) {
+        if (!member.birth_date || !member.full_name || !member.document_number || !member.phone) return NextResponse.json({ error: `@${member.username} debe completar sus datos de perfil antes de poder ser inscrito.` }, { status: 400 });
+        if (!member.in_game_id) return NextResponse.json({ error: `@${member.username} debe completar su ID de juego en el equipo antes de poder ser inscrito.` }, { status: 400 });
+        const birth = new Date(member.birth_date); const today = new Date(); let age = today.getFullYear() - birth.getFullYear(); const month = today.getMonth() - birth.getMonth(); if (month < 0 || (month === 0 && today.getDate() < birth.getDate())) age--;
+        if (age < 14) return NextResponse.json({ error: `@${member.username} no cumple la edad mínima para participar.` }, { status: 400 });
+      }
+      const registrations = members.map(member => ({ userId: member.id, teamId: null, name: member.username, tag: 'SOLO', captainName: member.username, captainDiscord: '', captainInGameId: member.in_game_id, roster: [{ userId: member.id, username: member.username }], personalDetails: member.id === userId ? personalDetails : undefined }));
+      const result = await reserveSoloRosterRegistration(tournament.id, userId, registrations);
+      return NextResponse.json({ success: true, ...result, message: result.checkoutUrl ? 'Continúa al pago para confirmar las inscripciones seleccionadas.' : 'Inscripciones confirmadas.' });
+    }
 
     let participantName = '';
     let participantTag = '';
@@ -314,8 +336,9 @@ export async function DELETE(
     const participant = partRes.rows[0];
     const activeMatches = await db.query("SELECT id FROM tournament_matches WHERE tournament_id=$1 AND (winner_id IS NOT NULL OR status IN ('in_progress','completed','disputed')) LIMIT 1", [tournament.id]);
     if (activeMatches.rows.length) return NextResponse.json({ error: 'El cuadro ya tiene actividad. Contacta al staff para gestionar tu retiro.' }, { status: 409 });
-    const paid = await db.query("SELECT id FROM tournament_payments WHERE participant_id=$1 AND status='confirmed' LIMIT 1", [participant.id]);
-    if (paid.rows.length) return NextResponse.json({ error: 'Esta inscripción tiene un pago confirmado. Contacta al organizador para retirar la participación y gestionar la devolución según las reglas del torneo.' }, { status: 409 });
+    const paid = await db.query("SELECT id,participant_id,registration FROM tournament_payments WHERE tournament_id=$1 AND status='confirmed'", [tournament.id]);
+    const isCoveredByPayment = paid.rows.some(payment => payment.participant_id === participant.id || (Array.isArray(payment.registration?.registrations) && payment.registration.registrations.some((registration: { userId?: string }) => registration.userId === participant.user_id)));
+    if (isCoveredByPayment) return NextResponse.json({ error: 'Esta inscripción tiene un pago confirmado. Contacta al organizador para retirar la participación y gestionar la devolución según las reglas del torneo.' }, { status: 409 });
 
     // 2. Remove participant from tournament_participants
     await db.query('DELETE FROM tournament_participants WHERE id = $1', [participant.id]);

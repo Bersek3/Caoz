@@ -60,6 +60,18 @@ const RegistrationForm: React.FC<RegisterModalProps> = ({
   // Check if user is already participating in this tournament in any team
   const alreadyInParticipant = findMyRegistration(tournament, user);
   const isAlreadyRegistered = !!alreadyInParticipant;
+  const canManageSoloRoster = isSolo && Boolean(user?.team?.is_captain || user?.team?.captain_id === user?.id) && roster.length > 0;
+  const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>(() => [user?.id || ''].filter(Boolean));
+  const registeredUserIds = new Set(tournament.participants.flatMap(participant => [participant.userId, ...participant.roster.map(member => member.userId)].filter(Boolean)));
+  const selectedAlreadyRegistered = selectedMemberIds.some(memberId => registeredUserIds.has(memberId));
+  const payerIsSelected = selectedMemberIds.includes(user?.id || '');
+  const selectedCount = canManageSoloRoster ? selectedMemberIds.length : 1;
+  const totalAmount = (tournament.entryFeeAmount || 0) * selectedCount;
+
+  React.useEffect(() => {
+    if (!canManageSoloRoster) return;
+    setSelectedMemberIds(current => current.filter(memberId => !registeredUserIds.has(memberId)));
+  }, [canManageSoloRoster, tournament.id, tournament.participants]);
 
   const [captainInGameId, setCaptainInGameId] = useState(() => {
     const gameId = tournament.gameId.toLowerCase();
@@ -129,8 +141,8 @@ const RegistrationForm: React.FC<RegisterModalProps> = ({
     if (!isCaptain) { setErrorMsg('Solo el capitán puede confirmar la inscripción del equipo.'); return; }
     if (!acceptedRules) { setErrorMsg('Lee y acepta las bases del torneo para continuar.'); return; }
 
-    if (isAlreadyRegistered) {
-      setErrorMsg(`Ya te encuentras registrado en este torneo (en "${alreadyInParticipant.name}"). Cada usuario solo puede participar en 1 equipo por torneo.`);
+    if (selectedAlreadyRegistered || (!canManageSoloRoster && isAlreadyRegistered)) {
+      setErrorMsg(`Ya te encuentras registrado en este torneo${alreadyInParticipant ? ` (en "${alreadyInParticipant.name}")` : ''}. Cada usuario solo puede participar en 1 equipo por torneo.`);
       return;
     }
 
@@ -146,21 +158,22 @@ const RegistrationForm: React.FC<RegisterModalProps> = ({
       }
     }
 
-    if (!captainInGameId.trim()) {
+    if ((!isSolo || payerIsSelected) && !captainInGameId.trim()) {
       setErrorMsg(`Por favor ingresa tu ${game?.tagFieldLabel || 'In-Game ID'}`);
       return;
     }
 
     try {
       setIsSubmitting(true);
-      const details = validateRegistrationDetails(personalDetails);
+      const details = payerIsSelected ? validateRegistrationDetails(personalDetails) : undefined;
       const result = await registerParticipant(tournament.id, {
         username: user.username,
         teamName: isSolo ? user.username : user.teamName!,
         teamTag: isSolo ? 'SOLO' : (user.teamTag || 'TEAM'),
         captainDiscord,
         captainInGameId,
-        personalDetails: details
+        personalDetails: details,
+        selectedMemberIds: canManageSoloRoster ? selectedMemberIds : undefined
       });
 
       if (!result.success) {
@@ -388,6 +401,7 @@ const RegistrationForm: React.FC<RegisterModalProps> = ({
                       @{user.username}
                     </span>
                   </div>
+                  {canManageSoloRoster && <div className="mt-3 space-y-2 border-t border-red-500/20 pt-3"><div className="flex items-center justify-between gap-3"><p className="text-xs font-semibold text-white">Selecciona usernames a inscribir</p><button type="button" onClick={() => setSelectedMemberIds(roster.filter(member => !registeredUserIds.has(member.user_id)).map(member => member.user_id))} className="text-[11px] text-red-300 underline">Seleccionar disponibles</button></div><ul className="space-y-1">{roster.map(member => { const unavailable = registeredUserIds.has(member.user_id); const selected = selectedMemberIds.includes(member.user_id); return <li key={member.id || member.user_id} className="flex items-center justify-between gap-3 rounded-lg bg-black/20 px-3 py-2 text-xs"><label className={`flex min-w-0 items-center gap-2 ${unavailable ? 'text-slate-500' : 'text-slate-200'}`}><input type="checkbox" checked={selected} disabled={unavailable} onChange={() => setSelectedMemberIds(current => selected ? current.filter(id => id !== member.user_id) : [...current, member.user_id])} className="accent-red-400"/><span>@{member.username}{member.user_id === user?.id ? ' · Tú' : ''}</span></label><span className={unavailable ? 'text-amber-300' : 'text-slate-500'}>{unavailable ? 'Ya inscrito' : 'Disponible'}</span></li>; })}</ul><p className="text-[11px] text-slate-400">El pago quedará registrado solo a tu nombre como capitán.</p></div>}
                 </div>
               ) : (
                 /* TEAM MODE: User has a team */
@@ -461,7 +475,7 @@ const RegistrationForm: React.FC<RegisterModalProps> = ({
                       placeholder={game?.tagPlaceholder || 'Ingresa tu ID'}
                       value={captainInGameId}
                       onChange={(e) => setCaptainInGameId(e.target.value)}
-                      required
+                      required={!isSolo || payerIsSelected}
                       className="w-full px-3.5 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white text-xs focus:border-red-400 focus:outline-none"
                     />
                   </div>
@@ -483,7 +497,7 @@ const RegistrationForm: React.FC<RegisterModalProps> = ({
               </div>
 
               {/* Already Registered Alert */}
-              {isAlreadyRegistered && (
+              {(selectedAlreadyRegistered || (!canManageSoloRoster && isAlreadyRegistered)) && (
                 <div className="p-3.5 rounded-xl bg-amber-950/40 border border-amber-500/50 text-amber-300 text-xs flex items-center space-x-2.5">
                   <AlertTriangle className="w-4 h-4 shrink-0 text-amber-400" />
                   <span>
@@ -492,7 +506,7 @@ const RegistrationForm: React.FC<RegisterModalProps> = ({
                 </div>
               )}
 
-              <fieldset className="space-y-3 rounded-xl border border-red-400/30 bg-red-950/10 p-4">
+              {payerIsSelected && <fieldset className="space-y-3 rounded-xl border border-red-400/30 bg-red-950/10 p-4">
                   <legend className="px-2 text-sm font-bold text-red-300">Datos del jugador</legend>
                   <p className="text-xs text-slate-400">Completa tus datos para confirmar tu inscripción. Estos datos son privados y no se muestran en las llaves.</p>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -509,12 +523,12 @@ const RegistrationForm: React.FC<RegisterModalProps> = ({
                       <CountryPhoneInput value={personalDetails.phone} onChange={phone => setPersonalDetails({ ...personalDetails, phone })} />
                     </div>
                   </div>
-              </fieldset>
+              </fieldset>}
               {/* Submit CTA */}
               {isPaid && (
                 <fieldset className="space-y-3 rounded-xl border border-red-500/30 p-4">
-                  <legend className="px-2 text-sm font-bold text-red-300">Pagar inscripción: {tournament.entryFee}</legend>
-                  <p className="text-xs text-slate-400">Pago único por {isSolo ? 'jugador' : 'equipo'} mediante Flow. Reservamos el cupo durante 30 minutos. La inscripción se confirma cuando se aprueba el pago.</p>
+                  <legend className="px-2 text-sm font-bold text-red-300">Pagar inscripción: {isSolo && canManageSoloRoster ? `$${totalAmount.toLocaleString('es-CL')}` : tournament.entryFee}</legend>
+                  <p className="text-xs text-slate-400">Pago único por {isSolo && canManageSoloRoster ? `${selectedCount} jugador(es) seleccionado(s)` : isSolo ? 'jugador' : 'equipo'} mediante Flow. Reservamos el cupo durante 30 minutos. La inscripción se confirma cuando se aprueba el pago.</p>
                   <p className="text-xs text-slate-400">Elegirás tu medio de pago en el checkout seguro de Flow. Al volver podrás consultar tu inscripción.</p>
                 </fieldset>
               )}
@@ -522,17 +536,17 @@ const RegistrationForm: React.FC<RegisterModalProps> = ({
                 <label className="mb-4 flex items-start gap-2 text-xs leading-relaxed text-slate-300"><input type="checkbox" required checked={acceptedRules} onChange={event => setAcceptedRules(event.target.checked)} className="mt-1 accent-red-400" /><span>He leído y acepto las <a href={`/tournament/${tournament.slug}?tab=rules`} target="_blank" rel="noreferrer" className="text-red-300 underline">bases del torneo</a> y la <Link href="/privacidad" target="_blank" className="text-red-300 underline">política de privacidad</Link>.</span></label>
                 <button
                   type="submit"
-                  disabled={isSubmitting || isAlreadyRegistered || !isRegistrationOpen || !isCaptain || !acceptedRules || (!isSolo && !isTeamComplete)}
+                  disabled={isSubmitting || selectedAlreadyRegistered || (!canManageSoloRoster && isAlreadyRegistered) || !isRegistrationOpen || !isCaptain || !acceptedRules || (!isSolo && !isTeamComplete) || (canManageSoloRoster && selectedMemberIds.length === 0)}
                   className="w-full py-3 rounded-xl font-bold text-xs uppercase tracking-wider text-black bg-red-400 hover:bg-red-300 shadow-lg shadow-red-400/25 transition-all font-mono disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   {isSubmitting 
                     ? 'PROCESANDO INSCRIPCIÓN...' 
-                    : isAlreadyRegistered
+                    : selectedAlreadyRegistered || (!canManageSoloRoster && isAlreadyRegistered)
                     ? `YA INSCRITO EN ESTE TORNEO (${alreadyInParticipant?.name?.toUpperCase()})`
                     : !isSolo && !isTeamComplete
                     ? `EQUIPO INCOMPLETO (${currentTeamMembers}/${requiredTeamSize})`
                     : isPaid
-                    ? `PAGAR ${tournament.entryFee} EN FLOW`
+                    ? `PAGAR ${isSolo && canManageSoloRoster ? `$${totalAmount.toLocaleString('es-CL')}` : tournament.entryFee} EN FLOW`
                     : isSolo 
                     ? `CONFIRMAR INSCRIPCIÓN COMO @${user.username}` 
                     : `CONFIRMAR INSCRIPCIÓN DE ${(user.teamName || user.team?.name)?.toUpperCase()}`}

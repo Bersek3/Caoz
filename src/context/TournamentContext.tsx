@@ -32,6 +32,7 @@ interface TournamentContextType {
     captainDiscord: string;
     captainInGameId: string;
     personalDetails?: { fullName: string; birthDate: string; documentNumber: string; phone: string };
+    selectedMemberIds?: string[];
     rosterMembers?: { name: string; inGameId: string; role: 'starter' | 'sub' }[];
   }) => Promise<{ success: boolean; message: string; participantId?: string; checkoutUrl?: string; paymentId?: string; existingPayment?: boolean }>;
   checkInParticipant: (tournamentId: string, participantId: string) => Promise<void>;
@@ -144,6 +145,7 @@ const TournamentState: React.FC<{ children: React.ReactNode }> = ({ children }) 
       captainDiscord: string;
       captainInGameId: string;
       personalDetails?: { fullName: string; birthDate: string; documentNumber: string; phone: string };
+      selectedMemberIds?: string[];
       rosterMembers?: { name: string; inGameId: string; role: 'starter' | 'sub' }[];
     }
   ) => {

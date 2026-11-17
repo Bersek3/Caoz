@@ -68,6 +68,54 @@ export async function reserveRegistration(tournamentId: string, registration: Re
   }
 }
 
+/** One captain checkout can reserve several individual tournament slots. */
+export async function reserveSoloRosterRegistration(tournamentId: string, payerUserId: string, registrations: Registration[]) {
+  if (!registrations.length) throw new Error('Selecciona al menos un jugador.');
+  const reserved: any = await withDbTransaction(async db => {
+    const tournament = (await db.query('SELECT * FROM tournaments WHERE id=$1 FOR UPDATE', [tournamentId])).rows[0];
+    if (!tournament || tournament.status !== 'registration_open' || tournament.is_hidden) throw new Error('Las inscripciones no están abiertas.');
+    if (tournament.team_type !== 'solo' && Number(tournament.team_size) !== 1) throw new Error('Esta inscripción grupal solo está disponible para torneos individuales.');
+    const selectedIds = new Set(registrations.map(registration => registration.userId));
+    if (selectedIds.size !== registrations.length) throw new Error('Un jugador fue seleccionado más de una vez.');
+    const participants = (await db.query('SELECT * FROM tournament_participants WHERE tournament_id=$1', [tournamentId])).rows;
+    if (participants.some(participant => participant.user_id && selectedIds.has(participant.user_id) || (participant.roster || []).some((member: { userId: string }) => selectedIds.has(member.userId)))) throw new Error('Uno de los jugadores seleccionados ya está inscrito en este torneo.');
+    const payments = (await db.query('SELECT * FROM tournament_payments WHERE tournament_id=$1', [tournamentId])).rows;
+    const paymentRegistrations = (payment: any): Registration[] => Array.isArray(payment.registration?.registrations) ? payment.registration.registrations : [payment.registration];
+    const active = payments.filter(payment => payment.status === 'review' || (activeStatuses.includes(payment.status) && new Date(payment.expires_at).getTime() > Date.now()));
+    if (active.some(payment => paymentRegistrations(payment).some(registration => selectedIds.has(registration.userId)))) throw new Error('Uno de los jugadores seleccionados ya tiene un pago pendiente para este torneo.');
+    const reservedSlots = active.reduce((total, payment) => total + paymentRegistrations(payment).length, 0);
+    if (participants.length + reservedSlots + registrations.length > tournament.max_participants) throw new Error('No quedan cupos suficientes para los jugadores seleccionados.');
+    const existing = active.find(payment => payment.registration_key === payerUserId);
+    if (existing) return { paymentId: existing.id, checkoutUrl: existing.checkout_url, existingPayment: true, create: false };
+    if (!tournament.entry_fee_amount) {
+      const participantIds = [];
+      for (const registration of registrations) participantIds.push(await insertRegistration(db, tournamentId, tournament.max_participants, registration));
+      return { participantId: participantIds[0], participantIds, create: false };
+    }
+    flowConfig();
+    const payer = (await db.query('SELECT email FROM users WHERE id=$1', [payerUserId])).rows[0];
+    const paymentId = `pay-${randomUUID()}`;
+    const amount = Number(tournament.entry_fee_amount) * registrations.length;
+    if (!Number.isSafeInteger(amount) || amount <= 0) throw new Error('El total del pago no es válido.');
+    await db.query(`INSERT INTO tournament_payments (id,tournament_id,user_id,registration_key,amount,registration,provider,expires_at) VALUES ($1,$2,$3,$4,$5,$6,'flow',CURRENT_TIMESTAMP + INTERVAL '35 minutes')`, [paymentId,tournamentId,payerUserId,payerUserId,amount,JSON.stringify({ registrations }),]);
+    return { paymentId, amount, title: tournament.title, email: payer.email, create: true };
+  });
+  if (!reserved.create) return reserved;
+  const db = await getDb();
+  try {
+    const { site } = flowConfig();
+    const createdAt = Date.now();
+    const order = await flowRequest<{ url: string; token: string; flowOrder: number }>('payment/create', { commerceOrder: reserved.paymentId, subject: (`Inscripción de ${registrations.length} jugadores · ${reserved.title}`).slice(0, 200), currency: 'CLP', amount: reserved.amount, email: reserved.email, paymentMethod: 9, timeout: 1800, urlConfirmation: site + '/api/payments/flow/confirmation', urlReturn: site + '/api/payments/flow/return?paymentId=' + reserved.paymentId }, 'POST');
+    if (!validFlowToken(order.token) || !Number.isSafeInteger(order.flowOrder) || order.flowOrder <= 0) throw new Error('Respuesta de Flow inválida.');
+    const checkoutUrl = flowCheckoutUrl(order.url, order.token);
+    await db.query("UPDATE tournament_payments SET provider_uuid=$1,provider_order=$2,checkout_url=$3,expires_at=$4,status='pending' WHERE id=$5", [order.token,String(order.flowOrder),checkoutUrl,new Date(createdAt + 1800000),reserved.paymentId]);
+    return { paymentId: reserved.paymentId, checkoutUrl };
+  } catch (error) {
+    await db.query("UPDATE tournament_payments SET status='review' WHERE id=$1 AND status='creating'", [reserved.paymentId]);
+    throw error;
+  }
+}
+
 export async function reconcilePayment(uuid: string | null, paymentId?: string) {
   const db = await getDb();
   if (uuid !== null && !validFlowToken(uuid)) throw new Error('Token de Flow inv\u00e1lido.');
@@ -98,9 +146,11 @@ export async function reconcilePayment(uuid: string | null, paymentId?: string) 
       // Use a savepoint so duplicate registrations remain refundable without partial bracket changes.
       await tx.query('SAVEPOINT registration');
       try {
-        const participantId = await insertRegistration(tx, tournament.id, tournament.max_participants, payment.registration);
-        await tx.query("UPDATE tournament_payments SET status='confirmed',participant_id=$1 WHERE id=$2", [participantId,saved.id]);
-        return { ...payment, status: 'confirmed', participant_id: participantId };
+        const registrations: Registration[] = Array.isArray(payment.registration?.registrations) ? payment.registration.registrations : [payment.registration];
+        const participantIds: string[] = [];
+        for (const registration of registrations) participantIds.push(await insertRegistration(tx, tournament.id, tournament.max_participants, registration));
+        await tx.query("UPDATE tournament_payments SET status='confirmed',participant_id=$1 WHERE id=$2", [participantIds[0],saved.id]);
+        return { ...payment, status: 'confirmed', participant_id: participantIds[0] };
       } catch {
         await tx.query('ROLLBACK TO SAVEPOINT registration');
         await tx.query("UPDATE tournament_payments SET status='refund_required' WHERE id=$1", [saved.id]);
