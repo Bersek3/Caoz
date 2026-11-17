@@ -170,7 +170,7 @@ const RegistrationForm: React.FC<RegisterModalProps> = ({
 
     try {
       setIsSubmitting(true);
-      const details = canManageSoloRoster ? undefined : validateRegistrationDetails(personalDetails);
+      const details = validateRegistrationDetails(personalDetails);
       const result = await registerParticipant(tournament.id, {
         username: user.username,
         teamName: isSolo ? user.username : user.teamName!,
@@ -511,9 +511,9 @@ const RegistrationForm: React.FC<RegisterModalProps> = ({
                 </div>
               )}
 
-              {!canManageSoloRoster && payerIsSelected && <fieldset className="space-y-3 rounded-xl border border-red-400/30 bg-red-950/10 p-4">
-                  <legend className="px-2 text-sm font-bold text-red-300">Datos del jugador</legend>
-                  <p className="text-xs text-slate-400">Completa tus datos para confirmar tu inscripción. Estos datos son privados y no se muestran en las llaves.</p>
+              {(canManageSoloRoster || payerIsSelected) && <fieldset className="space-y-3 rounded-xl border border-red-400/30 bg-red-950/10 p-4">
+                  <legend className="px-2 text-sm font-bold text-red-300">{canManageSoloRoster ? 'Datos del capitán que realiza el pago' : 'Datos del jugador'}</legend>
+                  <p className="text-xs text-slate-400">{canManageSoloRoster ? 'Tus datos se registran como responsable del pago. Los usernames seleccionados no necesitan completar perfil.' : 'Completa tus datos para confirmar tu inscripción. Estos datos son privados y no se muestran en las llaves.'}</p>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <label className="text-xs text-slate-300">Nombre completo *
                       <input required autoComplete="name" maxLength={150} value={personalDetails.fullName} onChange={e => setPersonalDetails({ ...personalDetails, fullName: e.target.value })} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 p-2 text-white" />

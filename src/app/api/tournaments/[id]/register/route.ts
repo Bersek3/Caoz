@@ -44,10 +44,8 @@ export async function POST(
     const selectedMemberIds = Array.isArray(body.selectedMemberIds) ? [...new Set(body.selectedMemberIds.filter((value: unknown): value is string => typeof value === 'string' && value.length > 0))] : [];
     const payerIsSelected = selectedMemberIds.length === 0 || selectedMemberIds.includes(userId);
     let personalDetails: { fullName: string; birthDate: string; documentNumber: string; phone: string } | undefined;
-    if (selectedMemberIds.length === 0 && payerIsSelected) {
-      try { personalDetails = validateRegistrationDetails(body.personalDetails); }
-      catch (error) { return NextResponse.json({ error: (error as Error).message }, { status: 400 }); }
-    }
+    try { personalDetails = validateRegistrationDetails(body.personalDetails); }
+    catch (error) { return NextResponse.json({ error: (error as Error).message }, { status: 400 }); }
 
     // 2. Check slots
     const countRes = await db.query(
@@ -70,6 +68,7 @@ export async function POST(
       if (!team) return NextResponse.json({ error: 'Solo el capitán de un equipo puede pagar inscripciones de su roster.' }, { status: 403 });
       const members = (await db.query(`SELECT u.id,u.username,tm.in_game_id FROM team_members tm JOIN users u ON u.id=tm.user_id WHERE tm.team_id=$1 AND tm.user_id = ANY($2::text[])`, [team.id, selectedMemberIds])).rows;
       if (members.length !== selectedMemberIds.length) return NextResponse.json({ error: 'Solo puedes seleccionar usernames de tu propio roster.' }, { status: 400 });
+      await db.query('UPDATE users SET full_name=$1, birth_date=$2, document_number=$3, phone=$4 WHERE id=$5', [personalDetails.fullName, personalDetails.birthDate, personalDetails.documentNumber, personalDetails.phone, userId]);
       const registrations = members.map(member => ({ userId: member.id, teamId: null, name: member.username, tag: 'SOLO', captainName: member.username, captainDiscord: '', captainInGameId: member.in_game_id || '', roster: [{ userId: member.id, username: member.username }] }));
       const result = await reserveSoloRosterRegistration(tournament.id, userId, registrations);
       return NextResponse.json({ success: true, ...result, message: result.checkoutUrl ? 'Continúa al pago para confirmar las inscripciones seleccionadas.' : 'Inscripciones confirmadas.' });
