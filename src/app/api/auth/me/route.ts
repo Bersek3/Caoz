@@ -80,7 +80,7 @@ export async function GET(request: Request) {
         email: userRow.email,
         username: userRow.username,
         fullName: userRow.full_name,
-        avatarUrl: getUserAvatar(userRow.username),
+        avatarUrl: userRow.avatar_url || getUserAvatar(userRow.username),
         role: userRow.role,
         riotId: userRow.riot_id || '',
         steamId: userRow.steam_id || '',
@@ -130,6 +130,10 @@ export async function PUT(request: Request) {
       birthDate, 
       rut 
     } = body;
+
+    if (avatarUrl != null && avatarUrl !== '' && (typeof avatarUrl !== 'string' || avatarUrl.length > 700_000 || !/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(avatarUrl))) {
+      return NextResponse.json({ error: 'El avatar debe ser una imagen JPG, PNG o WEBP de hasta 500 KB.' }, { status: 400 });
+    }
 
     let accountStatusUpdate: string | null = null;
     if (birthDate) {
@@ -198,7 +202,7 @@ export async function PUT(request: Request) {
         email: u.email,
         username: u.username,
         fullName: u.full_name,
-        avatarUrl: getUserAvatar(u.username),
+        avatarUrl: u.avatar_url || getUserAvatar(u.username),
         role: u.role,
         riotId: u.riot_id || '',
         steamId: u.steam_id || '',

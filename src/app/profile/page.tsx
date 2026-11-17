@@ -93,6 +93,10 @@ export default function ProfilePage() {
   const [epicGamesUsername, setEpicGamesUsername] = useState('');
   const [psnId, setPsnId] = useState('');
   const [xboxGamertag, setXboxGamertag] = useState('');
+  const [avatarSource, setAvatarSource] = useState('');
+  const [avatarZoom, setAvatarZoom] = useState(1);
+  const [avatarX, setAvatarX] = useState(0);
+  const [avatarY, setAvatarY] = useState(0);
 
   // Parental authorization modal & form
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -186,10 +190,33 @@ export default function ProfilePage() {
       setEpicGamesUsername(user.epicGamesUsername || '');
       setPsnId(user.psnId || '');
       setXboxGamertag(user.xboxGamertag || '');
+      setAvatarSource(user.avatarUrl || '');
       setJoinInGameId(user.riotId || user.steamId || user.epicGamesUsername || user.eaId || '');
       setJoinDiscord(user.discordTag || '');
     }
   }, [user]);
+
+  const chooseAvatar = (file?: File) => {
+    if (!file) return;
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024) {
+      showAlert('Selecciona una imagen JPG, PNG o WEBP de hasta 5 MB.'); return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => { setAvatarSource(String(reader.result || '')); setAvatarZoom(1); setAvatarX(0); setAvatarY(0); };
+    reader.readAsDataURL(file);
+  };
+
+  const croppedAvatar = async () => new Promise<string>((resolve, reject) => {
+    const image = new window.Image(); image.onload = () => {
+      const size = 320; const scale = Math.max(size / image.naturalWidth, size / image.naturalHeight) * avatarZoom;
+      const width = image.naturalWidth * scale; const height = image.naturalHeight * scale;
+      const x = (size - width) / 2 + (width - size) * avatarX / 200;
+      const y = (size - height) / 2 + (height - size) * avatarY / 200;
+      const canvas = document.createElement('canvas'); canvas.width = size; canvas.height = size;
+      canvas.getContext('2d')?.drawImage(image, x, y, width, height);
+      resolve(canvas.toDataURL('image/jpeg', 0.85));
+    }; image.onerror = reject; image.src = avatarSource;
+  });
 
   const fetchMyTeam = async () => {
     const savedToken = token || (typeof window !== 'undefined' ? localStorage.getItem('caoz_auth_token') : null);
@@ -230,8 +257,10 @@ export default function ProfilePage() {
     setSaving(true);
     setSavedSuccess(false);
 
+    const avatarUrl = avatarSource.startsWith('data:image/') ? await croppedAvatar() : undefined;
     const res = await updateProfile({
       fullName,
+      avatarUrl,
       bio,
       riotId,
       steamId,
@@ -577,7 +606,7 @@ export default function ProfilePage() {
         <div className="flex items-center space-x-5 relative">
           <div className="relative">
             <img
-              src={getUserAvatar(user.username)}
+              src={avatarSource || getUserAvatar(user.username)}
               alt={user.username}
               className="w-20 h-20 rounded-2xl object-cover border-2 border-red-400 shadow-lg"
             />
@@ -641,6 +670,11 @@ export default function ProfilePage() {
                   <span>¡Cambios guardados con éxito!</span>
                 </div>
               )}
+
+              <div className="rounded-xl border border-slate-700 bg-slate-900/60 p-4">
+                <div className="flex flex-wrap items-center gap-4"><div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-full border-2 border-red-400 bg-slate-950"><img src={avatarSource || getUserAvatar(user.username)} alt="Vista previa" className="h-full w-full object-cover" style={{ transform: `translate(${avatarX}%, ${avatarY}%) scale(${avatarZoom})` }} /></div><div><label className="cursor-pointer rounded-lg bg-red-400 px-3 py-2 text-xs font-bold text-black"><input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={event => chooseAvatar(event.target.files?.[0])} />Subir imagen</label><p className="mt-2 text-[11px] text-slate-400">JPG, PNG o WEBP. Ajusta la posición dentro del círculo.</p></div></div>
+                {avatarSource.startsWith('data:image/') && <div className="mt-4 grid gap-3 text-xs text-slate-300"><label>Zoom<input type="range" min="1" max="2.5" step="0.05" value={avatarZoom} onChange={event => setAvatarZoom(Number(event.target.value))} className="ml-2 w-40 accent-red-400" /></label><label>Horizontal<input type="range" min="-100" max="100" value={avatarX} onChange={event => setAvatarX(Number(event.target.value))} className="ml-2 w-40 accent-red-400" /></label><label>Vertical<input type="range" min="-100" max="100" value={avatarY} onChange={event => setAvatarY(Number(event.target.value))} className="ml-2 w-40 accent-red-400" /></label></div>}
+              </div>
 
               <div>
                 <label className="block text-xs text-slate-400 mb-1">Nombre Completo</label>
