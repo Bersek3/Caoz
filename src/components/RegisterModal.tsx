@@ -30,7 +30,12 @@ interface RegisterModalProps {
 }
 
 export const RegisterModal: React.FC<RegisterModalProps> = (props) => {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
+  React.useEffect(() => {
+    if (props.isOpen) void refreshUser();
+    // Refresh the roster once whenever the registration dialog opens.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [props.isOpen]);
   return props.isOpen ? <RegistrationForm key={`${props.tournament.id}:${user?.id || 'guest'}`} {...props} /> : null;
 };
 
