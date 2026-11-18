@@ -114,7 +114,7 @@ export function Navbar({ onOpenCreateModal }: NavbarProps) {
 
   const navLinks = <>
     <Link href="/arena" className={`arena-nav-link ${pathname === '/arena' ? 'is-active' : ''}`}><Trophy className="h-4 w-4" />Torneos</Link>
-    {user && <><Link href="/arena?view=mine&status=all#torneos" className="arena-nav-link"><Users className="h-4 w-4" />Mis torneos</Link><Link href="/profile" className={`arena-nav-link ${pathname === '/profile' ? 'is-active' : ''}`}><User className="h-4 w-4" />Mi perfil</Link></>}
+    {user && <><Link href="/arena?view=mine&status=all#torneos" className="arena-nav-link"><Users className="h-4 w-4" />Mis torneos</Link><Link href="/profile" className={`arena-nav-link ${pathname === '/profile' ? 'is-active' : ''}`}><User className="h-4 w-4" />Mi perfil</Link>{isAdmin && <Link href="/admin" className={`arena-nav-link ${pathname === '/admin' ? 'is-active' : ''}`}><User className="h-4 w-4" />Administración</Link>}</>}
   </>;
 
   return <header className="sticky top-0 z-50 w-full border-b border-white/10 glass-panel backdrop-blur-md">
