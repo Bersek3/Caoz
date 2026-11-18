@@ -15,7 +15,7 @@ export async function GET(request: Request) {
         COUNT(p.id)::int AS participant_count
       FROM tournaments t
       LEFT JOIN tournament_participants p ON p.tournament_id = t.id
-      GROUP BY t.id
+      GROUP BY t.id, t.title, t.slug, t.game_name, t.status, t.start_date, t.team_type, t.team_size, t.created_at
       ORDER BY t.start_date DESC NULLS LAST, t.created_at DESC
     `);
     const participants = await db.query(`
